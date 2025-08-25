@@ -248,8 +248,10 @@ auto_toggle:OnChanged(function(state)
     getgenv().auto_mutate_running = state
     if state then
         task.spawn(function()
+            local cycle = 0
             while getgenv().auto_mutate_running do
                 if not getgenv().selected_pet_uuid or not getgenv().selected_mutation then
+                    print("[DEBUG] Missing selected_pet_uuid or selected_mutation. Waiting...")
                     task.wait(1)
                     continue
                 end
@@ -260,33 +262,46 @@ auto_toggle:OnChanged(function(state)
                     local age_num = tonumber(age_str:match("Age:%s*(%d+)"))
 
                     if age_num and age_num >= 50 then
+                        cycle = cycle + 1
+                        print("[DEBUG] Auto mutation cycle " .. cycle .. " starts")
+                        print("[DEBUG] Age 50 selected pet detected!")
+
                         ReplicatedStorage.GameEvents.PetsService:FireServer("UnequipPet", getgenv().selected_pet_uuid)
                         task.wait(0.5)
 
                         local bp = LocalPlayer.Backpack
                         for _, tool in pairs(bp:GetChildren()) do
                             if tool:GetAttribute("PET_UUID") == getgenv().selected_pet_uuid then
+                                print("[DEBUG] Equipping pet tool...")
                                 Humanoid:EquipTool(tool)
                                 break
                             end
                         end
 
                         task.wait(0.5)
+                        print("[DEBUG] Submitting pet to mutation machine...")
                         ReplicatedStorage.GameEvents.PetMutationMachineService_RE:FireServer("SubmitHeldPet")
                         task.wait(0.5)
 
                         if getgenv().auto_switch_enabled and getgenv().age_team ~= getgenv().golem_team then
+                            print("[DEBUG] Switching to golem team...")
                             switchTeam(getgenv().golem_team)
                         end
 
+                        print("[DEBUG] Starting mutation machine...")
                         ReplicatedStorage.GameEvents.PetMutationMachineService_RE:FireServer("StartMachine")
                         local timer_label = Workspace.NPCS.PetMutationMachine.Model:GetChildren()[10].BillboardPart.BillboardGui.TimerTextLabel
-                        repeat task.wait(1) until timer_label.Text == "READY"
+                        repeat
+                            task.wait(1)
+                            print("[DEBUG] Waiting for machine to be ready...")
+                        until timer_label.Text == "READY"
 
+                        print("[DEBUG] Claiming mutated pet...")
                         ReplicatedStorage.GameEvents.PetMutationMachineService_RE:FireServer("ClaimMutatedPet")
                         task.wait(1)
 
                         if getgenv().auto_switch_enabled and getgenv().age_team ~= getgenv().golem_team then
+                            print("[DEBUG] Switching back to age team...")
                             switchTeam(getgenv().age_team)
                         end
 
@@ -295,20 +310,29 @@ auto_toggle:OnChanged(function(state)
                         for _, tool in pairs(bp:GetChildren()) do
                             if tool:GetAttribute("PET_UUID") == getgenv().selected_pet_uuid then
                                 local first_word = tool.Name:match("^(%S+)")
+                                print("[DEBUG] Checking mutation: " .. tostring(first_word))
                                 if first_word == getgenv().selected_mutation then
+                                    print("[DEBUG] SUCCESS! Mutation matched: " .. first_word)
                                     sendWebhook(first_word)
                                     getgenv().auto_mutate_running = false
                                 else
+                                    print("[DEBUG] Mutation not match, repeating cycle...")
                                     ReplicatedStorage.GameEvents.PetsService:FireServer("EquipPet", getgenv().selected_pet_uuid, CFrame.new(42.797, 0, -79.888))
                                 end
                                 break
                             end
                         end
+                    else
+                        -- print("[DEBUG] Pet not yet age 50. Current age: " .. tostring(age_num))
                     end
+                else
+                    print("[DEBUG] Could not find pet frame or PET_AGE for selected pet.")
                 end
 
                 task.wait(1)
             end
         end)
+    else
+        print("[DEBUG] Auto mutation stopped.")
     end
 end)
