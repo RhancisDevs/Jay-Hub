@@ -217,7 +217,7 @@ Window:SelectTab(1)
 
 info_tab:AddParagraph({
     Title = "Change Logs",
-    Content = "Version 3.0.0\nWhat's new?\n"
+    Content = "Version 3.0.5\nWhat's new?\n"
 })
 
 local pet_list_dropdown = main_tab:AddDropdown("PetListDropdown", {
@@ -422,10 +422,12 @@ AutoNM:OnChanged(function(state)
 
                 local requiredAge = (getgenv().hh_pet_type == "Ghostly Headless Horseman") and 20 or 40
 
-                switchTeam(getgenv().age_team_slot)
-                while getgenv().auto_nightmare_running and pd.PetData.Level < requiredAge do
-                    task.wait(2)
-                    pd = getPetData(selected_uuid)
+                if pd.PetData.Level < requiredAge then
+                    switchTeam(getgenv().age_team_slot)
+                    repeat
+                        task.wait(2)
+                        pd = getPetData(selected_uuid)
+                    until not getgenv().auto_nightmare_running or pd.PetData.Level >= requiredAge
                 end
 
                 if not getgenv().auto_nightmare_running then break end
@@ -450,7 +452,6 @@ AutoNM:OnChanged(function(state)
                     end
                     task.wait(0.5)
                 end
-
                 if not ready then task.wait(1) continue end
 
                 mutation_cycle = mutation_cycle + 1
@@ -479,7 +480,10 @@ AutoNM:OnChanged(function(state)
                     cleanse_selected_pet(selected_uuid)
                     cleanse_selected_pet(selected_uuid)
                     task.wait(1)
-                    switchTeam(getgenv().age_team_slot)
+                    -- After failure, switch back to Age Team to level up again
+                    if pd.PetData.Level < requiredAge then
+                        switchTeam(getgenv().age_team_slot)
+                    end
 
                     if getgenv().nightmare_notifier then
                         sendWebhook({
