@@ -58,7 +58,7 @@ local function getPetData(petId)
 end
 
 local function sendWebhook(data)
-    if not getgenv().webhook_enabled or getgenv().webhook_url == "" then return end
+    if getgenv().webhook_url == "" then return end
     request({
         Url = getgenv().webhook_url,
         Method = "POST",
@@ -98,6 +98,9 @@ local function is_passive_ready(uuid)
     if not ok then return false end
     local cd = remote:InvokeServer(uuid)
     print(cd[1].Time)
+    if cd[1].Time == 0 then
+      print("PASSIVE READY!")
+    end
     return cd[1].Time == 0
 end
 
@@ -217,7 +220,7 @@ Window:SelectTab(1)
 
 info_tab:AddParagraph({
     Title = "Change Logs",
-    Content = "Version 3.0.5\nWhat's new?\n"
+    Content = "Version 3.1.0\nWhat's new?\n"
 })
 
 local pet_list_dropdown = main_tab:AddDropdown("PetListDropdown", {
@@ -415,10 +418,27 @@ AutoNM:OnChanged(function(state)
 
             while getgenv().auto_nightmare_running do
                 local selected_uuid = getgenv().selected_pet_uuid
-                if not selected_uuid then task.wait(1) continue end
-
+                if not selected_uuid then 
+                  Fluent:Notify({
+                    Title = "Auto Nightmare",
+                    Content = "No pet selected! Please select a pet first.",
+                    Duration = 3
+                    })
+                task.wait(4)
+                continue
+                end
+                
                 local pd = getPetData(selected_uuid)
-                if not pd then task.wait(1) continue end
+                if not pd then 
+                  Fluent:Notify({
+                    Title = "Auto Nightmare",
+                    Content = "Pet data not found — pet may not exist or isn't loaded.",
+                    Duration = 3
+                    })
+                task.wait(4)
+                continue
+                end
+
 
                 local requiredAge = (getgenv().hh_pet_type == "Ghostly Headless Horseman") and 20 or 40
 
@@ -444,15 +464,8 @@ AutoNM:OnChanged(function(state)
                     end
                 until headless_uuid
 
-                local ready = false
-                for i = 1, 5 do
-                    if is_passive_ready(headless_uuid) then
-                        ready = true
-                        break
-                    end
-                    task.wait(0.5)
-                end
-                if not ready then task.wait(1) continue end
+                repeat task.wait(1) until is_passive_ready(headless_uuid)
+
 
                 mutation_cycle = mutation_cycle + 1
                 task.wait(10)
@@ -480,11 +493,8 @@ AutoNM:OnChanged(function(state)
                     cleanse_selected_pet(selected_uuid)
                     cleanse_selected_pet(selected_uuid)
                     task.wait(1)
-                    -- After failure, switch back to Age Team to level up again
-                    if pd.PetData.Level < requiredAge then
-                        switchTeam(getgenv().age_team_slot)
-                    end
-
+                    switchTeam(getgenv().age_team_slot)
+                    
                     if getgenv().nightmare_notifier then
                         sendWebhook({
                             embeds = {{
@@ -622,7 +632,7 @@ InterfaceManager:BuildInterfaceSection(settings_tab)
 SaveManager:BuildConfigSection(settings_tab)
 
 Fluent:Notify({
-    Title = "Jay Hub - Free Scripts",
+    Title = "Jay Hub - Best Scripts",
     Content = "Jay Hub has been loaded.",
     Duration = 5
 })
