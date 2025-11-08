@@ -468,7 +468,7 @@ AutoNM:OnChanged(function(state)
 
 
                 mutation_cycle = mutation_cycle + 1
-                task.wait(10)
+                task.wait(5)
 
                 local muts = getPetData(selected_uuid)
                 if muts.PetData.MutationType == "A" then
