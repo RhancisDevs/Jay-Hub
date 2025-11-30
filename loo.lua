@@ -4,6 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalPlayer = Players.LocalPlayer
 local Backpack = LocalPlayer:WaitForChild("Backpack")
 local favoriteEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item")
+local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
+local RunService = game:GetService("RunService")
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -37,6 +40,7 @@ local Minimizer = Fluent:CreateMinimizer({
 })
 
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
+local settings_tab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 Window:SelectTab(1)
 
 main_tab:AddInput("FruitAmountInput", {
@@ -61,7 +65,7 @@ main_tab:AddToggle("EggEnhanceToggle", {
     print("Egg Enhance:", state and "ON" or "OFF")
 end)
 
-Fluent:Notify({Title="Jay Hub - Auto Reconnect",Content="Auto Reconnect Executed!",Duration=6}
+Fluent:Notify({Title="Jay Hub - Auto Reconnect", Content="Auto Reconnect Executed!", Duration = 6})
 
 local fruits = {}
 
@@ -98,7 +102,7 @@ local function reconnect()
     TeleportService:Teleport(game.PlaceId, LocalPlayer)
 end
 
-player.OnTeleport:Connect(function(state)
+LocalPlayer.OnTeleport:Connect(function(state)
     if state == Enum.TeleportState.Failed then
         reconnect()
     end
@@ -132,4 +136,4 @@ Fluent:Notify({
     Duration = 5
 })
 
-SaveManager:LoadAutoloadConfig())
+SaveManager:LoadAutoloadConfig()
