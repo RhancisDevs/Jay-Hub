@@ -111,7 +111,7 @@ GuiService.ErrorMessageChanged:Connect(function(msg)
 end)
 
 RunService.RenderStepped:Connect(function()
-    if not Players.LocalPlayer then
+    if not LocalPlayer then
         reconnect()
     end
 end)
