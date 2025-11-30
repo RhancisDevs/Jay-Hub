@@ -61,6 +61,8 @@ main_tab:AddToggle("EggEnhanceToggle", {
     print("Egg Enhance:", state and "ON" or "OFF")
 end)
 
+Fluent:Notify({Title="Jay Hub - Auto Reconnect",Content="Auto Reconnect Executed!",Duration=6}
+
 local fruits = {}
 
 local function updateFruits()
@@ -90,3 +92,44 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+
+local function reconnect()
+    task.wait(1)
+    TeleportService:Teleport(game.PlaceId, LocalPlayer)
+end
+
+player.OnTeleport:Connect(function(state)
+    if state == Enum.TeleportState.Failed then
+        reconnect()
+    end
+end)
+
+GuiService.ErrorMessageChanged:Connect(function(msg)
+    if msg ~= "" then
+        reconnect()
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if not Players.LocalPlayer then
+        reconnect()
+    end
+end)
+
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+
+InterfaceManager:SetFolder("JayHubScripts")
+SaveManager:SetFolder("JayHubScripts/Script-Game")
+InterfaceManager:BuildInterfaceSection(settings_tab)
+SaveManager:BuildConfigSection(settings_tab)
+
+Fluent:Notify({
+    Title = "Jay Hub - Free Scripts",
+    Content = "Jay Hub has been loaded.",
+    Duration = 5
+})
+
+SaveManager:LoadAutoloadConfig())
