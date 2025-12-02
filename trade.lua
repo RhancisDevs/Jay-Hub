@@ -12,7 +12,12 @@ local Backpack = LocalPlayer:WaitForChild("Backpack")
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+end)
+
 local Event = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetGiftingService")
+local FavoriteEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item")
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -57,31 +62,35 @@ local function getPlayer(name)
     return nil
 end
 
-local function getNotificationLabel()
-    local topNotif = PlayerGui:WaitForChild("Top_Notification")
-    local frame = topNotif:WaitForChild("Frame")
-    local mobileUI = frame:WaitForChild("Notification_UI_Mobile")
-    local label = mobileUI:WaitForChild("TextLabel")
-    return label
-end
-
-local function waitForTradeComplete(notifLabel, timeout)
+local function waitForTradeComplete(timeout)
     timeout = timeout or 15
+    local topNotif = PlayerGui:FindFirstChild("Top_Notification")
+    if not topNotif then return false end
+    local frame = topNotif:FindFirstChild("Frame")
+    if not frame then return false end
+
     local done = false
     local conn
+    local start = tick()
 
-    conn = notifLabel:GetPropertyChangedSignal("Text"):Connect(function()
-        if notifLabel.Text == "Trade complete!" then
+    conn = frame.ChildAdded:Connect(function(child)
+        if done then return end
+        local label
+        if child.Name == "Notification_UI_Mobile" then
+            label = child:FindFirstChild("TextLabel")
+        else
+            local mobile = child:FindFirstChild("Notification_UI_Mobile")
+            if mobile then
+                label = mobile:FindFirstChild("TextLabel")
+            end
+        end
+        if label and label.Text == "Trade complete!" then
             done = true
         end
     end)
 
-    local start = tick()
     while not done and tick() - start < timeout do
         task.wait(0.1)
-        if notifLabel.Text == "Trade complete!" then
-            done = true
-        end
     end
 
     if conn then
@@ -89,6 +98,34 @@ local function waitForTradeComplete(notifLabel, timeout)
     end
 
     return done
+end
+
+local function equipTool(tool)
+    local char = Character or LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    if tool.Parent ~= Backpack then
+        tool.Parent = Backpack
+        task.wait(0.05)
+    end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid:EquipTool(tool)
+    else
+        tool.Parent = char
+    end
+    task.wait(0.2)
+end
+
+local function unequipTool(tool)
+    local char = Character or LocalPlayer.Character
+    if char then
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:UnequipTools()
+        end
+    end
+    if tool and tool.Parent ~= Backpack then
+        tool.Parent = Backpack
+    end
 end
 
 local tradePets = {}
@@ -104,36 +141,43 @@ end
 
 local function matchesCriteria(tool)
     if not tool:IsA("Tool") then
-        return false
+        return false, false
     end
 
     if not tool:GetAttribute("ItemType") then
-        return false
+        return false, false
     end
 
     local name = tool.Name
     local base = name:match("^(.-) %[%d") or ""
     local kg = tonumber(name:match("%[(%d+%.?%d*) KG%]")) or 0
     local age = tonumber(name:match("%[Age (%d+)%]")) or 0
+    local isFavorite = tool:GetAttribute("d") == true
 
     if not nameInPetList(base) then
-        return false
+        return false, isFavorite
     end
 
     local kgMatch = (getgenv().KG == 0) or (kg == getgenv().KG)
     local ageMatch = (getgenv().Age == 0) or (age == getgenv().Age)
 
-    return kgMatch and ageMatch
+    return kgMatch and ageMatch, isFavorite
 end
 
 local function buildTradePets()
     table.clear(tradePets)
     for _, tool in ipairs(Backpack:GetChildren()) do
-        if matchesCriteria(tool) then
-            table.insert(tradePets, tool)
+        local ok, isFavorite = matchesCriteria(tool)
+        if ok then
+            table.insert(tradePets, {
+                tool = tool,
+                favorite = isFavorite
+            })
         end
     end
 end
+
+buildTradePets()
 
 local autoTrading = false
 
@@ -153,26 +197,24 @@ local function autoTradeLoop()
             end
         end
 
-        local notifLabel = getNotificationLabel()
-        if not notifLabel then
-            autoTrading = false
-            return
-        end
+        local entry = tradePets[1]
+        local tool = entry and entry.tool
+        local isFavorite = entry and entry.favorite
 
-        local tool = tradePets[1]
+        if tool and tool.Parent then
+            equipTool(tool)
 
-        if tool and tool.Parent == Backpack then
-            tool.Parent = Character
-            task.wait(0.2)
+            if isFavorite then
+                FavoriteEvent:FireServer(tool)
+                task.wait(0.3)
+            end
 
             Event:FireServer("GivePet", target)
             task.wait(0.4)
+            unequipTool(tool)
 
-            if tool.Parent == Character then
-                tool.Parent = Backpack
-            end
+            local completed = waitForTradeComplete(20)
 
-            local completed = waitForTradeComplete(notifLabel, 20)
             table.remove(tradePets, 1)
         else
             table.remove(tradePets, 1)
@@ -199,7 +241,7 @@ local PlayerDropdown = main_tab:AddDropdown("PlayerList", {
     Title = "Player List",
     Values = getPlayerNames(),
     Multi = false,
-    Default = 1
+    Default = "Select Player"
 })
 
 PlayerDropdown:OnChanged(function(value)
@@ -230,6 +272,7 @@ PetsDropdown:OnChanged(function(value)
         end
     end
     getgenv().petName = selected
+    buildTradePets()
 end)
 
 local KgInput = main_tab:AddInput("KGInput", {
@@ -247,6 +290,7 @@ KgInput:OnChanged(function(value)
     else
         getgenv().KG = 0
     end
+    buildTradePets()
 end)
 
 local AgeInput = main_tab:AddInput("AgeInput", {
@@ -264,6 +308,7 @@ AgeInput:OnChanged(function(value)
     else
         getgenv().Age = 0
     end
+    buildTradePets()
 end)
 
 local AutoToggle = main_tab:AddToggle("AutoTradeToggle", {
@@ -275,8 +320,11 @@ AutoToggle:OnChanged(function(state)
     autoTrading = state
     if state then
         buildTradePets()
-        if getgenv().Username ~= "" then
+        if getgenv().Username ~= "Select Player" then
             task.spawn(autoTradeLoop)
+        else
+            autoTrading = false
+            AutoToggle:SetValue(false)
         end
     end
 end)
