@@ -1,5 +1,3 @@
-
-
 getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
@@ -246,7 +244,7 @@ local PlayerDropdown = main_tab:AddDropdown("PlayerList", {
     Title = "Player List",
     Values = getPlayerNames(),
     Multi = false,
-    Default = 1
+    Default = "Select Player"
 })
 
 PlayerDropdown:OnChanged(function(value)
@@ -325,7 +323,7 @@ AutoToggle:OnChanged(function(state)
     autoTrading = state
     if state then
         buildTradePets()
-        if getgenv().Username ~= "" then
+        if getgenv().Username ~= "Select Player" then
             task.spawn(autoTradeLoop)
         else
             autoTrading = false
