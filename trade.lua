@@ -182,6 +182,21 @@ local function autoTradeLoop()
     end
 end
 
+local AutoToggle = main_tab:AddToggle("AutoTradeToggle", {
+    Title = "Auto Trade",
+    Default = false
+})
+
+AutoToggle:OnChanged(function(state)
+    autoTrading = state
+    if state then
+        buildTradePets()
+        if getgenv().Username ~= "" then
+            task.spawn(autoTradeLoop)
+        end
+    end
+end)
+
 local function getPlayerNames()
     local names = {}
     for _, plr in ipairs(Players:GetPlayers()) do
@@ -263,20 +278,5 @@ AgeInput:OnChanged(function(value)
         getgenv().Age = num
     else
         getgenv().Age = 0
-    end
-end)
-
-local AutoToggle = main_tab:AddToggle("AutoTradeToggle", {
-    Title = "Auto Trade",
-    Default = false
-})
-
-AutoToggle:OnChanged(function(state)
-    autoTrading = state
-    if state then
-        buildTradePets()
-        if getgenv().Username ~= "" then
-            task.spawn(autoTradeLoop)
-        end
     end
 end)
