@@ -84,7 +84,7 @@ local function waitForTradeComplete(timeout)
                 label = mobile:FindFirstChild("TextLabel")
             end
         end
-        if label and label.Text == "Trade complete!" then
+        if label and label.Text == "Trade completed!" then
             done = true
         end
     end)
