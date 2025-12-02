@@ -1,3 +1,5 @@
+
+
 getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
@@ -16,8 +18,11 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
 
-local Event = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("PetGiftingService")
-local FavoriteEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("Favorite_Item")
+local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
+local Event = GameEvents:WaitForChild("PetGiftingService")
+local FavoriteEvent = GameEvents:WaitForChild("Favorite_Item")
+local GiftPet = GameEvents:WaitForChild("GiftPet")
+local AcceptPetGift = GameEvents:WaitForChild("AcceptPetGift")
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -241,7 +246,7 @@ local PlayerDropdown = main_tab:AddDropdown("PlayerList", {
     Title = "Player List",
     Values = getPlayerNames(),
     Multi = false,
-    Default = "Select Player"
+    Default = 1
 })
 
 PlayerDropdown:OnChanged(function(value)
@@ -320,11 +325,37 @@ AutoToggle:OnChanged(function(state)
     autoTrading = state
     if state then
         buildTradePets()
-        if getgenv().Username ~= "Select Player" then
+        if getgenv().Username ~= "" then
             task.spawn(autoTradeLoop)
         else
             autoTrading = false
             AutoToggle:SetValue(false)
+        end
+    end
+end)
+
+local autoAccept = false
+local giftConn
+
+local AutoAcceptToggle = main_tab:AddToggle("AutoAcceptToggle", {
+    Title = "Auto Accept Trade",
+    Default = false
+})
+
+AutoAcceptToggle:OnChanged(function(state)
+    autoAccept = state
+    if state then
+        if giftConn then
+            giftConn:Disconnect()
+            giftConn = nil
+        end
+        giftConn = GiftPet.OnClientEvent:Connect(function(giftId)
+            AcceptPetGift:FireServer(true, giftId)
+        end)
+    else
+        if giftConn then
+            giftConn:Disconnect()
+            giftConn = nil
         end
     end
 end)
