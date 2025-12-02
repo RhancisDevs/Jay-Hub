@@ -417,7 +417,7 @@ ItemDropdown = shop_tab:AddDropdown("ItemList", {
     Title = "Item List",
     Values = itemsFetched,
     Multi = false,
-    Default = 1
+    Default = "Select Item"
 })
 
 ItemDropdown:OnChanged(function(value)
@@ -426,7 +426,8 @@ ItemDropdown:OnChanged(function(value)
         selectedProductId = item.ProductId
         Fluent:Notify({
             Title = "Jay Hub",
-            Content = "You Select " .. item.Name .. " with " .. tostring(item.Price)
+            Content = "You Select " .. item.Name .. " with " .. tostring(item.Price),
+            Duration = 4
         })
     else
         selectedProductId = nil
