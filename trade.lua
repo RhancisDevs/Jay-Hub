@@ -398,7 +398,7 @@ local function fetchItems()
     local data = HttpService:JSONDecode(res.Body)
     storeItems = {}
     local names = {}
-    for _, item in ipairs(data) do
+    for _, item in ipairs(data.Product) do
         storeItems[item.Name] = item
         table.insert(names, item.Name)
     end
