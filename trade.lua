@@ -6,6 +6,7 @@ getgenv().petList = {"Mimic Octopus", "Peacock"}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local Backpack = LocalPlayer:WaitForChild("Backpack")
@@ -21,6 +22,7 @@ local Event = GameEvents:WaitForChild("PetGiftingService")
 local FavoriteEvent = GameEvents:WaitForChild("Favorite_Item")
 local GiftPet = GameEvents:WaitForChild("GiftPet")
 local AcceptPetGift = GameEvents:WaitForChild("AcceptPetGift")
+local TradePurchase = GameEvents:WaitForChild("TradeEvents"):WaitForChild("TradeTokens"):WaitForChild("Purchase")
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -54,6 +56,7 @@ local Minimizer = Fluent:CreateMinimizer({
 })
 
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
+local shop_tab = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" })
 Window:SelectTab(1)
 
 local function getPlayer(name)
@@ -87,7 +90,7 @@ local function waitForTradeComplete(timeout)
                 label = mobile:FindFirstChild("TextLabel")
             end
         end
-        if label and label.Text == "Trade completed!" then
+        if label and label.Text == "Trade complete!" then
             done = true
         end
     end)
@@ -244,7 +247,7 @@ local PlayerDropdown = main_tab:AddDropdown("PlayerList", {
     Title = "Player List",
     Values = getPlayerNames(),
     Multi = false,
-    Default = "Select Player"
+    Default = 1
 })
 
 PlayerDropdown:OnChanged(function(value)
@@ -323,7 +326,7 @@ AutoToggle:OnChanged(function(state)
     autoTrading = state
     if state then
         buildTradePets()
-        if getgenv().Username ~= "Select Player" then
+        if getgenv().Username ~= "" then
             task.spawn(autoTradeLoop)
         else
             autoTrading = false
@@ -357,3 +360,68 @@ AutoAcceptToggle:OnChanged(function(state)
         end
     end
 end)
+
+local storeItems = {}
+local selectedProductId = nil
+local ItemDropdown
+
+local storeItems = {}
+local selectedProductId = nil
+local ItemDropdown
+
+local function fetchItems()
+    local ok, res = pcall(function()
+        return request({
+            Url = "https://jayhubgagproducts.onrender.com/gag",
+            Method = "GET"
+        })
+    end)
+    if not ok or not res or res.StatusCode ~= 200 then
+        return {}
+    end
+    local data = HttpService:JSONDecode(res.Body)
+    storeItems = {}
+    local names = {}
+    for _, item in ipairs(data) do
+        storeItems[item.Name] = item
+        table.insert(names, item.Name)
+    end
+    return names
+end
+
+local itemsFetched = fetchItems()
+
+ItemDropdown = shop_tab:AddDropdown("ItemList", {
+    Title = "Item List",
+    Values = itemsFetched,
+    Multi = false,
+    Default = "Select Item"
+})
+
+ItemDropdown:OnChanged(function(value)
+    local item = storeItems[value]
+    if item then
+        selectedProductId = item.ProductId
+        Fluent:Notify({
+            Title = "Jay Hub",
+            Content = "You Select " .. item.Name .. " with " .. tostring(item.Price),
+            Duration = 3
+        })
+    else
+        selectedProductId = nil
+    end
+end)
+
+shop_tab:AddButton({
+    Title = "Purchase Item",
+    Callback = function()
+        if selectedProductId then
+            TradePurchase:InvokeServer(selectedProductId)
+        else
+            Fluent:Notify({
+                Title = "Jay Hub",
+                Content = "No item selected"
+            })
+        end
+    end
+})
