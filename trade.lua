@@ -46,6 +46,7 @@ local Minimizer = Fluent:CreateMinimizer({
 })
 
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
+Window:SelectTab(1)
 
 local function getPlayer(name)
     for _, plr in ipairs(Players:GetPlayers()) do
