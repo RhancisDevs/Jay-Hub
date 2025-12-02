@@ -395,13 +395,19 @@ local function fetchItems()
     if not ok or not res or res.StatusCode ~= 200 then
         return {}
     end
+    
     local data = HttpService:JSONDecode(res.Body)
     storeItems = {}
     local names = {}
-    for _, item in ipairs(data.Product) do
-        storeItems[item.Name] = item
-        table.insert(names, item.Name)
+    
+    for _, item in ipairs(data) do
+        if item.Product then
+            local product = item.Product
+            storeItems[product.Name] = product
+            table.insert(names, product.Name)
+        end
     end
+    
     return names
 end
 
