@@ -2,7 +2,7 @@ getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
 getgenv().Age = 0
-getgenv().petList = {"Mimic Octopus", "Peacock"}
+getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Maccaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther"}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -16,6 +16,8 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 LocalPlayer.CharacterAdded:Connect(function(char)
     Character = char
 end)
+
+local DataService = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("DataService"))
 
 local GameEvents = ReplicatedStorage:WaitForChild("GameEvents")
 local Event = GameEvents:WaitForChild("PetGiftingService")
@@ -134,16 +136,18 @@ local function unequipTool(tool)
     end
 end
 
-local tradePets = {}
-
-local function nameInPetList(base)
-    for _, pname in ipairs(getgenv().petName) do
-        if tostring(pname) == tostring(base) then
-            return true
+local function getPetData(petId)
+    local data = DataService:GetData()
+    if data and data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
+        local petData = data.PetsData.PetInventory.Data[petId]
+        if petData and petData.PetData and petData.PetData.Level then
+            return petData.PetType
         end
     end
-    return false
+    return nil
 end
+
+local tradePets = {}
 
 local function matchesCriteria(tool)
     if not tool:IsA("Tool") then
@@ -154,15 +158,31 @@ local function matchesCriteria(tool)
         return false, false
     end
 
+    local petId = tool:GetAttribute("PET_UUID")
+    if not petId then
+        return false, false
+    end
+
+    local realName = getPetData(petId)
+    if not realName then
+        return false, false
+    end
+
+    local inList = false
+    for _, pname in ipairs(getgenv().petName) do
+        if tostring(pname) == tostring(realName) then
+            inList = true
+            break
+        end
+    end
+    if not inList then
+        return false, false
+    end
+
     local name = tool.Name
-    local base = name:match("^(.-) %[%d") or ""
     local kg = tonumber(name:match("%[(%d+%.?%d*) KG%]")) or 0
     local age = tonumber(name:match("%[Age (%d+)%]")) or 0
     local isFavorite = tool:GetAttribute("d") == true
-
-    if not nameInPetList(base) then
-        return false, isFavorite
-    end
 
     local kgMatch = (getgenv().KG == 0) or (kg == getgenv().KG)
     local ageMatch = (getgenv().Age == 0) or (age == getgenv().Age)
@@ -365,10 +385,6 @@ local storeItems = {}
 local selectedProductId = nil
 local ItemDropdown
 
-local storeItems = {}
-local selectedProductId = nil
-local ItemDropdown
-
 local function fetchItems()
     local ok, res = pcall(function()
         return request({
@@ -390,12 +406,15 @@ local function fetchItems()
 end
 
 local itemsFetched = fetchItems()
+if #itemsFetched == 0 then
+    itemsFetched = {"No Items"}
+end
 
 ItemDropdown = shop_tab:AddDropdown("ItemList", {
     Title = "Item List",
     Values = itemsFetched,
     Multi = false,
-    Default = "Select Item"
+    Default = itemsFetched[1]
 })
 
 ItemDropdown:OnChanged(function(value)
