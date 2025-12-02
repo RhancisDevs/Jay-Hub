@@ -406,15 +406,12 @@ local function fetchItems()
 end
 
 local itemsFetched = fetchItems()
-if #itemsFetched == 0 then
-    itemsFetched = {"No Items"}
-end
 
 ItemDropdown = shop_tab:AddDropdown("ItemList", {
     Title = "Item List",
     Values = itemsFetched,
     Multi = false,
-    Default = itemsFetched[1]
+    Default = 1
 })
 
 ItemDropdown:OnChanged(function(value)
@@ -423,8 +420,7 @@ ItemDropdown:OnChanged(function(value)
         selectedProductId = item.ProductId
         Fluent:Notify({
             Title = "Jay Hub",
-            Content = "You Select " .. item.Name .. " with " .. tostring(item.Price),
-            Duration = 3
+            Content = "You Select " .. item.Name .. " with " .. tostring(item.Price)
         })
     else
         selectedProductId = nil
