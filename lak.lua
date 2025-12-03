@@ -230,14 +230,20 @@ local function claimBooth(b)
 end
 
 local function autoListItemsIfNeeded()
+    print("[AutoList] starting autoListItemsIfNeeded")
     local createRem = nil
-    pcall(function()
+    local okRem = pcall(function()
         createRem = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TradeEvents"):WaitForChild("Booths"):WaitForChild("CreateListing")
     end)
-    if not createRem then return end
+    print("[AutoList] CreateListing remote found:", okRem and tostring(createRem) or "nil")
+    if not createRem then
+        print("[AutoList] CreateListing remote missing, aborting")
+        return
+    end
 
     local DataServiceModule = nil
-    pcall(function() DataServiceModule = require(ReplicatedStorage.Modules.DataService) end)
+    local okDS = pcall(function() DataServiceModule = require(ReplicatedStorage.Modules.DataService) end)
+    print("[AutoList] DataService loaded:", okDS and tostring(DataServiceModule) or "nil")
 
     local function getPetData(id)
         if not DataServiceModule then return nil end
@@ -272,10 +278,16 @@ local function autoListItemsIfNeeded()
     end
 
     task.spawn(function()
+        print("[AutoList] spawned listing loop")
         local backpack = LocalPlayer:WaitForChild("Backpack")
         while true do
             local booth = getPlayerBooth()
-            if not booth then task.wait(2) break end
+            if not booth then
+                print("[AutoList] player booth not found, retrying in 2s")
+                task.wait(2)
+                -- continue loop to retry finding booth
+                goto continue_outer
+            end
 
             local dyn = booth:FindFirstChild("DynamicInstances")
             local dynNames = {}
@@ -286,7 +298,11 @@ local function autoListItemsIfNeeded()
                 end
                 dynCount = #dyn:GetChildren()
             end
-            if dynCount >= 50 then break end
+            print("[AutoList] DynamicInstances count:", dynCount)
+            if dynCount >= 50 then
+                print("[AutoList] DynamicInstances full (>=50). Stopping auto-list.")
+                break
+            end
 
             local eligible = {}
             for _, tool in ipairs(backpack:GetChildren()) do
@@ -301,26 +317,44 @@ local function autoListItemsIfNeeded()
                 end
             end
 
-            if #eligible == 0 then break end
+            print("[AutoList] eligible count this pass:", #eligible)
+            if #eligible == 0 then
+                print("[AutoList] no eligible pets to list, stopping auto-list.")
+                break
+            end
 
             local listed = false
             for _, entry in ipairs(eligible) do
                 local boothNow = getPlayerBooth()
-                if not boothNow then break end
+                if not boothNow then
+                    print("[AutoList] booth disappeared during listing, breaking")
+                    break
+                end
                 local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() >= 50 then break end
+                if dynNow and #dynNow:GetChildren() >= 50 then
+                    print("[AutoList] DynamicInstances reached 50 during listing, stopping")
+                    break
+                end
 
                 local args = {"Pet", entry.uuid, getgenv().priceForPetList}
-                local ok = pcall(function()
-                    createRem:FireServer(unpack(args))
-                end)
-                if ok then listed = true end
+                print("[AutoList] attempting to list:", entry.uuid, "petType:", entry.petType, "price:", getgenv().priceForPetList)
+                local ok = pcall(function() createRem:FireServer(unpack(args)) end)
+                print("[AutoList] CreateListing FireServer result for", entry.uuid, ":", ok)
+                if ok then
+                    listed = true
+                end
                 task.wait(5)
             end
 
-            if not listed then break end
+            if not listed then
+                print("[AutoList] no listings succeeded this pass, stopping auto-list.")
+                break
+            end
+
             task.wait(2)
+            ::continue_outer::
         end
+        print("[AutoList] listing loop ended")
     end)
 end
 
