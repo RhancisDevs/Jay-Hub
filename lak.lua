@@ -205,11 +205,10 @@ end
 
 local function boothCFrameFromModel(m)
     if not m then return nil end
-    local pivot = m:FindFirstChild("WorldPivot")
-    if pivot and pivot:IsA("CFrameValue") then return pivot.Value end
-    if pivot and pivot:IsA("BasePart") then return pivot.CFrame end
-    if m.PrimaryPart then return m.PrimaryPart.CFrame end
-    for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then return d.CFrame end end
+    local ok, cf = pcall(function()
+        return m:GetPivot()
+    end)
+    if ok and cf then return cf end
     return nil
 end
 
@@ -443,7 +442,7 @@ task.spawn(function()
         return
     end
     task.wait(1)
-    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "Arrived at booth. Starting chat loop and history watcher.", Duration = 4 })
+    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "Arrived at booth. Starting to lako", Duration = 4 })
     startChatLoop()
     local watcher = setupHistoryWatcher()
     pcall(function() autoListItemsIfNeeded() end)
