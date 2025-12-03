@@ -357,7 +357,27 @@ local function autoListItemsIfNeeded(knownBooth)
     end)
 end
 
+local _cachedChatChannel = nil
+local function getChatChannel()
+    if _cachedChatChannel and _cachedChatChannel.Parent then
+        return _cachedChatChannel
+    end
+    local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if ch then _cachedChatChannel = ch end
+    return ch
+end
 
+local function sendChat(message)
+    if not message or message == "" then return false end
+    local ch = getChatChannel()
+    if not ch then
+        ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if ch then _cachedChatChannel = ch end
+    end
+    if not ch then return false end
+    local ok = pcall(function() ch:SendAsync(tostring(message)) end)
+    return ok
+end
 
 local function sanitizeField(str)
     if not str then return "Unknown" end
@@ -402,6 +422,11 @@ local function processSaleEntry(entry)
     if thumb then embed.thumbnail = { url = thumb } end
     sendWebhook({ embeds = { embed } })
     Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = buyer.." bought "..item.." for "..price.."!", Duration = 5 })
+
+    task.spawn(function()
+        local thankMsg = ("Thank you for buying, %s!"):format(buyer or "Buyer")
+        sendChat(thankMsg)
+    end)
 end
 
 local function setupHistoryWatcher()
@@ -434,12 +459,13 @@ local function startChatLoop()
     if chatRunning then return end
     chatRunning = true
     task.spawn(function()
-        local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-        if not ch then chatRunning = false return end
         local elapsed = 0
         local total = TOTAL_MINUTES_AT_BOOTH * 60
         while chatRunning and elapsed < total do
-            pcall(function() ch:SendAsync(getgenv().message) end)
+            local ok = sendChat(getgenv().message)
+            if not ok then
+                task.wait(1)
+            end
             local waited = 0
             while waited < MESSAGE_INTERVAL and chatRunning and elapsed < total do
                 task.wait(1)
@@ -463,7 +489,7 @@ task.spawn(function()
         return
     end
     task.wait(1)
-    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "Running Equip skin and attempting to claim a booth", Duration = 4 })
+    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "attempting to claim a booth", Duration = 4 })
     runEquipBoothSkin()
     local ok = claimBooth(booth)
     if not ok then
@@ -497,7 +523,7 @@ task.spawn(function()
     end
     stopChatLoop()
     if watcher then pcall(function() watcher:Disconnect() end) end
-    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "Time's up. Server hopping...", Duration = 4 })
+    Fluent:Notify({ Title = "Jay Hub - Auto Bot", Content = "Server hopping...", Duration = 4 })
     task.wait(1)
     serverHop()
 end)
