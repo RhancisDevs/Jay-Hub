@@ -439,7 +439,7 @@ local function startChatLoop()
         local elapsed = 0
         local total = TOTAL_MINUTES_AT_BOOTH * 60
         while chatRunning and elapsed < total do
-            pcall(function() ch:SendAsync("Selling mimic, 40 token each!") end)
+            pcall(function() ch:SendAsync(getgenv().message) end)
             local waited = 0
             while waited < MESSAGE_INTERVAL and chatRunning and elapsed < total do
                 task.wait(1)
