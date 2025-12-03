@@ -341,7 +341,7 @@ local function autoListItemsIfNeeded(knownBooth)
                     end
                     print("[AutoList] listing:", pet.uuid, pet.petType)
                     local args = {"Pet", pet.uuid, getgenv().priceForPetList}
-                    local ok = pcall(function() createRem:FireServer(unpack(args)) end)
+                    local ok = pcall(function() createRem:InvokeServer(unpack(args)) end)
                     print("[AutoList] result:", ok)
                     if ok then anyListed = true end
                     task.wait(5)
