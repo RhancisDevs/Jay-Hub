@@ -14,7 +14,7 @@ local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 local MESSAGE_INTERVAL = 30
-local TOTAL_MINUTES_AT_BOOTH = 10
+local TOTAL_MINUTES_AT_BOOTH = 1
 local MOVE_SPEED_ESTIMATE = 16
 local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
