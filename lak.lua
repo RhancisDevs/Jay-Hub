@@ -231,45 +231,33 @@ end
 
 local function autoListItemsIfNeeded(knownBooth)
     print("[AutoList] start")
-
-    local createRem = ReplicatedStorage
-        :WaitForChild("GameEvents")
-        :WaitForChild("TradeEvents")
-        :WaitForChild("Booths")
-        :WaitForChild("CreateListing")
-
+    local createRem = nil
+    local okRem = pcall(function()
+        createRem = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TradeEvents"):WaitForChild("Booths"):WaitForChild("CreateListing")
+    end)
     if not createRem then
         print("[AutoList] CreateListing remote missing")
         return
     end
-
     local DataServiceModule = nil
     pcall(function()
         DataServiceModule = require(ReplicatedStorage.Modules.DataService)
     end)
-
     local function getPetData(id)
         if not DataServiceModule then return nil end
-        local ok, data = pcall(function()
-            return DataServiceModule:GetData()
-        end)
+        local ok, data = pcall(function() return DataServiceModule:GetData() end)
         if not ok or not data then return nil end
         local base = data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data
-        if base and base[id] then
-            return base[id].PetType
-        end
+        if base and base[id] then return base[id].PetType end
         return nil
     end
-
     local function findPlayerBoothExact()
         local tw = workspace:FindFirstChild("TradeWorld")
         if not tw then return nil end
         local booths = tw:FindFirstChild("Booths")
         if not booths then return nil end
-
         local n1 = "@"..LocalPlayer.Name.."'s Booth"
-        local n2 = "@"..LocalPlayer.DisplayName.."'s Booth"
-
+        local n2 = "@"..(LocalPlayer.DisplayName or "").."'s Booth"
         for _, b in ipairs(booths:GetChildren()) do
             local skin = b:FindFirstChild(getgenv().boothSkin)
             if skin then
@@ -285,13 +273,11 @@ local function autoListItemsIfNeeded(knownBooth)
                 end
             end
         end
-
         return nil
     end
-
     local function waitForPlayerBooth(maxWait)
         local t0 = tick()
-        while tick() - t0 < maxWait do
+        while tick() - t0 < (maxWait or 10) do
             if knownBooth and knownBooth.Parent then
                 return knownBooth
             end
@@ -301,90 +287,76 @@ local function autoListItemsIfNeeded(knownBooth)
         end
         return nil
     end
-
     task.spawn(function()
-        print("[AutoList] listing loop spawned")
-
+        print("[AutoList] loop spawned")
         local backpack = LocalPlayer:WaitForChild("Backpack")
-
         while true do
             local booth = waitForPlayerBooth(10)
             if not booth then
                 print("[AutoList] booth not found, retrying in 3s")
                 task.wait(3)
-                continue
-            end
-
-            local dyn = booth:FindFirstChild("DynamicInstances")
-            local dynNames = {}
-            local dynCount = 0
-
-            if dyn then
-                for _, child in ipairs(dyn:GetChildren()) do
-                    dynNames[child.Name] = true
+            else
+                local dyn = booth:FindFirstChild("DynamicInstances")
+                local dynNames = {}
+                local dynCount = 0
+                if dyn then
+                    for _, child in ipairs(dyn:GetChildren()) do
+                        if child and child.Name then dynNames[tostring(child.Name)] = true end
+                    end
+                    dynCount = #dyn:GetChildren()
                 end
-                dynCount = #dyn:GetChildren()
-            end
-
-            print("[AutoList] dynCount:", dynCount)
-
-            if dynCount >= 50 then
-                print("[AutoList] full (50) stop")
-                break
-            end
-
-            local eligible = {}
-            for _, tool in ipairs(backpack:GetChildren()) do
-                if tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
-                    local uuid = tool:GetAttribute("PET_UUID")
-                    if uuid and not dynNames[uuid] then
-                        local pt = getPetData(uuid)
-                        if table.find(getgenv().petToList, pt) then
-                            table.insert(eligible, {uuid = uuid, petType = pt})
+                print("[AutoList] dynCount:", dynCount)
+                if dynCount >= 50 then
+                    print("[AutoList] DynamicInstances full (>=50). Stopping auto-list.")
+                    break
+                end
+                local eligible = {}
+                for _, tool in ipairs(backpack:GetChildren()) do
+                    if tool and tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
+                        local uuid = tool:GetAttribute("PET_UUID")
+                        if uuid and not dynNames[tostring(uuid)] then
+                            local pt = getPetData(uuid)
+                            if pt and table.find(getgenv().petToList, pt) then
+                                table.insert(eligible, { uuid = tostring(uuid), petType = pt })
+                            end
                         end
                     end
                 end
+                print("[AutoList] eligible:", #eligible)
+                if #eligible == 0 then
+                    print("[AutoList] none eligible, stopping")
+                    break
+                end
+                local anyListed = false
+                for _, pet in ipairs(eligible) do
+                    local boothNow = waitForPlayerBooth(3)
+                    if not boothNow then
+                        print("[AutoList] booth disappeared during listing, aborting pass")
+                        break
+                    end
+                    local dynNow = boothNow:FindFirstChild("DynamicInstances")
+                    if dynNow and #dynNow:GetChildren() >= 50 then
+                        print("[AutoList] DynamicInstances reached 50 during listing, stopping")
+                        break
+                    end
+                    print("[AutoList] listing:", pet.uuid, pet.petType)
+                    local args = {"Pet", pet.uuid, getgenv().priceForPetList}
+                    local ok = pcall(function() createRem:FireServer(unpack(args)) end)
+                    print("[AutoList] result:", ok)
+                    if ok then anyListed = true end
+                    task.wait(5)
+                end
+                if not anyListed then
+                    print("[AutoList] nothing listed this pass, stop")
+                    break
+                end
+                task.wait(2)
             end
-
-            print("[AutoList] eligible:", #eligible)
-
-            if #eligible == 0 then
-                print("[AutoList] none eligible, stop")
-                break
-            end
-
-            local success = false
-            for _, pet in ipairs(eligible) do
-                local boothNow = waitForPlayerBooth(3)
-                if not boothNow then break end
-
-                local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() >= 50 then break end
-
-                print("[AutoList] listing:", pet.uuid, pet.petType)
-
-                local args = {"Pet", pet.uuid, getgenv().priceForPetList}
-                local ok = pcall(function()
-                    createRem:FireServer(unpack(args))
-                end)
-
-                print("[AutoList] result:", ok)
-
-                if ok then success = true end
-                task.wait(5)
-            end
-
-            if not success then
-                print("[AutoList] nothing listed this pass, stop")
-                break
-            end
-
-            task.wait(2)
         end
-
-        print("[AutoList] loop end")
+        print("[AutoList] loop ended")
     end)
 end
+
 
 
 local function sanitizeField(str)
