@@ -285,74 +285,78 @@ local function autoListItemsIfNeeded()
             if not booth then
                 print("[AutoList] player booth not found, retrying in 2s")
                 task.wait(2)
-                -- continue loop to retry finding booth
-                goto continue_outer
-            end
+                continue_loop_wait = true
+            else
+                continue_loop_wait = false
 
-            local dyn = booth:FindFirstChild("DynamicInstances")
-            local dynNames = {}
-            local dynCount = 0
-            if dyn then
-                for _, child in ipairs(dyn:GetChildren()) do
-                    if child and child.Name then dynNames[tostring(child.Name)] = true end
+                local dyn = booth:FindFirstChild("DynamicInstances")
+                local dynNames = {}
+                local dynCount = 0
+                if dyn then
+                    for _, child in ipairs(dyn:GetChildren()) do
+                        if child and child.Name then dynNames[tostring(child.Name)] = true end
+                    end
+                    dynCount = #dyn:GetChildren()
                 end
-                dynCount = #dyn:GetChildren()
-            end
-            print("[AutoList] DynamicInstances count:", dynCount)
-            if dynCount >= 50 then
-                print("[AutoList] DynamicInstances full (>=50). Stopping auto-list.")
-                break
-            end
+                print("[AutoList] DynamicInstances count:", dynCount)
+                if dynCount >= 50 then
+                    print("[AutoList] DynamicInstances full (>=50). Stopping auto-list.")
+                    break
+                end
 
-            local eligible = {}
-            for _, tool in ipairs(backpack:GetChildren()) do
-                if tool and tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
-                    local uuid = tool:GetAttribute("PET_UUID")
-                    if uuid and not dynNames[tostring(uuid)] then
-                        local pt = getPetData(uuid)
-                        if pt and table.find(getgenv().petToList, pt) then
-                            table.insert(eligible, { uuid = tostring(uuid), tool = tool, petType = pt })
+                local eligible = {}
+                for _, tool in ipairs(backpack:GetChildren()) do
+                    if tool and tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
+                        local uuid = tool:GetAttribute("PET_UUID")
+                        if uuid and not dynNames[tostring(uuid)] then
+                            local pt = getPetData(uuid)
+                            if pt and table.find(getgenv().petToList, pt) then
+                                table.insert(eligible, { uuid = tostring(uuid), tool = tool, petType = pt })
+                            end
                         end
                     end
                 end
-            end
 
-            print("[AutoList] eligible count this pass:", #eligible)
-            if #eligible == 0 then
-                print("[AutoList] no eligible pets to list, stopping auto-list.")
-                break
-            end
-
-            local listed = false
-            for _, entry in ipairs(eligible) do
-                local boothNow = getPlayerBooth()
-                if not boothNow then
-                    print("[AutoList] booth disappeared during listing, breaking")
-                    break
-                end
-                local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() >= 50 then
-                    print("[AutoList] DynamicInstances reached 50 during listing, stopping")
+                print("[AutoList] eligible count this pass:", #eligible)
+                if #eligible == 0 then
+                    print("[AutoList] no eligible pets to list, stopping auto-list.")
                     break
                 end
 
-                local args = {"Pet", entry.uuid, getgenv().priceForPetList}
-                print("[AutoList] attempting to list:", entry.uuid, "petType:", entry.petType, "price:", getgenv().priceForPetList)
-                local ok = pcall(function() createRem:FireServer(unpack(args)) end)
-                print("[AutoList] CreateListing FireServer result for", entry.uuid, ":", ok)
-                if ok then
-                    listed = true
+                local listed = false
+                for _, entry in ipairs(eligible) do
+                    local boothNow = getPlayerBooth()
+                    if not boothNow then
+                        print("[AutoList] booth disappeared during listing, breaking")
+                        break
+                    end
+                    local dynNow = boothNow:FindFirstChild("DynamicInstances")
+                    if dynNow and #dynNow:GetChildren() >= 50 then
+                        print("[AutoList] DynamicInstances reached 50 during listing, stopping")
+                        break
+                    end
+
+                    local args = {"Pet", entry.uuid, getgenv().priceForPetList}
+                    print("[AutoList] attempting to list:", entry.uuid, "petType:", entry.petType, "price:", getgenv().priceForPetList)
+                    local ok = pcall(function() createRem:FireServer(unpack(args)) end)
+                    print("[AutoList] CreateListing FireServer result for", entry.uuid, ":", ok)
+                    if ok then
+                        listed = true
+                    end
+                    task.wait(5)
                 end
-                task.wait(5)
+
+                if not listed then
+                    print("[AutoList] no listings succeeded this pass, stopping auto-list.")
+                    break
+                end
             end
 
-            if not listed then
-                print("[AutoList] no listings succeeded this pass, stopping auto-list.")
-                break
+            if continue_loop_wait then
+                -- already waited above
+            else
+                task.wait(2)
             end
-
-            task.wait(2)
-            ::continue_outer::
         end
         print("[AutoList] listing loop ended")
     end)
