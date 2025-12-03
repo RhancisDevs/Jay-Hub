@@ -1,8 +1,3 @@
-getgenv().webhook_Url = "https://discord.com/api/webhooks/1066298547949015151/zZtttdykjIfYN5-9UpoVegEUPONkwEJeUo8zI1qPHmdxcPgErBwyAxVP7rijMbUNMCG1"
-getgenv().boothSkin = "Fairy"
-getgenv().petToList = {"Mimic Octopus"}
-getgenv().priceForPetList = 40
-
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
 local TweenService = game:GetService("TweenService")
@@ -18,8 +13,8 @@ local LocalPlayer = Players.LocalPlayer
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
-local MESSAGE_INTERVAL = 20
-local TOTAL_MINUTES_AT_BOOTH = 20
+local MESSAGE_INTERVAL = 30
+local TOTAL_MINUTES_AT_BOOTH = 10
 local MOVE_SPEED_ESTIMATE = 16
 local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
@@ -236,9 +231,13 @@ local function claimBooth(b)
 end
 
 local function autoListItemsIfNeeded()
+    local createRem = nil
+    pcall(function()
+        createRem = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TradeEvents"):WaitForChild("Booths"):WaitForChild("CreateListing")
+    end)
+    if not createRem then return end
     local DataServiceModule = nil
-    local okDS, DS = pcall(function() return require(ReplicatedStorage.Modules.DataService) end)
-    if okDS then DataServiceModule = DS end
+    pcall(function() DataServiceModule = require(ReplicatedStorage.Modules.DataService) end)
     local function getPetData(id)
         if not DataServiceModule then return nil end
         local ok, data = pcall(function() return DataServiceModule:GetData() end)
@@ -269,34 +268,54 @@ local function autoListItemsIfNeeded()
         end
         return nil
     end
-    local createRem = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TradeEvents"):WaitForChild("Booths"):WaitForChild("CreateListing")
-    if not createRem then return end
-    local booth = getPlayerBooth()
-    local count = 0
-    if booth and booth:FindFirstChild("DynamicInstances") then count = #booth.DynamicInstances:GetChildren() end
-    if count >= 50 then return end
-    local backpack = LocalPlayer:WaitForChild("Backpack")
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
-            local uuid = tool:GetAttribute("PET_UUID")
-            if uuid then
-                local pt = getPetData(uuid)
-                if table.find(getgenv().petToList, pt) then
-                    if booth and booth:FindFirstChild("DynamicInstances") then
-                        count = #booth.DynamicInstances:GetChildren()
-                        if count >= 50 then break end
+    task.spawn(function()
+        local backpack = LocalPlayer:WaitForChild("Backpack")
+        while true do
+            local booth = getPlayerBooth()
+            if not booth then break end
+            local dyn = booth:FindFirstChild("DynamicInstances")
+            local dynNames = {}
+            local dynCount = 0
+            if dyn then
+                for _, child in ipairs(dyn:GetChildren()) do
+                    if child and child.Name then dynNames[tostring(child.Name)] = true end
+                end
+                dynCount = #dyn:GetChildren()
+            end
+            if dynCount >= 50 then break end
+            local toList = {}
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
+                    local uuid = tool:GetAttribute("PET_UUID")
+                    if uuid and not dynNames[tostring(uuid)] then
+                        local pt = getPetData(uuid)
+                        if pt and table.find(getgenv().petToList, pt) then
+                            table.insert(toList, uuid)
+                        end
                     end
-                    local args = {"Pet", uuid, getgenv().priceForPetList}
-                    if typeof(createRem.InvokeServer) == "function" then
-                        pcall(function() createRem:InvokeServer(unpack(args)) end)
-                    else
-                        pcall(function() createRem:FireServer(unpack(args)) end)
-                    end
-                    task.wait(5)
                 end
             end
+            if #toList == 0 then break end
+            local listedThisPass = false
+            for _, uuid in ipairs(toList) do
+                dyn = booth and booth:FindFirstChild("DynamicInstances")
+                if dyn then
+                    dynCount = #dyn:GetChildren()
+                    if dynCount >= 50 then break end
+                end
+                local args = {"Pet", uuid, getgenv().priceForPetList}
+                local invoked = pcall(function()
+                    createRem:FireServer(unpack(args))
+                end)
+                if invoked then
+                    listedThisPass = true
+                end
+                task.wait(5)
+            end
+            if not listedThisPass then break end
+            task.wait(2)
         end
-    end
+    end)
 end
 
 local function sanitizeField(str)
