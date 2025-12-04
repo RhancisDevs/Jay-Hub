@@ -484,7 +484,7 @@ end
 local Window = Fluent:CreateWindow({
     Title = "Jay Hub | " .. (pcall(function() return MarketplaceService:GetProductInfo(126884695634066).Name end) and MarketplaceService:GetProductInfo(126884695634066).Name or "Trade"),
     SubTitle = "by Jay Devs",
-    Icon = "132940723895184",
+    Icon = "code",
     TabWidth = 180,
     Size = UDim2.fromOffset(525, 380),
     Acrylic = true,
@@ -498,7 +498,7 @@ local Window = Fluent:CreateWindow({
 })
 
 local Minimizer = Fluent:CreateMinimizer({
-  Icon = "132940723895184",
+  Icon = "code",
   Size = UDim2.fromOffset(44, 44),
   Position = UDim2.new(0, 320, 0, 24),
   Acrylic = true,
