@@ -497,6 +497,17 @@ local Window = Fluent:CreateWindow({
     UserInfoSubtitleColor = Color3.fromRGB(71, 123, 255)
 })
 
+local Minimizer = Fluent:CreateMinimizer({
+  Icon = "132940723895184",
+  Size = UDim2.fromOffset(44, 44),
+  Position = UDim2.new(0, 320, 0, 24),
+  Acrylic = true,
+  Corner = 10,
+  Transparency = 1,
+  Draggable = true,
+  Visible = true
+})
+
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
 local server_tab = Window:AddTab({ Title = "Server", Icon = "server" })
 local webhook_tab = Window:AddTab({ Title = "Webhook", Icon = "bell" })
