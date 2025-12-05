@@ -10,7 +10,16 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 getgenv().webhook_Url = ""
 getgenv().boothSkin = "Default"
-getgenv().petToList = {"Mimic Octopus"}
+getgenv().petToList = { 
+    "Mimic Octopus", 
+    "Capybara", 
+    "Peacock", 
+    "Diamond Panther", 
+    "Ruby Squid", 
+    "Brontosaurus", 
+    "Seal", 
+    "Headless Horseman"
+}
 getgenv().priceForPetList =  40
 getgenv().message = "Selling mimic, 40 token each!"
 getgenv().autoChat = false
