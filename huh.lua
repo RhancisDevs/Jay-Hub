@@ -11,14 +11,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 getgenv().webhook_Url = ""
 getgenv().boothSkin = "Default"
 getgenv().petToList = { 
-    "Mimic Octopus", 
-    "Capybara", 
-    "Peacock", 
-    "Diamond Panther", 
-    "Ruby Squid", 
-    "Brontosaurus", 
-    "Seal", 
-    "Headless Horseman"
+    "Mimic Octopus"
 }
 getgenv().priceForPetList =  40
 getgenv().message = "Selling mimic, 40 token each!"
@@ -523,7 +516,16 @@ local webhook_tab = Window:AddTab({ Title = "Webhook", Icon = "bell" })
 local settings_tab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 Window:SelectTab(1)
 
-local petsOptions = {"Mimic Octopus"}
+local petsOptions = {
+    "Mimic Octopus", 
+    "Capybara", 
+    "Peacock", 
+    "Diamond Panther", 
+    "Ruby Squid", 
+    "Brontosaurus", 
+    "Seal", 
+    "Headless Horseman"
+}
 local skinOptions = {"Default","Fairy"}
 
 local ddPets = main_tab:AddDropdown("PetsToList", {
