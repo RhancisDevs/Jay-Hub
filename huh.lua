@@ -426,7 +426,10 @@ local function processSaleEntry(entry)
         footer = { text = "Made ❤️ by Jay Hub | "..os.date("%I:%M %p") }
     }
     if thumb then embed.thumbnail = { url = thumb } end
-    sendWebhook({ embeds = { embed } })
+    sendWebhook({ 
+                content = "@everyone",
+                embeds = { embed } 
+            })
     safeNotify({ Title = "Jay Hub - Auto Bot", Content = buyer.." bought "..item.." for "..price.."!", Duration = 5 })
     if getgenv().autoThanks then
         task.spawn(function()
