@@ -1,3 +1,6 @@
+if game.PlaceId == 126884695634066 then
+    game:GetService("ReplicatedStorage").GameEvents.TradeWorld.TravelToTradeWorld:FireServer()
+else
 local Players = game:GetService("Players")
 local PathfindingService = game:GetService("PathfindingService")
 local TweenService = game:GetService("TweenService")
@@ -754,3 +757,5 @@ Fluent:Notify({
 })
 
 SaveManager:LoadAutoloadConfig()
+
+end
