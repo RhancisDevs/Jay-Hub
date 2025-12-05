@@ -761,4 +761,6 @@ Fluent:Notify({
 
 SaveManager:LoadAutoloadConfig()
 
+
+game:GetService("ReplicatedStorage").GameEvents.Finish_Loading:FireServer()
 end
