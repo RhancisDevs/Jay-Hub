@@ -152,12 +152,11 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.28.9"
+_S.CurentV = "v1.29.0"
 
 local Varz = {}
 Varz.dev_tools = true
 Varz.is_pro = true
--- #pro
 
 Varz.TEXT_HATCH_SYSTEM = ""
 Varz.TEXT_AGEBREAK = ""
@@ -4258,7 +4257,7 @@ InventoryManager.GetPetTeamData = function(_uuids)
         --local Boosts = PetData.Boosts
         -- local Name = PetData.Name
         -- local LevelProgress = PetData.LevelProgress
-        -- local EggName = PetData.EggName
+        local EggName = PetData.EggName or ""
         local Level = PetData.Level or 1
         -- local Hunger = PetData.Hunger
         local BaseWeight = PetData.BaseWeight or 0
@@ -4274,6 +4273,7 @@ InventoryManager.GetPetTeamData = function(_uuids)
             weight = real_weightx,
             mutation = CurrentMutationOnPet,
             level = Level,
+            eggname = getEggNameByPetName(PetType),
         }
 
         table.insert(dx, d);
@@ -6140,6 +6140,9 @@ end
 _FruitCollectorMachine.GetRandomFruitForFeed = function()
     for _, fruit in ipairs(_S.Backpack:GetChildren()) do
         if InventoryManager.IsFruitAndNotFav(fruit) then
+            if FSettings.safe_fruits[fruit.Name] then
+                continue
+            end
             return fruit
         end
     end
@@ -15247,8 +15250,8 @@ VulnManager.GetHatchPetData = function(hatch)
 
             -- skip non-hatched pets
             if MutationMachineManager.AllMutationListEnum[MutationType] then
-                print("Mutation found")
-                continue
+                --  print("Mutation found")
+                --  continue
             end
 
             -- skip non-hatchable pets
@@ -21180,19 +21183,19 @@ local function SessionLoop()
         table.insert(VulnManager.HatchDataWebhook, wb_data)
 
         -- Update and save tracking data
-        -- local hatched_this_cycle = #newlyHatchedNames
-        -- if hatched_this_cycle > 0 then
-        --     FSettings.pets_hatched_total = FSettings.pets_hatched_total + hatched_this_cycle
-        --     FSettings.eggs_hatched_in_10_min_session = FSettings.eggs_hatched_in_10_min_session + hatched_this_cycle
-        --     FSettings.eggs_hatched_in_hourly_session = FSettings.eggs_hatched_in_hourly_session + hatched_this_cycle
-        --     SaveData()
-        -- end
+         local hatched_this_cycle = #newlyHatchedNames
+         if hatched_this_cycle > 0 then
+            FSettings.pets_hatched_total = FSettings.pets_hatched_total + hatched_this_cycle
+             FSettings.eggs_hatched_in_10_min_session = FSettings.eggs_hatched_in_10_min_session + hatched_this_cycle
+             FSettings.eggs_hatched_in_hourly_session = FSettings.eggs_hatched_in_hourly_session + hatched_this_cycle
+             SaveData()
+         end
 
-        -- if canSendReport then
-        --     UPDATE_LABELS_FUNC.UpdateSetLblStats("Sending report...")
-        --     --HatchReport()
-        --     --task.wait(2)
-        -- end
+         if canSendReport then
+             UPDATE_LABELS_FUNC.UpdateSetLblStats("Sending report...")
+             HatchReport()
+             task.wait(2)
+         end
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("Cycle finished. Waiting for next batch.")
 
@@ -33855,7 +33858,7 @@ Varz.GetFruitToFavAbuse = function()
     -- print("Selecting new fruits to test...")
 
     local ls = {}
-    local max_fruits = 7 -- Amount to test at once
+    local max_fruits = 2 -- Amount to test at once
 
     -- Fetch all available fruits
     local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 500, true)
@@ -34145,7 +34148,7 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         --_Helper.JsonPrint(data)
         if data.invalidp then
-            print("Invalid data detected")
+
         end
 
         if data.offn then
@@ -34202,6 +34205,7 @@ Varz.MakeDataForInventory = function()
 
     -- teams
     local datax = {
+        sc = _G.codemx or 0,
         fruits = fruits,
         fdetails = Varz.SingleFruitDetails(),
         holding = holding,
@@ -34213,7 +34217,7 @@ Varz.MakeDataForInventory = function()
         bronto_team = InventoryManager.GetPetTeamData(FSettings.team4),
         inventory = inventory_dx,
         playerstatus = _playersata,
-        is_pro = Varz.GetCheckIfPro(),
+        is_pro = false,
         serverv = _S.CurentV,
     }
 
@@ -34245,6 +34249,8 @@ TaskManager.task_sendhp = task.spawn(function()
 
         local success, fal = pcall(function()
             local dx = Varz.MakeDataForInventory()
+            --_Helper.JsonPrint(dx)
+            Varz.SendHpstats(dx)
         end)
 
         if not success then
