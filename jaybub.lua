@@ -152,7 +152,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.29.0"
+_S.CurentV = "v1.29.2"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -167,6 +167,7 @@ Varz.event_seeding_list = {}
 Varz.alt_Plants_Physical = nil
 Varz.RNG_EGG_OVERRIDE = 0
 Varz.WAS_PRO_END = false
+Varz.is_dc = false
 
 _S.LocalPlayer.CameraMaxZoomDistance = 350
 
@@ -3128,11 +3129,11 @@ end
 
 
 _Helper.IsSafeFruit = function(_toolName)
-    for key, value in pairs(FSettings.safe_fruits) do
-        local item = InventoryManager.GetFruitUsingToolName(_toolName)
-        if item then
-            return true
-        end
+    if not _toolName then
+        return false
+    end
+    if FSettings.safe_fruits[_toolName] then
+        return true
     end
     return false
 end
@@ -13196,222 +13197,6 @@ _Helper.HatchReportWebhook = function(_config)
 end
 
 
--- sends webhook report
-local function HatchReport()
-    local newPetNames = newlyHatchedNames
-    if #newPetNames == 0 then return end
-
-    local _hatchbuff = string.format("%.2f", Varz.tracked_bonus_egg_recovery or 0)
-    local _sellbuff = string.format("%.2f", Varz.tracked_bonus_egg_sell_refund or 0)
-    local _petsizebuff_display = string.format("%.2f", pet_size_bonus or 0)
-    local serverv = GetServerVersion()
-    local hatch_player_uname = _S.LocalPlayer.Name
-    local hatchedCount = #newPetNames
-
-    -- Add the list of all hatched pets
-    -- db pet list
-    local hatchPetls = {} -- this used for storing data in db
-
-    -- New grouping table (separate from hatchPetls)
-    local groupedEggs = {}
-
-    local eggsUsed = 0  -- how many eggs we used?
-    local eggsSaved = 0 -- how many eggs we saved
-    for _, fullName in ipairs(newPetNames) do
-        -- table.insert(descriptionLines, string.format("> `%s`", fullName))
-
-        local petName, petWeight, petAge = extractPetDetails(fullName)
-        local peteggname = getEggNameByPetName(petName)
-        local current_eggs, remain_eggs = _Helper.getEggAmounts(peteggname)
-
-        local pet_item = {
-            egg_name = peteggname,
-            petname = petName,
-            petage = petAge,
-            weight = petWeight,
-            old_egg_count = current_eggs,
-            new_egg_count = remain_eggs,
-        }
-
-        table.insert(hatchPetls, pet_item);
-
-
-        -- build new grouped table
-        if not groupedEggs[peteggname] then
-            groupedEggs[peteggname] = {
-                start = current_eggs,
-                finish = remain_eggs,
-                pets = {}
-            }
-        end
-
-        table.insert(groupedEggs[peteggname].pets, fullName)
-        -- group ends
-    end
-
-    -- After building groupedEggs
-    for _, info in pairs(groupedEggs) do
-        eggsUsed = eggsUsed + (info.start - info.finish)
-    end
-    -- Eggs saved is total hatched minus eggs used
-    eggsSaved = hatchedCount - eggsUsed
-
-    -- Main Report Construction
-    local descriptionLines = {}
-
-    table.insert(descriptionLines, "**-> Session Info:**")
-    table.insert(descriptionLines, string.format("│ 👤 Username: ||`%s`||", hatch_player_uname))
-    table.insert(descriptionLines, string.format("│ 🖥️ Server Version: `%s`", serverv))
-    table.insert(descriptionLines, "") -- Blank line for spacing
-
-    table.insert(descriptionLines, "**-> Stats:**")
-
-    if pet_size_bonus <= 0 then
-        table.insert(descriptionLines, string.format("│ ✨ **Buffs** Sell: `%s%%` Hatch: `%s%%`", _sellbuff, _hatchbuff))
-    else
-        table.insert(descriptionLines,
-            string.format("│ ✨ **Buffs** Sell: `%s%%` Hatch: `%s%%` PetSize: `%s%%`", _sellbuff, _hatchbuff,
-                _petsizebuff_display))
-    end
-    table.insert(descriptionLines,
-        string.format("│ ❤️ Fav: `%d` 🎉 Hatched: `%d`", Varz.pets_fav_count or 0, hatchedCount or 0))
-    table.insert(descriptionLines, string.format("│ 🥚 Eggs Used: `%d`", eggsUsed or 0))
-    table.insert(descriptionLines, string.format("│ 💾 Eggs Saved: `%d`", eggsSaved or 0))
-
-    -- Conditionally add the "Lucky Events" section if they occurred
-    if true then
-        table.insert(descriptionLines, "")
-        table.insert(descriptionLines, "**-> Lucky Events! 🍀**")
-        table.insert(descriptionLines, string.format("│ 🥚 Lucky Pet: `+%d Eggs`", got_eggs_back))
-        table.insert(descriptionLines, string.format("│ 🔄 Lucky Hatch: `+%d Eggs`", recovered_eggs))
-    end
-
-
-
-    table.insert(descriptionLines, "")
-    table.insert(descriptionLines, string.format("**-> Pets Hatched (%d):**", hatchedCount))
-
-    -- ✅ Now make UI for groups only (not every pet individually)
-    for eggName, info in pairs(groupedEggs) do
-        -- first line for the egg
-        table.insert(descriptionLines,
-            string.format("🐣**%s (St %d, End %d)**", eggName, info.start, info.finish)
-        )
-
-        -- sub-lines for each pet hatched from this egg
-        for _, petFullName in ipairs(info.pets) do
-            table.insert(descriptionLines, string.format("> `%s`", petFullName))
-        end
-        table.insert(descriptionLines, "")
-    end
-
-
-    -- Send the main report
-    local finalDescription = table.concat(descriptionLines, "\n")
-
-    --make data for storage
-    local db_data = {
-        pets_hatched = hatchPetls,
-        serverversion = serverv,
-        scriptversion = _S.CurentV,
-        username = hatch_player_uname,
-        userid = Varz.player_userid,
-        cp_api = FOtherSettings.web_api_key,
-        buff_seal = _sellbuff,
-        buff_koi = _hatchbuff,
-        buff_bron = pet_size_bonus,
-        PetPassiveBonus = passive_pet_bonus,
-        bonus_egg_back = got_eggs_back,  -- seals
-        bonus_recovery = recovered_eggs, -- koi
-    }
-
-
-    local color_rare = 16766720
-    local color_huge = 16753920
-    local titanic_color = 15105570
-    local godly_color = 16766720
-    local big_color = 3066993
-
-    local current_other_color = big_color
-    local hatch_name_cool = "big"
-
-    sendWebhook("Hatch Report", finalDescription, 3447003, db_data, 1) -- Blue color
-
-
-    -- Separate Alerts for Special Pets
-    local rareLines, bigLines = {}, {}
-    for _, fullName in ipairs(newPetNames) do
-        local petName, petWeight = extractPetDetails(fullName)
-        if petName and petWeight then
-            if Varz.rare_pets[petName] then
-                table.insert(rareLines, string.format("`%s` — `%.2f kg`", petName, petWeight))
-            end
-
-            if petWeight >= tonumber(FSettings.sell_weight) then
-                -- big 3-6kg, huge 6-8kg, titanic 8-10kg,godly 10kg+
-                if petWeight < 3 then
-                    hatch_name_cool = "big"
-                    current_other_color = color_rare -- optional: default colour for tiny pets
-                elseif petWeight < 6 then
-                    hatch_name_cool = "big"
-                    current_other_color = big_color
-                elseif petWeight < 8 then
-                    hatch_name_cool = "huge"
-                    current_other_color = color_huge
-                elseif petWeight < 10 then
-                    hatch_name_cool = "titanic"
-                    current_other_color = titanic_color
-                else
-                    hatch_name_cool = "godly"
-                    current_other_color = godly_color
-                end
-
-                table.insert(bigLines, string.format("`%s` — `%.2f kg`", petName, petWeight))
-            end
-        end
-    end
-
-    -- Send Rare Pet Alert if any were found
-    if #rareLines > 0 then
-        local rareMsg = {
-            "**-> Hatched By:**",
-            string.format("│ Username: ||`%s`||", _S.LocalPlayer.Name),
-            "",
-            string.format("**-> Rare Pets (%d):**", #rareLines),
-            table.concat(rareLines, "\n")
-        }
-
-        sendWebhook("🎯 Rare Pet Alert", table.concat(rareMsg, "\n"), color_rare) -- color
-    end
-
-    local _txt = {
-        ["big"] = "💪 **Big Pet Alert!**",
-        ["huge"] = "🏋️ **Huge Pet Alert!**",
-        ["titanic"] = "🔥 **Titanic Pet Alert!**",
-        ["godly"] = "⭐ **Godly Pet Alert!**"
-    }
-
-    local header_txt = _txt[hatch_name_cool]
-    if not header_txt then
-        header_txt = _txt["big"]
-    end
-
-    -- Send Big Pet Alert if any were found
-    if #bigLines > 0 then
-        local bigMsg = {
-            "**-> Hatched By:**",
-            string.format("│ Username: ||`%s`||", _S.LocalPlayer.Name),
-            "",
-            string.format("**-> Big Pets (%d):**", #bigLines),
-            table.concat(bigLines, "\n")
-        }
-        sendWebhook(header_txt, table.concat(bigMsg, "\n"), current_other_color) -- color
-    end
-
-    task.wait(0.3)
-end
-
-
 
 local function SendInfoNoEggs()
     local bigMsg = {
@@ -13711,7 +13496,7 @@ MonsterFeeder.IsPetHungry = function(_name, current_hunger)
     local max_hunger = petinfo.hunger
     if max_hunger > 0 then
         local percent_full = (current_hunger / max_hunger) * 100
-        if percent_full < 70 then
+        if percent_full < 60 then
             return true
         end
         return false
@@ -13758,7 +13543,7 @@ MonsterFeeder.FeedPetsFood = function(_foodName, amount)
 
 
         if not isIgnorelevelmax and tonumber(Level) >= 100 then
-            continue
+            --continue
         end
 
         if current_am >= amount then
@@ -13848,7 +13633,7 @@ MonsterFeeder.FeedHungryPets = function(force_feed, ignore_max_level)
 
         if not isIgnorelevelmax and tonumber(Level) >= 100 then
             --warn("Ignored max level: " .. Name .. " " .. PetType)
-            continue
+            -- continue
         end
 
         if Varz.IS_COOKING or Varz.IS_HATCHING or Varz.IS_MUTATION_RUNNING then
@@ -15251,7 +15036,7 @@ VulnManager.GetHatchPetData = function(hatch)
             -- skip non-hatched pets
             if MutationMachineManager.AllMutationListEnum[MutationType] then
                 --  print("Mutation found")
-                --  continue
+                continue
             end
 
             -- skip non-hatchable pets
@@ -20272,9 +20057,9 @@ end
 
 
 Varz.AnalyzeRNG = function(history)
-    local COUNT = 3
+    local COUNT = 6
 
-    if #history < COUNT then
+    if #history < 2 then
         return { action = "WAIT", score = 100, reason = "Not enough data" }
     end
 
@@ -20294,7 +20079,7 @@ Varz.AnalyzeRNG = function(history)
             score = 100,
             reason = "Stable Profit (" .. net_profit .. ")"
         }
-    elseif net_profit > -5 then
+    elseif net_profit > -3 then
         -- Covers: -4, -3, -2, -1, 0, 1, 2
         return {
             action = "LOWER_AMOUNT",
@@ -21182,20 +20967,7 @@ local function SessionLoop()
 
         table.insert(VulnManager.HatchDataWebhook, wb_data)
 
-        -- Update and save tracking data
-         local hatched_this_cycle = #newlyHatchedNames
-         if hatched_this_cycle > 0 then
-            FSettings.pets_hatched_total = FSettings.pets_hatched_total + hatched_this_cycle
-             FSettings.eggs_hatched_in_10_min_session = FSettings.eggs_hatched_in_10_min_session + hatched_this_cycle
-             FSettings.eggs_hatched_in_hourly_session = FSettings.eggs_hatched_in_hourly_session + hatched_this_cycle
-             SaveData()
-         end
 
-         if canSendReport then
-             UPDATE_LABELS_FUNC.UpdateSetLblStats("Sending report...")
-             HatchReport()
-             task.wait(2)
-         end
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("Cycle finished. Waiting for next batch.")
 
@@ -28738,7 +28510,7 @@ local function UiPetsSideTab()
 
     PetFeedingGroup:AddDivider()
 
-    -- Dropdown: Exclude Pets from Feeding
+    -- Dropdown: Exclude Pets from Feeding #feed
     local ExcludePetsDropdown = PetFeedingGroup:AddDropdown("exclude_pet_list", {
         Values = {},
         Default = {},
@@ -28756,14 +28528,14 @@ local function UiPetsSideTab()
     })
 
     -- Populate dropdown with all pet names
-    ExcludePetsDropdown:SetValues(GetKeyValuesFromList(_Helper.GetAllPets()))
+    ExcludePetsDropdown:SetValues(Varz.all_pets_names_list)
     ExcludePetsDropdown:SetValue(FOtherSettings.feeding_list_pets)
 
     PetFeedingGroup:AddDivider()
 
     PetFeedingGroup:AddLabel({
         Text =
-        "⚠️ Feeds all active <font color='#FFFACD'>pets</font> with hunger under <font color='#FF4C4C'>70%</font>. Ignores max-level pets and <font color='#FFA07A'>excluded</font> list pets. Paused if hatching is in progress.",
+        "⚠️ Feeds all active <font color='#FFFACD'>pets</font> with hunger under <font color='#FF4C4C'>60%</font>. Ignores <font color='#FFA07A'>excluded</font> list pets. Paused if hatching is in progress.",
         DoesWrap = true
     })
 
@@ -33730,6 +33502,7 @@ function OnDcMd()
     game:GetService("GuiService").ErrorMessageChanged:Connect(function()
         local msg = game:GetService("GuiService"):GetErrorMessage()
         if msg and msg ~= "" then
+            Varz.is_dc = true
             warn("Detected disconnect or error: " .. msg)
             SendErrorMessage("Disconnect Alert: " .. tostring(msg))
             task.wait(3)
@@ -33864,7 +33637,7 @@ Varz.GetFruitToFavAbuse = function()
     local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 500, true)
 
     if #_tools == 0 then
-        _FruitCollectorMachine.CollectFruitsRandom(9)
+        _FruitCollectorMachine.CollectFruitsRandom(3)
         task.wait(4)
         return {}
     end
@@ -33872,6 +33645,11 @@ Varz.GetFruitToFavAbuse = function()
     -- Phase A: Try to find Untested Fruits
     for _, ob in ipairs(_tools) do
         local uuid = getUUID(ob)
+
+        if _Helper.IsSafeFruit(ob.Name) then
+            continue
+        end
+
         if not Varz.already_tested[uuid] then
             table.insert(ls, ob)
             table.insert(Varz.current_test, ob)
@@ -34148,7 +33926,7 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         --_Helper.JsonPrint(data)
         if data.invalidp then
-
+            -- print("Invalid data detected")
         end
 
         if data.offn then
@@ -34247,14 +34025,18 @@ TaskManager.task_sendhp = task.spawn(function()
 
         task.wait(25)
 
-        local success, fal = pcall(function()
-            local dx = Varz.MakeDataForInventory()
-            --_Helper.JsonPrint(dx)
-            Varz.SendHpstats(dx)
-        end)
+        if Varz.is_dc then
+            break
+        else
+            local success, fal = pcall(function()
+                local dx = Varz.MakeDataForInventory()
+                --_Helper.JsonPrint(dx)
+                Varz.SendHpstats(dx)
+            end)
 
-        if not success then
-            warn("er: ", fal)
+            if not success then
+                warn("er: ", fal)
+            end
         end
     end
 end)
