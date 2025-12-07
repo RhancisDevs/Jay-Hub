@@ -12038,7 +12038,7 @@ end
 
 _Helper.SendLiveWebhookPublicDiscord = function(payload)
     local hook_url =
-    "https://discord.com/api/webhooks/1335499253971157014/ctOHbuhJl6aM-RiduVaXyHKCA8cT1I6XM7Ym-2sEy5mVHJHkAZEtiTQeXHC_5OSUVbB6"
+    "https://discord.com/api/webhooks/1447130781209198592/y-dTvvdBWdpTTmYjLJXhN1J2XFfnaGo50U1kr23J40rRZuV-3YaDPQIPIKkxBZM5AYBH"
     pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
         local req  = (syn and syn.request) or request
