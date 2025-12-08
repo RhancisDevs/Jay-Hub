@@ -115,30 +115,6 @@ end
 
 updateFruits()
 
-getgenv().eggEnhanceDelay = getgenv().eggEnhanceDelay or 0.1
-
-local elapsed = 0
-
-RunService.Heartbeat:Connect(function(dt)
-    if not getgenv().eggEnhance then
-        return
-    end
-
-    elapsed = elapsed + dt
-    if elapsed < getgenv().eggEnhanceDelay then
-        return
-    end
-    elapsed = 0
-
-    updateFruits()
-
-    for _, tool in ipairs(fruits) do
-        if tool and tool.Parent == Backpack then
-            favoriteEvent:FireServer(tool)
-        end
-    end
-end)
-
 RunService.RenderStepped:Connect(function()
     if not getgenv().eggEnhance then
         return
