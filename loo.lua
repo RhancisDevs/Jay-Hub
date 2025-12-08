@@ -65,7 +65,7 @@ main_tab:AddDropdown("FruitTypeDropdown", {
     Description = "Used to select which fruits to favorite",
     Values = {
         "Bone Blossom",
-        "Maple Apple",
+        "Maple Resin",
         "Candy Blossom"
     },
     Multi = true,
