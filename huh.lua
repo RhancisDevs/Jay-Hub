@@ -11,16 +11,20 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 
-getgenv().webhook_Url = ""
-getgenv().boothSkin = "Default"
-getgenv().petToList = { 
-    "Mimic Octopus"
+getgenv().webhook_Url = getgenv().webhook_Url or ""
+getgenv().boothSkin = getgenv().boothSkin or "Default"
+getgenv().petToList = getgenv().petToList or {
+    ""
 }
-getgenv().priceForPetList =  40
-getgenv().message = "Selling mimic, 40 token each!"
-getgenv().autoChat = false
-getgenv().autoThanks = false
-getgenv().autoList = false
+getgenv().priceForPetList = getgenv().priceForPetList or 40
+getgenv().message = getgenv().message or "Selling mimic, 40 token each!"
+getgenv().autoChat = (getgenv().autoChat == nil) and false or getgenv().autoChat
+getgenv().autoThanks = (getgenv().autoThanks == nil) and false or getgenv().autoThanks
+getgenv().autoList = (getgenv().autoList == nil) and false or getgenv().autoList
+getgenv().autoChatDelay = getgenv().autoChatDelay or 30
+getgenv().slidingHopSeconds = getgenv().slidingHopSeconds or 300
+getgenv().thankDelaySeconds = getgenv().thankDelaySeconds or 10
+getgenv().notifyWhenOutOfStock = (getgenv().notifyWhenOutOfStock == nil) and true or getgenv().notifyWhenOutOfStock
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -30,8 +34,6 @@ local LocalPlayer = Players.LocalPlayer
 local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
-local MESSAGE_INTERVAL = 30
-local TOTAL_MINUTES_AT_BOOTH = 15
 local MOVE_SPEED_ESTIMATE = 16
 local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
@@ -44,6 +46,10 @@ local placeId = game.PlaceId
 local automationRunning = false
 local automationWatcherConn = nil
 local automationThread = nil
+
+local recentPurchases = {}
+local hopTimeoutTick = tick() + getgenv().slidingHopSeconds
+local noStockNotified = false
 
 local function safeNotify(opts)
     if type(Fluent) == "table" and type(Fluent.Notify) == "function" then
@@ -312,6 +318,7 @@ local function autoListItemsIfNeeded(knownBooth)
     task.spawn(function()
         local backpack = LocalPlayer:WaitForChild("Backpack")
         while true do
+            if not getgenv().autoList then break end
             local booth = waitForPlayerBooth(10)
             if not booth then
                 task.wait(3)
@@ -338,9 +345,28 @@ local function autoListItemsIfNeeded(knownBooth)
                         end
                     end
                 end
-                if #eligible == 0 then break end
+                if #eligible == 0 then
+                    if getgenv().notifyWhenOutOfStock and not noStockNotified then
+                        local embed = {
+                            title = "⚠️ No more items to list",
+                            color = 16753920,
+                            fields = {
+                                { name = "👤 Player", value = LocalPlayer.Name, inline = true },
+                                { name = "⏳ Date and Time", value = getTime(), inline = true }
+                            },
+                          footer = { text = "Made with ❤️ by Jay Hub"}
+                        }
+                        sendWebhook({ embeds = { embed } })
+                        safeNotify({ Title = "Jay Hub - Auto Bot", Content = "No more eligible items to list", Duration = 6 })
+                        noStockNotified = true
+                    end
+                    break
+                else
+                    noStockNotified = false
+                end
                 local anyListed = false
                 for _, pet in ipairs(eligible) do
+                    if not getgenv().autoList then break end
                     local boothNow = waitForPlayerBooth(3)
                     if not boothNow then break end
                     local dynNow = boothNow:FindFirstChild("DynamicInstances")
@@ -392,6 +418,100 @@ local function sanitizeField(str)
     return str
 end
 
+local function readPlayerTokens()
+    local tk = LocalPlayer.PlayerGui:FindFirstChild("TradeTokenCurrency_UI")
+    if not tk then return nil end
+    local tradeTokens = tk:FindFirstChild("TradeTokens")
+    if not tradeTokens then return nil end
+    local label = tradeTokens:FindFirstChild("TextLabel1")
+    if not label then return nil end
+    return tostring(label.Text)
+end
+
+local function flushBuyerPurchases(buyer)
+    local entry = recentPurchases[buyer]
+    if not entry or not entry.items then return end
+    local parts = {}
+    local totalCount = 0
+    local pricePer = tonumber(getgenv().priceForPetList) or 0
+    for itemName, count in pairs(entry.items) do
+        local c = count or 0
+        totalCount = totalCount + c
+        table.insert(parts, tostring(count).." "..tostring(itemName))
+    end
+    local itemsStr = table.concat(parts, ", ")
+    local totalAmount = totalCount * pricePer
+    local tokenNow = readPlayerTokens() or "Unknown"
+    local tnow = getTime()
+    local thumbnail = nil
+    local buyerId = getUserIdFromName(buyer)
+    if buyerId then thumbnail = fetchThumbnail(buyerId) end
+
+    if totalCount <= 1 then
+        local singleItemName = next(entry.items)
+        local chatMsg = ("Thank you for buying, %s!"):format(buyer or "Buyer")
+        if getgenv().autoThanks then
+            pcall(function() sendChat(chatMsg) end)
+        end
+        local embed = {
+            title = "🎉 Item Successfully Sold!",
+            color = 5814783,
+            fields = {
+                { name = "👤 Buyer", value = tostring(buyer or "Unknown"), inline = true },
+                { name = "📦 Item", value = tostring(singleItemName or "Unknown"), inline = true },
+                { name = "💰 Amount", value = tostring(totalCount), inline = true },
+                { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
+                { name = "⏳ Date and Time", value = tnow, inline = true }
+            },
+            footer = { text = "Made with ❤️ by Jay Devs | " .. tnow }
+        }
+        if thumbnail then embed.thumbnail = { url = thumbnail } end
+        sendWebhook({ embeds = { embed } })
+    else
+        local chatMsg = ("Thank you for buying %s, %s!"):format(itemsStr, buyer or "Buyer")
+        if getgenv().autoThanks then
+            pcall(function() sendChat(chatMsg) end)
+        end
+        local embed = {
+            title = "🎉 Bulk Item Successfully Sold!",
+            color = 3066993,
+            fields = {
+                { name = "👤 Buyer", value = tostring(buyer or "Unknown"), inline = true },
+                { name = "📦 Total Items", value = itemsStr, inline = true },
+                { name = "📜 Total Amount", value = tostring(totalAmount), inline = true },
+                { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
+                { name = "⏳ Date and Time", value = tnow, inline = true }
+            },
+            footer = { text = "Made with ❤️ by Jay Devs | " .. tnow }
+        }
+        if thumbnail then embed.thumbnail = { url = thumbnail } end
+        sendWebhook({ embeds = { embed } })
+    end
+
+    recentPurchases[buyer] = nil
+end
+
+local function scheduleBuyerFlush(buyer)
+    local entry = recentPurchases[buyer]
+    if not entry then return end
+    if entry.worker then return end
+    entry.worker = task.spawn(function()
+        while true do
+            local now = tick()
+            local last = entry.lastTick or now
+            local waitFor = getgenv().thankDelaySeconds - (now - last)
+            if waitFor > 0 then
+                task.wait(waitFor)
+            else
+                break
+            end
+        end
+        if recentPurchases[buyer] then
+            flushBuyerPurchases(buyer)
+        end
+    end)
+end
+
 local function processSaleEntry(entry)
     if not entry then return end
     entry:SetAttribute("Old", true)
@@ -410,33 +530,16 @@ local function processSaleEntry(entry)
     buyer = sanitizeField(buyer)
     item = sanitizeField(item)
     token = sanitizeField(token)
-    local tnow = getTime()
-    local buyerId = getUserIdFromName(buyer)
-    local thumb = fetchThumbnail(buyerId)
-    local embed = {
-        title = "🎉 Item Successfully Sold!",
-        color = 5814783,
-        fields = {
-            { name = "👤 Buyer Name", value = buyer, inline = true },
-            { name = "📦 Item", value = item, inline = true },
-            { name = "💰 Item Price", value = price, inline = true },
-            { name = "🪙 Tokens Now", value = token, inline = true },
-            { name = "⏳ Date & Time", value = tnow, inline = true }
-        },
-        footer = { text = "Made ❤️ by Jay Hub | "..os.date("%I:%M %p") }
-    }
-    if thumb then embed.thumbnail = { url = thumb } end
-    sendWebhook({ 
-                content = "@everyone",
-                embeds = { embed } 
-            })
-    safeNotify({ Title = "Jay Hub - Auto Bot", Content = buyer.." bought "..item.." for "..price.."!", Duration = 5 })
     if getgenv().autoThanks then
-        task.spawn(function()
-            local thankMsg = ("Thank you for buying, %s!"):format(buyer or "Buyer")
-            sendChat(thankMsg)
-        end)
+        if not recentPurchases[buyer] then
+            recentPurchases[buyer] = { items = {}, lastTick = tick(), worker = nil }
+        end
+        local rec = recentPurchases[buyer]
+        rec.items[item] = (rec.items[item] or 0) + 1
+        rec.lastTick = tick()
+        scheduleBuyerFlush(buyer)
     end
+    hopTimeoutTick = math.max(hopTimeoutTick, tick() + (getgenv().slidingHopSeconds or 300))
 end
 
 local function setupHistoryWatcher()
@@ -467,18 +570,15 @@ local function startChatLoop()
     if not getgenv().autoChat then return end
     chatRunning = true
     task.spawn(function()
-        local elapsed = 0
-        local total = TOTAL_MINUTES_AT_BOOTH * 60
-        while chatRunning and elapsed < total do
+        while chatRunning do
             if getgenv().autoChat then
-                local ok = sendChat(getgenv().message)
-                if not ok then task.wait(1) end
+                pcall(function() sendChat(getgenv().message) end)
             end
             local waited = 0
-            while waited < MESSAGE_INTERVAL and chatRunning and elapsed < total do
+            local delay = getgenv().autoChatDelay or 30
+            while waited < delay and chatRunning do
                 task.wait(1)
                 waited += 1
-                elapsed += 1
             end
         end
         chatRunning = false
@@ -494,7 +594,7 @@ local Window = Fluent:CreateWindow({
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
-    Size = UDim2.fromOffset(525, 380),
+    Size = UDim2.fromOffset(525, 420),
     Acrylic = true,
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl,
@@ -523,37 +623,37 @@ local settings_tab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 Window:SelectTab(1)
 
 local petsOptions = {
-    "Mimic Octopus", 
-    "Capybara", 
-    "Peacock", 
-    "Diamond Panther", 
-    "Ruby Squid", 
-    "Brontosaurus", 
-    "Seal", 
-    "Headless Horseman"
+    "Mimic Octopus",
+    "Capybara",
+    "Peacock",
+    "Diamond Panther",
+    "Ruby Squid",
+    "Brontosaurus",
+    "Seal",
+    "Headless Horseman",
+    "Spider"
 }
 local skinOptions = {
-        "Default",
-        "Volcano",
-        "Green",
-        "Purple",
-        "Toriigate",
-        "Fairy",
-        "DJ",
-        "Blue",
-        "Yellow",
-        "Beach",
-        "CherryBlossom",
-        "Waterfall"
-        "Darkstone",
-        "Greek",
-        "Glowlight",
-        "Pink",
-        "Stone",
-        "Nature",
-        "Shadow"
-    }
-    
+    "Default",
+    "Volcano",
+    "Green",
+    "Purple",
+    "Toriigate",
+    "Fairy",
+    "DJ",
+    "Blue",
+    "Yellow",
+    "Beach",
+    "CherryBlossom",
+    "Darkstone",
+    "Greek",
+    "Glowlight",
+    "Pink",
+    "Stone",
+    "Nature",
+    "Shadow"
+}
+
 local ddPets = main_tab:AddDropdown("PetsToList", {
     Title = "Pets To List",
     Description = "Select one or more pets to auto-list.",
@@ -588,7 +688,7 @@ end)
 local inpMessage = main_tab:AddInput("ChatMessage", {
     Title = "Message",
     Description = "Chat spam message",
-    Default = "",
+    Default = getgenv().message or "",
     Placeholder = "Selling mimic, 40 token each!"
 })
 
@@ -599,7 +699,7 @@ end)
 local inpPrice = main_tab:AddInput("PriceForPet", {
     Title = "Price for Pet",
     Description = "Price to set for auto listing",
-    Default = "",
+    Default = tostring(getgenv().priceForPetList),
     Placeholder = "40"
 })
 
@@ -618,9 +718,23 @@ toggleAutoChat:OnChanged(function(state)
     getgenv().autoChat = state
 end)
 
+local inpAutoChatDelay = main_tab:AddInput("AutoChatDelay", {
+    Title = "Auto Chat Delay",
+    Description = "Delay between chat messages in seconds",
+    Default = tostring(getgenv().autoChatDelay),
+    Placeholder = "30"
+})
+
+inpAutoChatDelay:OnChanged(function(val)
+    local n = tonumber(val)
+    if n and n > 0 then
+        getgenv().autoChatDelay = n
+    end
+end)
+
 local toggleAutoThanks = main_tab:AddToggle("AutoThanks", {
     Title = "Auto Thank You",
-    Description = "Send thank you after sale",
+    Description = "Send thank you after\nsomeone buy your item",
     Default = getgenv().autoThanks
 })
 
@@ -638,7 +752,7 @@ toggleAutoList:OnChanged(function(state)
     getgenv().autoList = state
 end)
 
-local inpWebhook = webhook_tab:AddInput("WebhookURL", {
+inpWebhook = webhook_tab:AddInput("WebhookURL", {
     Title = "Webhook URL",
     Description = "Discord webhook url",
     Default = getgenv().webhook_Url,
@@ -649,16 +763,14 @@ inpWebhook:OnChanged(function(val)
     getgenv().webhook_Url = tostring(val)
 end)
 
-local inpMinutes = server_tab:AddInput("MinutesBeforeHop", {
-    Title = "Minutes Before Hop",
-    Description = "How many minutes to\nstay before server hop",
-    Default = tostring(TOTAL_MINUTES_AT_BOOTH),
-    Placeholder = "15"
+local toggleNotifyOut = webhook_tab:AddToggle("NotifyOut", {
+    Title = "Notify When Out Of Stock",
+    Description = "Send webhook when no more available items",
+    Default = getgenv().notifyWhenOutOfStock
 })
 
-inpMinutes:OnChanged(function(val)
-    local n = tonumber(val)
-    if n and n > 0 then TOTAL_MINUTES_AT_BOOTH = n end
+toggleNotifyOut:OnChanged(function(state)
+    getgenv().notifyWhenOutOfStock = state
 end)
 
 server_tab:AddButton({
@@ -730,19 +842,18 @@ toggle_start:OnChanged(function(active)
             if getgenv().autoList and automationRunning then
                 pcall(function() autoListItemsIfNeeded(booth) end)
             end
-            local total = TOTAL_MINUTES_AT_BOOTH * 60
-            local waited = 0
-            while automationRunning and waited < total do
+            hopTimeoutTick = tick() + (getgenv().slidingHopSeconds or 300)
+            while automationRunning do
                 task.wait(1)
-                waited += 1
                 if not LocalPlayer.Parent then break end
+                if tick() >= hopTimeoutTick then break end
             end
             stopChatLoop()
             if automationWatcherConn then
                 pcall(function() automationWatcherConn:Disconnect() end)
                 automationWatcherConn = nil
             end
-            if automationRunning then
+            if automationRunning and tick() >= hopTimeoutTick then
                 safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Time's up. Server hopping...", Duration = 4 })
                 task.wait(1)
                 serverHop()
@@ -774,7 +885,7 @@ InterfaceManager:BuildInterfaceSection(settings_tab)
 SaveManager:BuildConfigSection(settings_tab)
 
 Fluent:Notify({
-    Title = "Jay Hub - Free Scripts",
+    Title = "Jay Hub - Paid Scripts",
     Content = "Jay Hub has been loaded.",
     Duration = 5
 })
