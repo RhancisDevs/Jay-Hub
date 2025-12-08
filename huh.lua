@@ -532,7 +532,12 @@ local petsOptions = {
     "Seal", 
     "Headless Horseman"
 }
-local skinOptions = {"Default","Fairy"}
+local skinOptions = {
+        "Default",
+        "Fairy",
+        "Volcano",
+        "Cherry"
+    }
 
 local ddPets = main_tab:AddDropdown("PetsToList", {
     Title = "Pets To List",
