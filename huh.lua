@@ -534,11 +534,26 @@ local petsOptions = {
 }
 local skinOptions = {
         "Default",
-        "Fairy",
         "Volcano",
-        "Cherry"
+        "Green",
+        "Purple",
+        "Toriigate",
+        "Fairy",
+        "DJ",
+        "Blue",
+        "Yellow",
+        "Beach",
+        "CherryBlossom",
+        "Waterfall"
+        "Darkstone",
+        "Greek",
+        "Glowlight",
+        "Pink",
+        "Stone",
+        "Nature",
+        "Shadow"
     }
-
+    
 local ddPets = main_tab:AddDropdown("PetsToList", {
     Title = "Pets To List",
     Description = "Select one or more pets to auto-list.",
