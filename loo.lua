@@ -70,15 +70,13 @@ main_tab:AddDropdown("FruitTypeDropdown", {
     },
     Multi = true,
     Default = getgenv().fruitToFave
-}):OnChanged(function(selected)
-    getgenv().fruitToFave = selected
+}):OnChanged(function(values)
+    getgenv().fruitToFave = values
     print("Fruit types to favorite updated:")
-    if type(selected) == "table" then
-        for _, v in ipairs(selected) do
-            print(" -", v)
+    for fruitName, state in pairs(values) do
+        if state then
+            print(" -", fruitName)
         end
-    else
-        print(" -", tostring(selected))
     end
 end)
 
