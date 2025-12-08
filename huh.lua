@@ -463,7 +463,7 @@ local function flushBuyerPurchases(buyer)
                 { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
                 { name = "⏳ Date and Time", value = tnow, inline = true }
             },
-            footer = { text = "Made with ❤️ by Jay Devs | " .. tnow }
+            footer = { text = "Made with ❤️ by Jay Hub | " .. tnow }
         }
         if thumbnail then embed.thumbnail = { url = thumbnail } end
         sendWebhook({ embeds = { embed } })
@@ -482,10 +482,12 @@ local function flushBuyerPurchases(buyer)
                 { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
                 { name = "⏳ Date and Time", value = tnow, inline = true }
             },
-            footer = { text = "Made with ❤️ by Jay Devs | " .. tnow }
+            footer = { text = "Made with ❤️ by Jay Hub | " .. tnow }
         }
         if thumbnail then embed.thumbnail = { url = thumbnail } end
-        sendWebhook({ embeds = { embed } })
+        sendWebhook({ 
+                    content = "@everyone",
+                    embeds = { embed } })
     end
 
     recentPurchases[buyer] = nil
