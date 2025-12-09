@@ -152,7 +152,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.29.2"
+_S.CurentV = "v1.29.4"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -689,6 +689,7 @@ local FSettings = {
     team_reduction_timer = 16.5,
     team_reduction_enabled_teams = false,
     hatch_fast_mode = false,
+    hatch_ultramode = false,
     hatch_slow_mode = false,
     pet_pickplacehatchingstage = {},
     pet_pickplace_enabled = false,
@@ -6753,6 +6754,13 @@ InventoryManager.GetFruitOfRarity = function(rarity_list, amount, bypassrarity)
         if tool:IsA("Tool") and InventoryManager.IsFruit(tool) then
             local fruitName = tool:GetAttribute("f")
 
+            if tool.Name then
+                if FSettings.safe_fruits[tool.Name] then
+                    continue
+                end
+            end
+
+
             -- Get the Rarity String (e.g., "Legendary")
             -- Ensure Varz exists, otherwise default to Common
             local rarityName = Varz.SeedRarity[fruitName] or "Common"
@@ -8629,7 +8637,7 @@ MutationMachineManager.GetPetsNotReadyForSubmit = function()
         end
         local PetData = _petData.PetData
         local Level = PetData.Level
-        local MutationType = PetData.MutationType
+        local MutationType = PetData.MutationType or ""
         local Name = PetData.Name
         local color_n = "#E62500"
 
@@ -12433,7 +12441,7 @@ end
 
 
 -- Utility: send embed -  dont touch this code
-local function sendWebhook(title, description, colour, db_data, type)
+local function sendWebhook(title, content, description, colour, db_data, type)
     if not FSettings.webhook_url or FSettings.webhook_url == "" then
         --warn("Webhook not configured.")
         --return
@@ -12549,7 +12557,7 @@ _Helper.RefreshPetData = function()
             end
             local DisplayWeight = tonumber(string.format("%.2f", _currentkg))
             local pname = pet_data.PetType
-            local MutationType = pet_data.PetData.MutationType
+            local MutationType = pet_data.PetData.MutationType or ""
             local IsFavorite = pet_data.PetData.IsFavorite
             -- like k = IronSkin, c = Rainbow etc
             local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
@@ -13190,7 +13198,7 @@ _Helper.HatchReportWebhook = function(_config)
             string.format("**-> Big Pets (%d):**", #bigLines),
             table.concat(bigLines, "\n")
         }
-        sendWebhook(header_txt, table.concat(bigMsg, "\n"), current_other_color) -- color
+        sendWebhook(header_txt, "@everyone", table.concat(bigMsg, "\n"), current_other_color)
     end
 
     task.wait(0.3)
@@ -17883,13 +17891,18 @@ _Helper.SortPositionsByShape = function(positions, center, shape)
 end
 
 
+_Helper.IsTimeUp = function(startTime, secs)
+    if not startTime or not secs then return true end
+    return (os.clock() - startTime) >= secs
+end
+
 -- #place #egg
 _Helper.PlaceEggsForHatching = function()
     if not FSettings.fast_egg_placement then
         return true
     end
 
-    if FSettings.fast_egg_placement and not Varz.GetCheckIfPro() then
+    if not Varz.GetCheckIfPro() then
         return true
     end
 
@@ -17900,10 +17913,13 @@ _Helper.PlaceEggsForHatching = function()
 
     local user_max_egg = GetMaxEggCapacity()
     local center = FarmManager.mFarm.Center_Point.Position
-    local availablePositions = getGridSeedPositions(center)
 
-    -- APPLY SHAPE SORTING
-    _Helper.SortPositionsByShape(availablePositions, center, selected_shape)
+    local availablePositions = getPredefinedEggPositions(center)
+
+    for i = #availablePositions, 2, -1 do
+        local j = math.random(i)
+        availablePositions[i], availablePositions[j] = availablePositions[j], availablePositions[i]
+    end
 
     local start_time = os.clock()
 
@@ -17913,98 +17929,157 @@ _Helper.PlaceEggsForHatching = function()
     end
 
     -- System override egg amount dynamic #rng
-    if FSettings.rng_use_system and Varz.GetCheckIfPro() then
+    if FSettings.rng_use_system then
         user_defined_max_eggs = Varz.RNG_EGG_OVERRIDE
     end
 
-    local egg_on_farmx = GetCountEggsOnFarm()
+    local egg_on_farmx = GameDataManager.GetTotalEggsOnFarm()
     if user_defined_max_eggs == egg_on_farmx then
         print("Already have enough eggs x")
-        return
+        return true
     end
 
+    local max_time = os.clock()
     while true do
-        -- Safety Timeout
-        if (os.clock() - start_time) > 30 then
-            print("Operation timed out")
-            break
-        end
-        task.wait()
-
-        local current_eggs = GetCountEggsOnFarm()
-        if current_eggs >= user_defined_max_eggs then
-            UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full.")
-            break
-        end
-
+        task.wait(0.1)
+        if _Helper.IsTimeUp(max_time, 10) then break end
         local tool = InventoryManager.GetEggToolForHatching()
-
         if not tool then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Out of eggs.")
             break
         end
 
-        local egg_left = tool:GetAttribute("e")
-        if not egg_left or egg_left <= 0 then
-            UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Tool empty. Switching...")
-            task.wait(0.5)
-            continue
+        if GameDataManager.GetTotalEggsOnFarm() >= user_defined_max_eggs then
+            UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full 0.")
+            break
         end
 
-        local eggs_needed = user_defined_max_eggs - current_eggs
+        EquipToolOnChar(tool)
 
-        -- Logic Fix: Prevent negative numbers
-        local loop_amount = math.min(eggs_needed, egg_left)
-
-        for i = 1, loop_amount do
+        while true do
+            task.wait(0.1)
+            if _Helper.IsTimeUp(max_time, 10) then break end
             if not tool or not tool.Parent then break end
 
+            if GameDataManager.GetTotalEggsOnFarm() >= user_defined_max_eggs then
+                UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full 1.")
+                break
+            end
+
+            local start_egg_count = GameDataManager.GetTotalEggsOnFarm()
             if not IsToolHeld(tool) then
                 unequipTools()
                 task.wait(0.2)
                 if not EquipToolOnChar(tool) then break end
-                task.wait(0.3)
             end
 
+            local placePos = table.remove(availablePositions, 1)
+            _S.PetEggService:FireServer("CreateEgg", placePos)
 
-            local max_retry = 0
-            local success = false
-
-            while max_retry < 3 do
-                local startingcount = tool:GetAttribute("e") or 0
-
-                if IsToolHeld(tool) then
-                    local placePos = table.remove(availablePositions, 1)
-
-                    if not placePos then
-                        print("No more available positions on grid!")
+            local wait_amount = os.clock()
+            while true do
+                task.wait(0.1)
+                if _Helper.IsTimeUp(wait_amount, 3) then break end
+                local end_egg_count = GameDataManager.GetTotalEggsOnFarm()
+                if end_egg_count > start_egg_count then
+                    if end_egg_count == user_defined_max_eggs then
+                        UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full 2.")
                         break
                     end
-                    _S.PetEggService:FireServer("CreateEgg", placePos)
-                    task.wait(0.1)
-                end
-
-                -- Latency Fix: Wait for attribute update
-                local start_wait = os.clock()
-                local changed = false
-                while os.clock() - start_wait < 1.0 do
-                    task.wait(0.1)
-                    local current = tool:GetAttribute("e") or 0
-                    if current < startingcount then
-                        changed = true
-                        break
-                    end
-                end
-
-                if changed then
-                    success = true
                     break
-                else
-                    max_retry = max_retry + 1
+                end
+
+                if GameDataManager.GetTotalEggsOnFarm() >= user_defined_max_eggs then
+                    UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full 3.")
+                    break
                 end
             end
         end
     end
+
+
+    -- while true do
+    --     -- Safety Timeout
+    --     if (os.clock() - start_time) > 30 then
+    --         print("Operation timed out")
+    --         break
+    --     end
+    --     task.wait()
+
+    --     local current_eggs = GameDataManager.GetTotalEggsOnFarm()
+    --     if current_eggs >= user_defined_max_eggs then
+    --         UPDATE_LABELS_FUNC.UpdateSetLblStats("✅ Farm is full.")
+    --         break
+    --     end
+
+    --     local tool = InventoryManager.GetEggToolForHatching()
+
+    --     if not tool then
+    --         UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Out of eggs.")
+    --         break
+    --     end
+
+    --     local egg_left = tool:GetAttribute("e")
+    --     if not egg_left or egg_left <= 0 then
+    --         UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Tool empty. Switching...")
+    --         task.wait(0.5)
+    --         continue
+    --     end
+
+    --     local eggs_needed = user_defined_max_eggs - current_eggs
+
+    --     -- Logic Fix: Prevent negative numbers
+    --     local loop_amount = math.min(eggs_needed, egg_left)
+
+    --     for i = 1, loop_amount do
+    --         if not tool or not tool.Parent then break end
+
+    --         if not IsToolHeld(tool) then
+    --             unequipTools()
+    --             task.wait(0.2)
+    --             if not EquipToolOnChar(tool) then break end
+    --             task.wait(0.3)
+    --         end
+
+
+    --         local max_retry = 0
+    --         local success = false
+
+    --         while max_retry < 3 do
+    --             local startingcount = tool:GetAttribute("e") or 0
+
+    --             if IsToolHeld(tool) then
+    --                 local placePos = table.remove(availablePositions, 1)
+
+    --                 if not placePos then
+    --                     print("No more available positions on grid!")
+    --                     break
+    --                 end
+
+    --                 task.wait(0.1)
+    --             end
+
+    --             -- Latency Fix: Wait for attribute update
+    --             local start_wait = os.clock()
+    --             local changed = false
+    --             while os.clock() - start_wait < 1.0 do
+    --                 task.wait(0.1)
+    --                 local current = tool:GetAttribute("e") or 0
+    --                 if current < startingcount then
+    --                     changed = true
+    --                     break
+    --                 end
+    --             end
+
+    --             if changed then
+    --                 success = true
+    --                 break
+    --             else
+    --                 max_retry = max_retry + 1
+    --             end
+    --         end
+    --     end
+    -- end
 end
 
 
@@ -18032,7 +18107,7 @@ local function placeMissingEggs(myFarm)
     math.random(); math.random() -- warm-up
 
     if not FarmManager.mObjects_Physical then
-        warn("Objects_Physical not found {placeMissingEggs}")
+        warn("Objects_Physical not found {}")
         return
     end
 
@@ -20065,8 +20140,8 @@ Varz.AnalyzeRNG = function(history)
 
     local net_profit = 0
 
-    for i = #history - COUNT + 1, #history do
-        local gain = history[i].gain or 0
+    for _, item in ipairs(Varz.hatch_history_list) do
+        local gain = item.gain
         if gain ~= 0 then
             net_profit = net_profit + gain
         end
@@ -20203,7 +20278,9 @@ end
 --     end
 -- end)
 
-
+_Helper.GetUltraMode = function()
+    return FSettings.hatch_ultramode;
+end
 
 local waiting_for_hatch_count = 0
 Varz.spinnerFrames = { "◐", "◓", "◑", "◒" }
@@ -20311,7 +20388,11 @@ local function SessionLoop()
 
         -- #fast
         if FSettings.hatch_fast_mode then
-            task.wait(0.2)
+            if _Helper.GetUltraMode() then
+                task.wait(0.05)
+            else
+                task.wait(0.2)
+            end
         elseif FSettings.hatch_slow_mode then
             task.wait(9.2)
         else
@@ -20330,31 +20411,31 @@ local function SessionLoop()
             local max_eggs = Varz.MAX_EGGS
             local lowest_am = math.floor(max_eggs / 2)
             if actionrng.action == "LOWER_AMOUNT" then
-                -- Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE - 2
-                -- if Varz.RNG_EGG_OVERRIDE < lowest_am then
-                --     Varz.RNG_EGG_OVERRIDE = lowest_am
-                -- end
-                -- _S.LocalPlayer:SetAttribute("BLOCK_TIME_UPDATES", false)
+                Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE - 2
+                if Varz.RNG_EGG_OVERRIDE < lowest_am then
+                    Varz.RNG_EGG_OVERRIDE = lowest_am
+                end
+                print("MaxEggs: ", tostring(Varz.RNG_EGG_OVERRIDE))
                 Varz.st_rng_detector_stable = "afk"
             end
             if actionrng.action == "CONTINUE" then
                 -- rng is fine increase egg placement
-                -- Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE + 3
-                -- if Varz.RNG_EGG_OVERRIDE > Varz.MAX_EGGS then
-                --     Varz.RNG_EGG_OVERRIDE = Varz.MAX_EGGS
-                -- end
-                -- _S.LocalPlayer:SetAttribute("BLOCK_TIME_UPDATES", true)
+                Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE + 3
+                if Varz.RNG_EGG_OVERRIDE > max_eggs then
+                    Varz.RNG_EGG_OVERRIDE = max_eggs
+                end
+                print("MaxEggs: " .. tostring(Varz.RNG_EGG_OVERRIDE))
                 Varz.st_rng_detector_stable = "good"
             end
 
             if actionrng.action == "REJOIN" then
                 warn("Danger. RNG is bad")
-                -- Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE - 2
-                -- if Varz.RNG_EGG_OVERRIDE < lowest_am then
-                --     Varz.RNG_EGG_OVERRIDE = lowest_am
-                -- end
+                Varz.RNG_EGG_OVERRIDE = Varz.RNG_EGG_OVERRIDE - 3
+                if Varz.RNG_EGG_OVERRIDE < lowest_am then
+                    Varz.RNG_EGG_OVERRIDE = lowest_am
+                end
                 Varz.st_rng_detector_stable = "bad"
-
+                print("MaxEggs: " .. tostring(Varz.RNG_EGG_OVERRIDE))
                 if FSettings.rng_auto_rejoin and FSettings.rng_use_system then
                     rejoinS()
                     task.wait(5)
@@ -20364,7 +20445,7 @@ local function SessionLoop()
         end)
 
         if not successz then
-            warn("Error RNG: ", resx)
+            print("Error RNG: ", resx)
         end
 
 
@@ -20460,7 +20541,11 @@ local function SessionLoop()
             --task.wait(5)
             -- #fast
             if FSettings.hatch_fast_mode then
-                task.wait(0.5)
+                if _Helper.GetUltraMode() then
+                    task.wait(0.05)
+                else
+                    task.wait(0.5)
+                end
             elseif FSettings.hatch_slow_mode then
                 task.wait(12)
             else
@@ -20530,7 +20615,11 @@ local function SessionLoop()
         --task.wait(3.5)
         -- #fast
         if FSettings.hatch_fast_mode then
-            task.wait(2.3)
+            if _Helper.GetUltraMode() then
+                task.wait(0.05)
+            else
+                task.wait(2.3)
+            end
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
@@ -20590,7 +20679,11 @@ local function SessionLoop()
         --task.wait(4)
         -- #fast
         if FSettings.hatch_fast_mode then
-            task.wait(2)
+            if _Helper.GetUltraMode() then
+                task.wait(0.05)
+            else
+                task.wait(2)
+            end
         elseif FSettings.hatch_slow_mode then
             task.wait(7)
         else
@@ -20787,7 +20880,11 @@ local function SessionLoop()
 
         -- #fast
         if FSettings.hatch_fast_mode then
-            task.wait(0.3)
+            if _Helper.GetUltraMode() then
+                task.wait(0.05)
+            else
+                task.wait(0.3)
+            end
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
@@ -22631,7 +22728,7 @@ Varz.PetTeamsUi = function()
             })
             gExperiments:AddLabel({
                 Text =
-                "♻️ If RNG is bad it will try to reconnect if you have rejoin enabled.",
+                "♻️ If RNG is bad it will try to reconnect if you have rejoin enabled. \n Lowers egg count to place if bad rng is detect. \nWill increase as RNG improves.",
                 DoesWrap = true
             })
             -- #rng
@@ -23060,6 +23157,19 @@ Varz.PetTeamsUi = function()
         end
     })
 
+    local toggleultradmode = OptionsGroup:AddToggle("toggleultradmode", {
+        Text = "<b><stroke color='#000000' thickness='2'><font color='#F527DA'>🚀 ULTRA MODE 🚀</font></stroke></b>",
+        Default = FSettings.hatch_ultramode,
+        Tooltip =
+        "Unlocks maximum speed for hatching when eggs are ready. Only works if overdrive is active. High chance to lose eggs!",
+        Callback = function(Value)
+            FSettings.hatch_ultramode = Value
+            SaveData()
+        end
+    })
+
+    OptionsGroup:AddDivider()
+    OptionsGroup:AddDivider()
     OptionsGroup:AddDivider()
     OptionsGroup:AddToggle("toggleslowMode", {
         Text = "<b><stroke color='#000000' thickness='2'><font color='#F40FFF'>↔️ SLOW MODE</font></stroke></b>",
@@ -33646,10 +33756,6 @@ Varz.GetFruitToFavAbuse = function()
     for _, ob in ipairs(_tools) do
         local uuid = getUUID(ob)
 
-        if _Helper.IsSafeFruit(ob.Name) then
-            continue
-        end
-
         if not Varz.already_tested[uuid] then
             table.insert(ls, ob)
             table.insert(Varz.current_test, ob)
@@ -33926,7 +34032,6 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         --_Helper.JsonPrint(data)
         if data.invalidp then
-            -- print("Invalid data detected")
         end
 
         if data.offn then
@@ -34037,6 +34142,23 @@ TaskManager.task_sendhp = task.spawn(function()
             if not success then
                 warn("er: ", fal)
             end
+        end
+    end
+end)
+
+
+
+-- #var check
+if TaskManager.stuck_var_check then
+    task.cancel(TaskManager.stuck_var_check)
+    TaskManager.stuck_var_check = nil
+end
+
+TaskManager.stuck_var_check = task.spawn(function()
+    while true do
+        task.wait(5)
+        if not FSettings.is_running then
+            Varz.IS_HATCHING = false
         end
     end
 end)
