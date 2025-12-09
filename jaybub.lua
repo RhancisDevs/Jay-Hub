@@ -12441,7 +12441,7 @@ end
 
 
 -- Utility: send embed -  dont touch this code
-local function sendWebhook(title, content, description, colour, db_data, type)
+local function sendWebhook(title, description, colour, db_data, type, content)
     if not FSettings.webhook_url or FSettings.webhook_url == "" then
         --warn("Webhook not configured.")
         --return
@@ -13198,7 +13198,7 @@ _Helper.HatchReportWebhook = function(_config)
             string.format("**-> Big Pets (%d):**", #bigLines),
             table.concat(bigLines, "\n")
         }
-        sendWebhook(header_txt, "@everyone", table.concat(bigMsg, "\n"), current_other_color)
+        sendWebhook(header_txt, table.concat(bigMsg, "\n"), current_other_color, nil, nil, "@everyone")
     end
 
     task.wait(0.3)
