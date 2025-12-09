@@ -2,7 +2,7 @@ getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
 getgenv().Age = 0
-getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune"}
+getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune", "Seal"}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -184,8 +184,8 @@ local function matchesCriteria(tool)
     local age = tonumber(name:match("%[Age (%d+)%]")) or 0
     local isFavorite = tool:GetAttribute("d") == true
 
-    local kgMatch = (getgenv().KG == 0) or (kg == getgenv().KG)
-    local ageMatch = (getgenv().Age == 0) or (age == getgenv().Age)
+    local kgMatch = (getgenv().KG == 0) or (kg <= getgenv().KG)
+    local ageMatch = (getgenv().Age == 0) or (age <= getgenv().Age)
 
     return kgMatch and ageMatch, isFavorite
 end
