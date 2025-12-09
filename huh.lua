@@ -441,7 +441,7 @@ local function flushBuyerPurchases(buyer)
     end
     local itemsStr = table.concat(parts, ", ")
     local totalAmount = totalCount * pricePer
-    local tokenNow = readPlayerTokens() or "Unknown"
+    local tokenNow = (type(readPlayerTokens) == "function" and readPlayerTokens()) or "Unknown"
     local tnow = getTime()
     local thumbnail = nil
     local buyerId = getUserIdFromName(buyer)
@@ -459,7 +459,7 @@ local function flushBuyerPurchases(buyer)
             fields = {
                 { name = "👤 Buyer", value = tostring(buyer or "Unknown"), inline = true },
                 { name = "📦 Item", value = tostring(singleItemName or "Unknown"), inline = true },
-                { name = "💰 Amount", value = tostring(totalCount), inline = true },
+                { name = "💰 Price", value = tostring(pricePer), inline = true },
                 { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
                 { name = "⏳ Date and Time", value = tnow, inline = true }
             },
@@ -485,14 +485,15 @@ local function flushBuyerPurchases(buyer)
             footer = { text = "Made with ❤️ by Jay Hub | " .. tnow }
         }
         if thumbnail then embed.thumbnail = { url = thumbnail } end
-        sendWebhook({ 
-                    content = "@everyone",
-                    embeds = { embed } })
+        sendWebhook({
+            content = "@everyone",
+            embeds = { embed }
+        })
     end
 
     recentPurchases[buyer] = nil
 end
-
+    
 local function scheduleBuyerFlush(buyer)
     local entry = recentPurchases[buyer]
     if not entry then return end
