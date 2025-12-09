@@ -152,7 +152,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.29.4"
+_S.CurentV = "v1.29.5"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -493,8 +493,10 @@ local FSessionDx = {
 local FSettings = {
     is_pc_mode = false,
     fast_ascen = false,
+    nice_fruit = false,
     rng_use_system = false,
     rng_auto_rejoin = false,
+    rng_egg_lowers_up = false,
     char_farm_middle = false,
     fav_fruit_enhancer = false,
     fav_fruit_enhance_sell = false,
@@ -507,6 +509,7 @@ local FSettings = {
     use_noti = false,
     fast_egg_placement = false,
     safe_fruits = {},
+    is_auto_accept_gift = false,
     tradeevent = {
         enable_trade_event = false,
         fruit_collect = true,
@@ -12441,7 +12444,7 @@ end
 
 
 -- Utility: send embed -  dont touch this code
-local function sendWebhook(title, description, colour, db_data, type, content)
+local function sendWebhook(title, description, colour, db_data, type)
     if not FSettings.webhook_url or FSettings.webhook_url == "" then
         --warn("Webhook not configured.")
         --return
@@ -12982,6 +12985,9 @@ _Helper.HatchReportWebhook = function(_config)
     local fav_icon = "✅"
     local del_icon = "❌"
     local seenEgg = {}
+
+    Varz.gains = 0
+
     for _, pet_data in ipairs(_config.pets) do
         -- table.insert(descriptionLines, string.format("> `%s`", fullName))
         local petName = pet_data.pet_name
@@ -13006,8 +13012,9 @@ _Helper.HatchReportWebhook = function(_config)
             amount_placed = Varz.RNG_EGG_OVERRIDE
         }
 
-        Varz.was_hatch_done = true
+
         Varz.gains = dif_Amount
+
 
         if not seenEgg[peteggname] then
             seenEgg[peteggname] = true
@@ -13039,6 +13046,10 @@ _Helper.HatchReportWebhook = function(_config)
         table.insert(groupedEggs[peteggname].pets, fullName)
         -- group ends
     end
+
+    Varz.was_hatch_done = true
+    table.insert(Varz.nice_fruit_gains, Varz.gains)
+
 
     -- After building groupedEggs
     for _, info in pairs(groupedEggs) do
@@ -13198,7 +13209,7 @@ _Helper.HatchReportWebhook = function(_config)
             string.format("**-> Big Pets (%d):**", #bigLines),
             table.concat(bigLines, "\n")
         }
-        sendWebhook(header_txt, table.concat(bigMsg, "\n"), current_other_color, nil, nil, "@everyone")
+        sendWebhook(header_txt, table.concat(bigMsg, "\n"), current_other_color) -- color
     end
 
     task.wait(0.3)
@@ -17930,7 +17941,9 @@ _Helper.PlaceEggsForHatching = function()
 
     -- System override egg amount dynamic #rng
     if FSettings.rng_use_system then
-        user_defined_max_eggs = Varz.RNG_EGG_OVERRIDE
+        if FSettings.rng_egg_lowers_up then
+            user_defined_max_eggs = Varz.RNG_EGG_OVERRIDE
+        end
     end
 
     local egg_on_farmx = GameDataManager.GetTotalEggsOnFarm()
@@ -18128,7 +18141,9 @@ local function placeMissingEggs(myFarm)
 
     -- System override egg amount dynamic #rng
     if FSettings.rng_use_system and Varz.GetCheckIfPro() then
-        user_defined_max_eggs = Varz.RNG_EGG_OVERRIDE
+        if FSettings.rng_egg_lowers_up then
+            user_defined_max_eggs = Varz.RNG_EGG_OVERRIDE
+        end
     end
 
     if user_defined_max_eggs == user_max_egg then
@@ -20238,45 +20253,83 @@ end
 --     end
 -- end)
 
+Varz.nice_fruit_gains = {}
 
--- task.spawn(function()
---     while true do
---         task.wait(0.5)
---         local total_fruits = InventoryManager.GetFruitCount()
---         if total_fruits <= 0 then
---             local names = {}
---             names["Carrot"] = true;
---             local am = 1
---             _FruitCollectorMachine.CollectFruitByNamesSortedRarity(names, am)
---             task.wait(3)
---             continue
---         end
+Varz.HowMuchGain = function()
+    local t = 0
+    for _, value in ipairs(Varz.nice_fruit_gains) do
+        t = t + value
+    end
 
---         if Varz.backpack_full then
---             task.wait(4)
---             continue
---         end
+    print("Gain: " .. tostring(t))
 
---         if Varz.was_hatch_done then
---             if Varz.gains <= 3 then
---                 local fruit = InventoryManager.GetFruitRandomOrHeld()
---                 _Helper.FavItemCustom(fruit, false)
---                 print("Bad Gains delete fruit")
---                 task.wait(1)
---                 Varz.backpack_full = true
---                 task.wait(5)
---             else
---                 print("Good fruit exit")
---                 break
---             end
---         end
+    if t >= 9 then
+        return true
+    end
 
---         local fruit = InventoryManager.GetFruitRandomOrHeld()
---         if fruit then
---             MakeFruitsFavSingle(fruit)
---         end
---     end
--- end)
+    return false
+end
+
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if not FSettings.nice_fruit then
+            task.wait(12)
+            continue
+        end
+
+        -- _Helper.JsonPrint(Varz.nice_fruit_gains)
+
+        local total_fruits = InventoryManager.GetFruitCount()
+        if total_fruits <= 0 then
+            local am = 1
+            _FruitCollectorMachine.CollectFruitsRandom(am)
+            task.wait(5)
+            continue
+        end
+
+        if Varz.backpack_full then
+            task.wait(4)
+            continue
+        end
+
+        if Varz.was_hatch_done then
+            Varz.was_hatch_done = false
+
+            -- new
+            if #Varz.nice_fruit_gains >= 3 then
+                if Varz.HowMuchGain() then
+                    print("************** GOOD FOUND: ")
+                    FSettings.nice_fruit = false
+                    SaveData()
+                    continue
+                else
+                    Varz.nice_fruit_gains = {}
+                    Varz.StopEnhancer(6)
+                    task.wait(3)
+                    local fruit = InventoryManager.GetFruitRandomOrHeld()
+                    _Helper.FavItemCustom(fruit, false)
+                    print("Bad Gains delete fruit")
+                    Varz.SellFruitsToVendor()
+                    task.wait()
+                end
+            end
+
+            -- if Varz.gains <= 3 then
+            --     Varz.StopEnhancer(6)
+            --     task.wait(2)
+            --     local fruit = InventoryManager.GetFruitRandomOrHeld()
+            --     _Helper.FavItemCustom(fruit, false)
+            --     print("Bad Gains delete fruit")
+            --     Varz.SellFruitsToVendor()
+            --     task.wait()
+            -- else
+            --     print("Good fruit exit")
+            --     break
+            -- end
+        end
+    end
+end)
 
 _Helper.GetUltraMode = function()
     return FSettings.hatch_ultramode;
@@ -22625,43 +22678,100 @@ HomeDashboardUi();
 -- END of HomeDashboardUi
 
 
--- ===========================================================================================
--- Pet Teams Tab #hatchui
-Varz.PetTeamsUi = function()
-    local TeamsTab = Window:AddTab({
-        Name = "<font color='#FF3F00'>Hatching</font> Teams",
-        Description = "<font color='#FFFFCC'>Manage teams used for hatching pets efficiently.</font>",
-        Icon = "cat"
+
+
+
+
+
+
+
+
+
+
+
+-- #proui
+Varz.ProUi = function()
+    local UIProTab = Window:AddTab({
+        Name = "Premium",
+        Description = "Premium Features",
+        Icon = "sparkles"
     })
 
-    --- peacock
-    local GroupBoxEggReductionTeam = TeamsTab:AddLeftGroupbox("Egg Reduction [<font color='#00CED1'>Peacock</font>]",
-        "timer-reset")
-    -- Koi
-    local GroupBoxHatchingTeam = TeamsTab:AddRightGroupbox("Hatch Egg [<font color='#FF4500'>Koi</font>]", "egg")
+    local gGift = UIProTab:AddLeftGroupbox("Gifting", "gift", false)
 
-    local GroupBoxSellingTeam = TeamsTab:AddRightGroupbox("Sell Egg [<font color='#1E90FF'>Seal</font>]",
-        "badge-dollar-sign")
+    local title_horseman =
+        "🎃 <stroke color='#FFD8A8' sizing='fixed' thickness='0.3' transparency='0.3' joins='round'>"
+        .. "<b><font color='#FF4E1C'>Horseman</font> & <font color='#FFB833'>Elephant</font></b>"
+        .. "</stroke> 🐘"
+    local gMutOnFarm = UIProTab:AddRightGroupbox(title_horseman)
 
-
-    local GroupBoxEggPetSizeTeam = TeamsTab:AddLeftGroupbox("Pet Size [<font color='#32CD32'>Bronto</font>]", "turtle")
+    local pickplaceGroup = UIProTab:AddLeftGroupbox("🔄 Pick Place", "vault")
 
 
-
-    -- options
-    local OptionsGroup = TeamsTab:AddLeftGroupbox("Options", "circle-ellipsis")
-    local AutojoinGroup = TeamsTab:AddRightGroupbox("Auto Rejoin", "list-restart")
-
-    local PetOverridesGroup = TeamsTab:AddRightGroupbox("Pet Overrides", "atom")
-    local pickplaceGroup = TeamsTab:AddLeftGroupbox("🔄 Pick Place", "vault")
-
-    local gExperiments = TeamsTab:AddRightGroupbox("<b><font color='#7CF4A8'>🧪 Experiments</font></b>",
+    local gExperiments = UIProTab:AddRightGroupbox("<b><font color='#7CF4A8'>🧪 Experiments</font></b>",
         "test-tube-diagonal")
+
+
+    local gHatchOptionsAdvanced = UIProTab:AddRightGroupbox("<b><font color='#FF0000'>Hatching Options</font></b>",
+        "flame")
+
+
+    -- ===============================================
+    --- Hatching Advanced Options 🔥
+    -- ===============================================
+    if gHatchOptionsAdvanced then
+        -- Always capture the reference returned by AddToggle
+
+        gHatchOptionsAdvanced:AddLabel({
+            Text =
+            "🔴 These options will be premium only soon.",
+            DoesWrap = true
+        })
+
+        gHatchOptionsAdvanced:AddLabel({
+            Text =
+            "⚠️ Speeds up timers by over 90%. Use with caution, System stability is not guaranteed. Use at your own risk. ⚠️",
+            DoesWrap = true
+        })
+        local toggleExtremeMode = gHatchOptionsAdvanced:AddToggle("toggleExtremeMode", {
+            Text =
+            "<b><stroke color='#000000' thickness='2'><font color='#FF6A00'>🔥 OVERDRIVE MODE 🔥</font></stroke></b>",
+            Default = FSettings.hatch_fast_mode,
+            Tooltip =
+            "Pushes the system to its limits for a <b><font color='#FFFF00'>90% hatch speed boost!</font></b><br/><br/><i><font color='#FF0000'><b>⚠️ WARNING:</b> System stability is not guaranteed. Use at your own risk.</font></i>",
+            Callback = function(Value)
+                FSettings.hatch_fast_mode = Value
+                SaveData()
+            end
+        })
+
+        gHatchOptionsAdvanced:AddDivider()
+        local toggleultradmode = gHatchOptionsAdvanced:AddToggle("toggleultradmode", {
+            Text = "<b><stroke color='#000000' thickness='2'><font color='#F527DA'>🚀 ULTRA MODE 🚀</font></stroke></b>",
+            Default = FSettings.hatch_ultramode,
+            Tooltip =
+            "Unlocks maximum speed for hatching when eggs are ready. Only works if overdrive is active. High chance to lose eggs!",
+            Callback = function(Value)
+                FSettings.hatch_ultramode = Value
+                SaveData()
+            end
+        })
+
+        gHatchOptionsAdvanced:AddDivider()
+    end
+
+
+    -- ===============================================
+    --- end Hatching Advanced Options
+    -- ===============================================
+
+
+
 
 
 
     -- ===============================================
-    ---Experiments
+    --- Experiments
     -- ===============================================
 
     if gExperiments then
@@ -22742,6 +22852,16 @@ Varz.PetTeamsUi = function()
                 end
             })
 
+            gExperiments:AddToggle("gExperimentsrngtoggleautoeead", {
+                Text = "♻️ <font color='#00FFF2'>Egg Adjustment</font>",
+                Default = FSettings.rng_egg_lowers_up,
+                Tooltip = "If enabled system can increase or decrease eggs.",
+                Callback = function(Value)
+                    FSettings.rng_egg_lowers_up = Value
+                    SaveData()
+                end
+            })
+
             gExperiments:AddToggle("gExperimentsrngtoggleauto", {
                 Text = "🔄 <font color='#F52765'>RNG Auto Re-Join</font>",
                 Default = FSettings.rng_auto_rejoin,
@@ -22797,7 +22917,6 @@ Varz.PetTeamsUi = function()
     -- ===============================================
     --- End Experiments
     -- ===============================================
-
 
     -- ===============================================
     --- Pick Place #pickplaceui
@@ -22991,6 +23110,949 @@ Varz.PetTeamsUi = function()
     --- End Pick Place #pickplaceui
     -- ===============================================
 
+    ----------------------------------------------
+    -------- Mutation Pet #mutui
+    ----------------------------------------------
+    if gMutOnFarm then
+        UI_LABELS.lbl_pet_mutation_status = gMutOnFarm:AddLabel({
+            Text = "🔴 Stopped",
+            DoesWrap = true
+        })
+
+
+        gMutOnFarm:AddLabel({
+            Text =
+            "💥 [Headless Horseman and Elephant] Mutation System. <font color='#00BFFF'><b>ℹ️ Select mutations you want to apply to your pets.</b></font> Auto uses Cleansing Pet Shard if pets have a none matching mutation. (Only Target pet mutations are cleaned.) ",
+            DoesWrap = true
+        })
+
+        gMutOnFarm:AddDivider()
+
+
+        ---=========== MAX LEVELING TEAM
+        UI_Dropdown.dropdown_petmutation_maxlevelteam = gMutOnFarm:AddDropdown("dropdown_petmut_maxlevelteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = PetMutation.mut_ui.GetText_MaxLevelTeam(),
+            Tooltip = "Select max leveling team when pet has the required mutation. Will use xp team if this is empty.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings
+                        .mut_system
+                        .maxlevel_team))
+                    Library:Notify("This pet is already selected in your other target team.")
+                    return
+                end
+
+                local max_allowed = GetMaxPetCapacity() - 1
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings
+                        .mut_system
+                        .maxlevel_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.maxlevel_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetText(PetMutation.mut_ui.GetText_MaxLevelTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        ----============================ XP Team
+        UI_Dropdown.dropdown_petmut_xpteam = gMutOnFarm:AddDropdown("dropdown_petmut_xpteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = PetMutation.mut_ui.GetText_XpTeam(),
+            Tooltip = "XP Team, this team will level your pets to the set level set by you.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_petmut_xpteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam))
+                    Library:Notify("This pet is already selected in your other target team.")
+                    return
+                end
+
+                local max_allowed = GetMaxPetCapacity() - 1
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_petmut_xpteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.xpteam = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_petmut_xpteam:SetText(PetMutation.mut_ui.GetText_XpTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        ----============================  END XP Team
+
+
+        ----============================ Target Team
+        UI_Dropdown.dropdown_pettargetteam = gMutOnFarm:AddDropdown("dropdown_pettargetteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Tooltip = "Select pets you want to mutate!",
+            Text = PetMutation.mut_ui.GetText_TargetTeam(),
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+                        if _uuid then
+                            if PetMutation.mut.IsAllowedPet(_uuid) then
+                                table.insert(tmp_tbl, _uuid)
+                            else
+                                _allowed = false
+                            end
+                        end
+                    end
+                    -- loop ends
+                end
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .targetteam))
+                    Library:Notify("This pet is already selected in your other mutation teams.")
+                    return
+                end
+
+                local max_allowed = 99
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .targetteam))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.targetteam = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_pettargetteam:SetText(PetMutation.mut_ui.GetText_TargetTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        gMutOnFarm:AddButton({
+            Text = "<font color='#ED2A00'>DeSelect All Pets</font>",
+            Tooltip = "Deselects all from list",
+            Func = function()
+                FSettings.mut_system.targetteam = {}
+                UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                    .targetteam))
+                SaveData()
+            end
+        })
+
+        -- Boosts for this team
+        local ddPetMutXpTeamBoosts = gMutOnFarm:AddDropdown("ddPetMutXpTeamBoosts", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "💊 Pet Boosts",
+            Tooltip = "Boosts will be applied when these teams are placed.",
+            Callback = function(Values)
+                FSettings.pet_mut_xpteam_boosts = {}
+                for key, value in pairs(Values) do
+                    FSettings.pet_mut_xpteam_boosts[key] = value
+                end
+                SaveData()
+            end
+        })
+
+
+        ddPetMutXpTeamBoosts:SetValues(GetKeyValuesFromList(MonsterBoostManager.boosts_list))
+        ddPetMutXpTeamBoosts:SetValue(FSettings.pet_mut_xpteam_boosts)
+
+
+
+        local teamPetXp = gMutOnFarm:AddDropdown("_ddBoostMutpetteamwl", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🤖 Boost Selected Pets",
+            Tooltip = "Select pets to target, if nothing is selected then it applies to all active pets",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.pet_mut_xpteam_petlist = Values
+                SaveData()
+            end
+        })
+
+        teamPetXp:SetValues(Varz.all_pets_names_list)
+        teamPetXp:SetValue(FSettings.pet_mut_xpteam_petlist)
+
+        gMutOnFarm:AddToggle("_ddBoostMutpetxpteamtoggle", {
+            Text = "🚀 Enable Boosts",
+            Default = FSettings.pet_mut_xpteam_boost_enabled,
+            Tooltip = "If enabled boosts will be applied when teams are placed.",
+            Callback = function(Value)
+                FSettings.pet_mut_xpteam_boost_enabled = Value
+                SaveData()
+            end
+        })
+
+
+        local btn_reloadteamsmut = gMutOnFarm:AddButton({
+            Text = "<font color='#00FF04'>♻️ Reload Teams</font>",
+            Func = function()
+                UpdatePetData()
+                task.wait(0.3)
+            end
+        })
+
+        -- Unequip
+        btn_reloadteamsmut:AddButton({
+            Text = "<font color='#FF0000'>UnEquip</font>",
+            Func = function()
+                UnEquipAllPets()
+            end
+        })
+
+
+
+        gMutOnFarm:AddLabel({
+            Text = "<font color='#ffff11'>------------------------------</font>",
+            DoesWrap = false
+        })
+
+        ----============================  END Target Team
+
+
+        ----============================ Pet Mutation Team
+        UI_Dropdown.dropdown_petmutationteam = gMutOnFarm:AddDropdown("dropdown_petmutationteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = PetMutation.mut_ui.GetText_PetMutation(),
+            Tooltip = "Select team that will apply mutation to your pets. Select headless horseman here. ",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_petmutationteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .mut_team))
+                    Library:Notify("This pet is already selected in your target team.")
+                    return
+                end
+
+                local max_allowed = GetMaxPetCapacity() - 1
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_petmutationteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .mut_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.mut_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_petmutationteam:SetText(PetMutation.mut_ui.GetText_PetMutation())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+
+        ---======================= Pet BaseWeight Team
+        UI_Dropdown.dropdown_petbaseweightteam = gMutOnFarm:AddDropdown("dropdown_petbaseweightteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = PetMutation.mut_ui.GetText_PetBaseWeightTeam(),
+            Tooltip = "Select team that will increase base weight for your pets. Select elephants here. ",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_petbaseweightteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .baseweight_team))
+                    Library:Notify("This pet is already selected in your target team.")
+                    return
+                end
+
+                local max_allowed = GetMaxPetCapacity() - 1
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_petbaseweightteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .baseweight_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.baseweight_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_petbaseweightteam:SetText(PetMutation.mut_ui.GetText_PetBaseWeightTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+
+
+
+
+        -- Boosts for this team #mutation
+        local _ddBoostMutpetteam = gMutOnFarm:AddDropdown("_ddBoostMutpetteam", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "💊 Pet Boosts",
+            Tooltip = "Boosts will be applied when this team is placed.",
+            Callback = function(Values)
+                FSettings.pet_mutation_boost_list = {}
+                for key, value in pairs(Values) do
+                    FSettings.pet_mutation_boost_list[key] = value
+                end
+                SaveData()
+            end
+        })
+
+
+        _ddBoostMutpetteam:SetValues(GetKeyValuesFromList(MonsterBoostManager.boosts_list))
+        _ddBoostMutpetteam:SetValue(FSettings.pet_mutation_boost_list)
+
+
+
+        local teamPetmutation = gMutOnFarm:AddDropdown("_ddBoostMutpetteamwl", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🤖 Select Pets",
+            Tooltip = "Select pets to target, if nothing is selected then it applies to all active pets",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.pet_mutation_team_list = Values
+                SaveData()
+            end
+        })
+
+        teamPetmutation:SetValues(Varz.all_pets_names_list)
+        teamPetmutation:SetValue(FSettings.pet_mutation_team_list)
+
+        gMutOnFarm:AddToggle("_ddBoostMutpetteamtoggle", {
+            Text = "🚀 Enable Boosts",
+            Default = FSettings.pet_mutation_team_boost_enabled,
+            Tooltip = "If enabled boosts will be applied when team is placed.",
+            Callback = function(Value)
+                FSettings.pet_mutation_team_boost_enabled = Value
+                SaveData()
+            end
+        })
+
+
+        --------    Put mutation team #wanted
+
+
+        ----============================ Wanted Mutations
+
+        local function _GetWantedMutationsText()
+            local countw = _Helper.CountTable(FSettings.mut_system.wanted)
+            local str = string.format("<font color='#F7C400'><b>🧪 Wanted Mutations</b></font>(%s)",
+                countw);
+            return str
+        end
+        gMutOnFarm:AddDivider()
+
+        local dd_required_mut
+        dd_required_mut = gMutOnFarm:AddDropdown("dd_required_mut", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = _GetWantedMutationsText(),
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.mut_system.wanted = Values
+                dd_required_mut:SetText(_GetWantedMutationsText())
+                SaveData()
+            end
+        })
+        -- setup values
+        dd_required_mut:SetValues(GetKeyMutListUsingDir(MutationMachineManager.GetAllMutationAsKeyPair()))
+        dd_required_mut:SetValue(FSettings.mut_system.wanted)
+
+        gMutOnFarm:AddDivider()
+
+        local function _GetTextMaxLevel()
+            local str = string.format("<font color='#FF00A6'>🐎Horseman LVL</font> <b>%s</b>",
+                FSettings.mut_system.level);
+            return str
+        end
+
+        local function _GetTextMaxLevelBaseWeight()
+            local level = FSettings.mut_system.lvl_baseweight
+            local str = string.format(
+                "<b><font color='#FFD700'>🐘Elephant LVL </font></b><font color='#00FFFF'>%s</font>", level)
+            return str
+        end
+
+        local function _GetTextMaxWeightBaseWeight()
+            local level = FSettings.mut_system.required_weight
+            local str = string.format(
+                "<b><font color='#FF00A6'>🐘Elephant Weight </font></b><font color='#00FFFF'>%s KG</font>", level)
+            return str
+        end
+
+        local function GetTextMutMaxLevelCustom()
+            local level = FSettings.mut_system.custom_max_level
+            local str = string.format(
+                "<b><font color='#7327F5'>⭐MAX Lv.</font></b><font color='#00FFFF'>%s</font>", level)
+            return str
+        end
+
+        local inputMaxLevelCustom
+        inputMaxLevelCustom = gMutOnFarm:AddInput("inputMaxLevelCustom", {
+            Text = GetTextMutMaxLevelCustom(),
+            Default = FSettings.mut_system.custom_max_level,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 100",
+            Tooltip = "Max level override for max leveling team. Only override if needed.",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid Level: " .. Value, 3)
+                    inputMaxLevelCustom:SetValue(tostring(FSettings.mut_system.custom_max_level))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.mut_system.custom_max_level = num
+                    SaveData()
+
+                    inputMaxLevelCustom:SetText(GetTextMutMaxLevelCustom())
+                end
+            end
+        })
+
+
+
+        local inputMaxLevel
+        inputMaxLevel = gMutOnFarm:AddInput("ssinputMaxLevel", {
+            Text = _GetTextMaxLevel(),
+            Default = FSettings.mut_system.level,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 40",
+            Tooltip = "Enter a level you want your pets before mutation.",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid Level: " .. Value, 3)
+                    inputMaxLevel:SetValue(tostring(FSettings.mut_system.level))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.mut_system.level = num
+                    SaveData()
+
+                    inputMaxLevel:SetText(_GetTextMaxLevel())
+                end
+            end
+        })
+
+
+        -- Base Weight max level
+        local inputMaxLevelBaseWeight
+        inputMaxLevelBaseWeight = gMutOnFarm:AddInput("inputMaxLevelBaseWeight", {
+            Text = _GetTextMaxLevelBaseWeight(),
+            Default = FSettings.mut_system.lvl_baseweight,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 40",
+            Tooltip = "Enter a level you want your pets before base weight team is added.",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid Level: " .. Value, 3)
+                    inputMaxLevelBaseWeight:SetValue(tostring(FSettings.mut_system.lvl_baseweight))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.mut_system.lvl_baseweight = num
+                    SaveData()
+
+                    inputMaxLevelBaseWeight:SetText(_GetTextMaxLevelBaseWeight())
+                end
+            end
+        })
+
+
+        -- Base Weight max weight
+        local inputMaxBaseWeight
+        inputMaxBaseWeight = gMutOnFarm:AddInput("inputMaxBaseWeight", {
+            Text = _GetTextMaxWeightBaseWeight(),
+            Default = FSettings.mut_system.required_weight,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 40",
+            Tooltip = "Enter a level you want your pets before base weight team is added.",
+            Callback = function(Value)
+                local num = ParseWeightNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid Weight: " .. Value, 3)
+                    inputMaxBaseWeight:SetValue(tostring(FSettings.mut_system.required_weight))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.mut_system.required_weight = num
+                    SaveData()
+
+                    inputMaxBaseWeight:SetText(_GetTextMaxWeightBaseWeight())
+                end
+            end
+        })
+
+        gMutOnFarm:AddDivider()
+        gMutOnFarm:AddToggle("togglelevelonlymode", {
+            Text =
+            "<b><stroke color='#008F27' thickness='1'>⬆️ <font color='#00FF3C'>Level Only Mode</font></stroke></b>",
+            Default = FSettings.mut_system.only_level_mode,
+            Tooltip = "Ignores all the requirements and puts system into leveling mode for any targets selected.",
+            Callback = function(Value)
+                FSettings.mut_system.only_level_mode = Value
+                SaveData()
+            end
+        })
+        gMutOnFarm:AddDivider()
+
+        gMutOnFarm:AddToggle("lvlmaxmutatedpetsss", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>✨ <font color='#00FFFF'>Max Level</font> <font color='#FF69B4'>Mutated</font></stroke></b>",
+            Default = FSettings.mut_system.max_level_enable,
+            Tooltip = "Levels up any pet ✨ that gets the mutations you wanted, <b>automatically</b>!",
+            Callback = function(Value)
+                FSettings.mut_system.max_level_enable = Value
+                SaveData()
+            end
+        })
+
+        gMutOnFarm:AddToggle("lvlmaxmutatedpetsssbatch", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>⚠️ <font color='#00FFFF'>Max Level</font> <font color='#17FFD1'>Batch</font></stroke></b>",
+            Default = FSettings.mut_system.max_lvl_batch,
+            Tooltip =
+            "If max leveling is enabled then it uses batch mode to level. If all the pets have reached required mutations and are not max leveled.",
+            Callback = function(Value)
+                FSettings.mut_system.max_lvl_batch = Value
+                SaveData()
+            end
+        })
+
+
+        gMutOnFarm:AddToggle("enable_continuous_mutation", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>♻️ <font color='#00FFFF'>Continuous</font> <font color='#17FFD1'>Mutation</font></stroke></b>",
+            Default = FSettings.mut_system.continue_enable,
+            Tooltip =
+            "If enabled then the loop will not restart instead pick and place new pets right away.",
+            Callback = function(Value)
+                FSettings.mut_system.continue_enable = Value
+                SaveData()
+            end
+        })
+
+        gMutOnFarm:AddToggle("singleunitmutation", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>🧬 <font color='#00FFFF'>Single Pet</font> <font color='#17FFD1'>Limit</font></stroke></b>",
+            Default = FSettings.mut_system.single_unit_allowed,
+            Tooltip = "Limits mutations to just one pet at a time, regardless of available farm slots.",
+            Callback = function(Value)
+                FSettings.mut_system.single_unit_allowed = Value
+                SaveData()
+            end
+        })
+
+        gMutOnFarm:AddToggle("baseweight_mode", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>🐘 <font color='#00FFFF'>Elephant</font> <font color='#17FFD1'>Mode</font></stroke></b>",
+            Default = FSettings.mut_system.is_baseweight_mode,
+            Tooltip = "If enabled the system will also increase the base weight if mutation is successful.",
+            Callback = function(Value)
+                FSettings.mut_system.is_baseweight_mode = Value
+                SaveData()
+            end
+        })
+
+
+        gMutOnFarm:AddToggle("elephant_hot_swap", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>♻️ <font color='#00FFFF'>Elephant</font> <font color='#17FFD1'>Hot Swap</font></stroke></b>",
+            Default = FSettings.mut_system.elephant_hotswap,
+            Tooltip =
+            "If enabled pets are hot swapped right away while base weight mutation is active",
+            Callback = function(Value)
+                FSettings.mut_system.elephant_hotswap = Value
+                SaveData()
+            end
+        })
+
+
+        gMutOnFarm:AddButton({
+            Text = "🟢 Start Pet Mutation",
+            Func = function()
+                FSettings.mut_system.is_ruuning = true
+                PetMutation.StartThread()
+            end
+        })
+
+        gMutOnFarm:AddButton({
+            Text = "🔴 Stop Pet Mutation",
+            Func = function()
+                PetMutation.StopThread()
+            end
+        })
+
+        gMutOnFarm:AddDivider()
+        gMutOnFarm:AddButton({
+            Text = "❌ Clear All Team Selections",
+            Func = function()
+                PetMutation.StopThread()
+                FSettings.mut_system.mut_team = {}
+                FSettings.mut_system.targetteam = {}
+                FSettings.mut_system.xpteam = {}
+                FSettings.mut_system.baseweight_team = {}
+                FSettings.mut_system.maxlevel_team = {}
+                SaveData()
+                PetMutation.mut_ui.UpdateTeamsDropdowns()
+            end
+        })
+
+        gMutOnFarm:AddDivider()
+        gMutOnFarm:AddDivider()
+
+
+
+
+
+
+        --== Experiments section
+        local function _GetTextTurboLevelInputText()
+            local level = FSettings.mut_system.turbo_max_level
+            local str = string.format(
+                "<b><font color='#00D7FF'>Minimum Level: </font></b><font color='#00FFFF'>%s</font>", level)
+            return str
+        end
+
+        gMutOnFarm:AddLabel({
+            Text = "--- <b><font color='#FF00A6'>🧪 Experiments</font> <font color='#17FFD1'>Lab 🧬</font></b> ---",
+            DoesWrap = false
+        })
+
+        gMutOnFarm:AddLabel({
+            Text =
+                "💡 Intelligent team switching:\n" ..
+                "⚡ XP team below minimum level, max-level team above.\n" ..
+                "🚀 Speeds up leveling efficiently.\n" ..
+                "🔹 Works with Horseman & Elephant requirements.",
+            DoesWrap = true
+        })
+
+
+        -- Base Weight max weight
+        local inputMinimumTurboLevel
+        inputMinimumTurboLevel = gMutOnFarm:AddInput("inputMinimumTurboLevel", {
+            Text = _GetTextTurboLevelInputText(),
+            Default = FSettings.mut_system.turbo_max_level,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 40",
+            Tooltip = "Set the level at which the system switches from XP team to max-level team.",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid Level: " .. Value, 3)
+                    inputMinimumTurboLevel:SetValue(tostring(FSettings.mut_system.turbo_max_level))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.mut_system.turbo_max_level = num
+                    SaveData()
+
+                    inputMinimumTurboLevel:SetText(_GetTextTurboLevelInputText())
+                end
+            end
+        })
+
+
+        gMutOnFarm:AddToggle("intelligentteams", {
+            Text =
+                "<b><stroke color='#000000' thickness='1'>🧪 <font color='#00FFFF'>Enable</font> " ..
+                "<font color='#17FFD1'>Intelligent Teams</font></stroke></b>",
+            Default = FSettings.mut_system.turbo_xp_teams,
+            Tooltip =
+            "Enable to let the system intelligently boost leveling and increase base weight when mutations succeed.",
+            Callback = function(Value)
+                FSettings.mut_system.turbo_xp_teams = Value
+                SaveData()
+            end
+        })
+
+
+        gMutOnFarm:AddDivider()
+
+        ----============================ Filler Team #fill
+        UI_Dropdown.dropdown_petfiller_team = gMutOnFarm:AddDropdown("dropdown_petfiller_team", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = PetMutation.mut_ui.GetText_FillerTeam(),
+            Tooltip =
+            "Filler Team, Any pets selected here will be used to fill in any missing slots in your teams.Won't work with Continuous Mode, Won't work if single mode active, won't work on mutation stages. Only works for XP and Max leveling.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+
+
+                if not _allowed then
+                    UI_Dropdown.dropdown_petfiller_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .filler_team))
+                    Library:Notify("This pet is already selected in your other target team.")
+                    return
+                end
+
+                local max_allowed = GetMaxPetCapacity() - 1
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.dropdown_petfiller_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                        .filler_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.mut_system.filler_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.dropdown_petfiller_team:SetText(PetMutation.mut_ui.GetText_FillerTeam())
+                end
+            end
+        })
+
+        ----============================  END Filler Team
+        gMutOnFarm:AddDivider()
+
+        gMutOnFarm:AddSpacer(300)
+    end
+    ---------------------------------------------------
+    -------- Mutation Pet End
+    ---------------------------------------------------
+
+
+    -- 2. Animate it!
+    -- We use task.spawn so it doesn't stop the rest of your script from running
+    task.spawn(function()
+        local label = UIProTab.TabLabel -- This works because of Step 1
+
+        if label then
+            while true do
+                -- Calculate rainbow color based on time
+                local hue = tick() % 5 / 5 -- Edit '5' to change speed (lower = faster)
+                local color = Color3.fromHSV(hue, 1, 1)
+
+                label.TextColor3 = color
+
+                -- Wait for the next frame
+                _S.RunService.Heartbeat:Wait()
+            end
+        else
+            warn("Could not find TabLabel! Did you add 'TabLabel = TabLabel' to the library?")
+        end
+    end)
+
+    if gGift then
+        gGift:AddToggle("autogift", {
+            Text = "Auto Accept Gift",
+            Default = FSettings.is_auto_accept_gift,
+            Tooltip = "Auto accepts gifts.",
+            Callback = function(Value)
+                FSettings.is_auto_accept_gift = Value
+                SaveData()
+            end
+        })
+        gGift:AddDivider()
+    end
+end
+
+Varz.ProUi();
+
+--- END pro ui
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ===========================================================================================
+-- Pet Teams Tab #hatchui
+Varz.PetTeamsUi = function()
+    local TeamsTab = Window:AddTab({
+        Name = "<font color='#FF3F00'>Hatching</font> Teams",
+        Description = "<font color='#FFFFCC'>Manage teams used for hatching pets efficiently.</font>",
+        Icon = "cat"
+    })
+
+    --- peacock
+    local GroupBoxEggReductionTeam = TeamsTab:AddLeftGroupbox("Egg Reduction [<font color='#00CED1'>Peacock</font>]",
+        "timer-reset")
+    -- Koi
+    local GroupBoxHatchingTeam = TeamsTab:AddRightGroupbox("Hatch Egg [<font color='#FF4500'>Koi</font>]", "egg")
+
+    local GroupBoxSellingTeam = TeamsTab:AddRightGroupbox("Sell Egg [<font color='#1E90FF'>Seal</font>]",
+        "badge-dollar-sign")
+
+
+    local GroupBoxEggPetSizeTeam = TeamsTab:AddLeftGroupbox("Pet Size [<font color='#32CD32'>Bronto</font>]", "turtle")
+
+
+
+    -- options
+    local OptionsGroup = TeamsTab:AddLeftGroupbox("Options", "circle-ellipsis")
+    local AutojoinGroup = TeamsTab:AddRightGroupbox("Auto Rejoin", "list-restart")
+
+    local PetOverridesGroup = TeamsTab:AddRightGroupbox("Pet Overrides", "atom")
+
+
 
 
     -- #hatchui
@@ -23137,40 +24199,6 @@ Varz.PetTeamsUi = function()
     --=========== Options ========-----
 
 
-
-
-    OptionsGroup:AddDivider()
-    -- Always capture the reference returned by AddToggle
-    OptionsGroup:AddLabel({
-        Text =
-        "⚠️ Speeds up timers by over 90%. Use with caution, System stability is not guaranteed. Use at your own risk. ⚠️",
-        DoesWrap = true
-    })
-    local toggleExtremeMode = OptionsGroup:AddToggle("toggleExtremeMode", {
-        Text = "<b><stroke color='#000000' thickness='2'><font color='#FF6A00'>🔥 OVERDRIVE MODE 🔥</font></stroke></b>",
-        Default = FSettings.hatch_fast_mode,
-        Tooltip =
-        "Pushes the system to its limits for a <b><font color='#FFFF00'>90% hatch speed boost!</font></b><br/><br/><i><font color='#FF0000'><b>⚠️ WARNING:</b> System stability is not guaranteed. Use at your own risk.</font></i>",
-        Callback = function(Value)
-            FSettings.hatch_fast_mode = Value
-            SaveData()
-        end
-    })
-
-    local toggleultradmode = OptionsGroup:AddToggle("toggleultradmode", {
-        Text = "<b><stroke color='#000000' thickness='2'><font color='#F527DA'>🚀 ULTRA MODE 🚀</font></stroke></b>",
-        Default = FSettings.hatch_ultramode,
-        Tooltip =
-        "Unlocks maximum speed for hatching when eggs are ready. Only works if overdrive is active. High chance to lose eggs!",
-        Callback = function(Value)
-            FSettings.hatch_ultramode = Value
-            SaveData()
-        end
-    })
-
-    OptionsGroup:AddDivider()
-    OptionsGroup:AddDivider()
-    OptionsGroup:AddDivider()
     OptionsGroup:AddToggle("toggleslowMode", {
         Text = "<b><stroke color='#000000' thickness='2'><font color='#F40FFF'>↔️ SLOW MODE</font></stroke></b>",
         Default = FSettings.hatch_slow_mode,
@@ -25588,11 +26616,7 @@ local function MEventsUi()
     local GroupBoxAutoAscension = UIEventsTab:AddRightGroupbox("AutoAscension", "calendar-sync")
     local gPetMutationMachine = UIEventsTab:AddRightGroupbox("Pet Mutation Machine", "blocks")
 
-    local title =
-        "🎃 <stroke color='#FFD8A8' sizing='fixed' thickness='0.3' transparency='0.3' joins='round'>"
-        .. "<b><font color='#FF4E1C'>Horseman</font> & <font color='#FFB833'>Elephant</font></b>"
-        .. "</stroke> 🐘"
-    local gMutOnFarm = UIEventsTab:AddLeftGroupbox(title)
+
     local gRecommended = UIEventsTab:AddRightGroupbox("<uc>Event Category</uc>", "sun-moon")
     local gDataReader = UIEventsTab:AddRightGroupbox("<uc>Data</uc>", "blocks")
 
@@ -26261,872 +27285,6 @@ local function MEventsUi()
     })
 
     ddDatalist:SetValues(VulnManager.AllBigDataKeys)
-
-    --    gMutOnFarm:AddButton({
-    --         Text = "🟢 Start Pet Mutation",
-    --         Func = function()
-    --             FSettings.mut_system.is_ruuning = true
-    --             PetMutation.StartThread()
-    --         end
-    --     })
-
-
-
-    ----------------------------------------------
-    -------- Mutation Pet #mutui
-    ----------------------------------------------
-    do
-        UI_LABELS.lbl_pet_mutation_status = gMutOnFarm:AddLabel({
-            Text = "🔴 Stopped",
-            DoesWrap = true
-        })
-
-
-        gMutOnFarm:AddLabel({
-            Text =
-            "💥 [Headless Horseman and Elephant] Mutation System. <font color='#00BFFF'><b>ℹ️ Select mutations you want to apply to your pets.</b></font> Auto uses Cleansing Pet Shard if pets have a none matching mutation. (Only Target pet mutations are cleaned.) ",
-            DoesWrap = true
-        })
-
-        gMutOnFarm:AddDivider()
-
-
-        ---=========== MAX LEVELING TEAM
-        UI_Dropdown.dropdown_petmutation_maxlevelteam = gMutOnFarm:AddDropdown("dropdown_petmut_maxlevelteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = PetMutation.mut_ui.GetText_MaxLevelTeam(),
-            Tooltip = "Select max leveling team when pet has the required mutation. Will use xp team if this is empty.",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings
-                        .mut_system
-                        .maxlevel_team))
-                    Library:Notify("This pet is already selected in your other target team.")
-                    return
-                end
-
-                local max_allowed = GetMaxPetCapacity() - 1
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings
-                        .mut_system
-                        .maxlevel_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.maxlevel_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_petmutation_maxlevelteam:SetText(PetMutation.mut_ui.GetText_MaxLevelTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        ----============================ XP Team
-        UI_Dropdown.dropdown_petmut_xpteam = gMutOnFarm:AddDropdown("dropdown_petmut_xpteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = PetMutation.mut_ui.GetText_XpTeam(),
-            Tooltip = "XP Team, this team will level your pets to the set level set by you.",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_petmut_xpteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam))
-                    Library:Notify("This pet is already selected in your other target team.")
-                    return
-                end
-
-                local max_allowed = GetMaxPetCapacity() - 1
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_petmut_xpteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.xpteam = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_petmut_xpteam:SetText(PetMutation.mut_ui.GetText_XpTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        ----============================  END XP Team
-
-
-        ----============================ Target Team
-        UI_Dropdown.dropdown_pettargetteam = gMutOnFarm:AddDropdown("dropdown_pettargetteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Tooltip = "Select pets you want to mutate!",
-            Text = PetMutation.mut_ui.GetText_TargetTeam(),
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-                        if _uuid then
-                            if PetMutation.mut.IsAllowedPet(_uuid) then
-                                table.insert(tmp_tbl, _uuid)
-                            else
-                                _allowed = false
-                            end
-                        end
-                    end
-                    -- loop ends
-                end
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .targetteam))
-                    Library:Notify("This pet is already selected in your other mutation teams.")
-                    return
-                end
-
-                local max_allowed = 99
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .targetteam))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.targetteam = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_pettargetteam:SetText(PetMutation.mut_ui.GetText_TargetTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        gMutOnFarm:AddButton({
-            Text = "<font color='#ED2A00'>DeSelect All Pets</font>",
-            Tooltip = "Deselects all from list",
-            Func = function()
-                FSettings.mut_system.targetteam = {}
-                UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                    .targetteam))
-                SaveData()
-            end
-        })
-
-        -- Boosts for this team
-        local ddPetMutXpTeamBoosts = gMutOnFarm:AddDropdown("ddPetMutXpTeamBoosts", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = "💊 Pet Boosts",
-            Tooltip = "Boosts will be applied when these teams are placed.",
-            Callback = function(Values)
-                FSettings.pet_mut_xpteam_boosts = {}
-                for key, value in pairs(Values) do
-                    FSettings.pet_mut_xpteam_boosts[key] = value
-                end
-                SaveData()
-            end
-        })
-
-
-        ddPetMutXpTeamBoosts:SetValues(GetKeyValuesFromList(MonsterBoostManager.boosts_list))
-        ddPetMutXpTeamBoosts:SetValue(FSettings.pet_mut_xpteam_boosts)
-
-
-
-        local teamPetXp = gMutOnFarm:AddDropdown("_ddBoostMutpetteamwl", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = "🤖 Boost Selected Pets",
-            Tooltip = "Select pets to target, if nothing is selected then it applies to all active pets",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                FSettings.pet_mut_xpteam_petlist = Values
-                SaveData()
-            end
-        })
-
-        teamPetXp:SetValues(Varz.all_pets_names_list)
-        teamPetXp:SetValue(FSettings.pet_mut_xpteam_petlist)
-
-        gMutOnFarm:AddToggle("_ddBoostMutpetxpteamtoggle", {
-            Text = "🚀 Enable Boosts",
-            Default = FSettings.pet_mut_xpteam_boost_enabled,
-            Tooltip = "If enabled boosts will be applied when teams are placed.",
-            Callback = function(Value)
-                FSettings.pet_mut_xpteam_boost_enabled = Value
-                SaveData()
-            end
-        })
-
-
-        local btn_reloadteamsmut = gMutOnFarm:AddButton({
-            Text = "<font color='#00FF04'>♻️ Reload Teams</font>",
-            Func = function()
-                UpdatePetData()
-                task.wait(0.3)
-            end
-        })
-
-        -- Unequip
-        btn_reloadteamsmut:AddButton({
-            Text = "<font color='#FF0000'>UnEquip</font>",
-            Func = function()
-                UnEquipAllPets()
-            end
-        })
-
-
-
-        gMutOnFarm:AddLabel({
-            Text = "<font color='#ffff11'>------------------------------</font>",
-            DoesWrap = false
-        })
-
-        ----============================  END Target Team
-
-
-        ----============================ Pet Mutation Team
-        UI_Dropdown.dropdown_petmutationteam = gMutOnFarm:AddDropdown("dropdown_petmutationteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = PetMutation.mut_ui.GetText_PetMutation(),
-            Tooltip = "Select team that will apply mutation to your pets. Select headless horseman here. ",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_petmutationteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .mut_team))
-                    Library:Notify("This pet is already selected in your target team.")
-                    return
-                end
-
-                local max_allowed = GetMaxPetCapacity() - 1
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_petmutationteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .mut_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.mut_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_petmutationteam:SetText(PetMutation.mut_ui.GetText_PetMutation())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-
-        ---======================= Pet BaseWeight Team
-        UI_Dropdown.dropdown_petbaseweightteam = gMutOnFarm:AddDropdown("dropdown_petbaseweightteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = PetMutation.mut_ui.GetText_PetBaseWeightTeam(),
-            Tooltip = "Select team that will increase base weight for your pets. Select elephants here. ",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_petbaseweightteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .baseweight_team))
-                    Library:Notify("This pet is already selected in your target team.")
-                    return
-                end
-
-                local max_allowed = GetMaxPetCapacity() - 1
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_petbaseweightteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .baseweight_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.baseweight_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_petbaseweightteam:SetText(PetMutation.mut_ui.GetText_PetBaseWeightTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-
-
-
-
-        -- Boosts for this team #mutation
-        local _ddBoostMutpetteam = gMutOnFarm:AddDropdown("_ddBoostMutpetteam", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = "💊 Pet Boosts",
-            Tooltip = "Boosts will be applied when this team is placed.",
-            Callback = function(Values)
-                FSettings.pet_mutation_boost_list = {}
-                for key, value in pairs(Values) do
-                    FSettings.pet_mutation_boost_list[key] = value
-                end
-                SaveData()
-            end
-        })
-
-
-        _ddBoostMutpetteam:SetValues(GetKeyValuesFromList(MonsterBoostManager.boosts_list))
-        _ddBoostMutpetteam:SetValue(FSettings.pet_mutation_boost_list)
-
-
-
-        local teamPetmutation = gMutOnFarm:AddDropdown("_ddBoostMutpetteamwl", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = "🤖 Select Pets",
-            Tooltip = "Select pets to target, if nothing is selected then it applies to all active pets",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                FSettings.pet_mutation_team_list = Values
-                SaveData()
-            end
-        })
-
-        teamPetmutation:SetValues(Varz.all_pets_names_list)
-        teamPetmutation:SetValue(FSettings.pet_mutation_team_list)
-
-        gMutOnFarm:AddToggle("_ddBoostMutpetteamtoggle", {
-            Text = "🚀 Enable Boosts",
-            Default = FSettings.pet_mutation_team_boost_enabled,
-            Tooltip = "If enabled boosts will be applied when team is placed.",
-            Callback = function(Value)
-                FSettings.pet_mutation_team_boost_enabled = Value
-                SaveData()
-            end
-        })
-
-
-        --------    Put mutation team #wanted
-
-
-        ----============================ Wanted Mutations
-
-        local function _GetWantedMutationsText()
-            local countw = _Helper.CountTable(FSettings.mut_system.wanted)
-            local str = string.format("<font color='#F7C400'><b>🧪 Wanted Mutations</b></font>(%s)",
-                countw);
-            return str
-        end
-        gMutOnFarm:AddDivider()
-
-        local dd_required_mut
-        dd_required_mut = gMutOnFarm:AddDropdown("dd_required_mut", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = _GetWantedMutationsText(),
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                FSettings.mut_system.wanted = Values
-                dd_required_mut:SetText(_GetWantedMutationsText())
-                SaveData()
-            end
-        })
-        -- setup values
-        dd_required_mut:SetValues(GetKeyMutListUsingDir(MutationMachineManager.GetAllMutationAsKeyPair()))
-        dd_required_mut:SetValue(FSettings.mut_system.wanted)
-
-        gMutOnFarm:AddDivider()
-
-        local function _GetTextMaxLevel()
-            local str = string.format("<font color='#FF00A6'>🐎Horseman LVL</font> <b>%s</b>",
-                FSettings.mut_system.level);
-            return str
-        end
-
-        local function _GetTextMaxLevelBaseWeight()
-            local level = FSettings.mut_system.lvl_baseweight
-            local str = string.format(
-                "<b><font color='#FFD700'>🐘Elephant LVL </font></b><font color='#00FFFF'>%s</font>", level)
-            return str
-        end
-
-        local function _GetTextMaxWeightBaseWeight()
-            local level = FSettings.mut_system.required_weight
-            local str = string.format(
-                "<b><font color='#FF00A6'>🐘Elephant Weight </font></b><font color='#00FFFF'>%s KG</font>", level)
-            return str
-        end
-
-        local function GetTextMutMaxLevelCustom()
-            local level = FSettings.mut_system.custom_max_level
-            local str = string.format(
-                "<b><font color='#7327F5'>⭐MAX Lv.</font></b><font color='#00FFFF'>%s</font>", level)
-            return str
-        end
-
-        local inputMaxLevelCustom
-        inputMaxLevelCustom = gMutOnFarm:AddInput("inputMaxLevelCustom", {
-            Text = GetTextMutMaxLevelCustom(),
-            Default = FSettings.mut_system.custom_max_level,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 100",
-            Tooltip = "Max level override for max leveling team. Only override if needed.",
-            Callback = function(Value)
-                local num = ParseWholeNumber(Value)
-
-                if not num or num <= 0 then
-                    Library:Notify("Invalid Level: " .. Value, 3)
-                    inputMaxLevelCustom:SetValue(tostring(FSettings.mut_system.custom_max_level))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.mut_system.custom_max_level = num
-                    SaveData()
-
-                    inputMaxLevelCustom:SetText(GetTextMutMaxLevelCustom())
-                end
-            end
-        })
-
-
-
-        local inputMaxLevel
-        inputMaxLevel = gMutOnFarm:AddInput("ssinputMaxLevel", {
-            Text = _GetTextMaxLevel(),
-            Default = FSettings.mut_system.level,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 40",
-            Tooltip = "Enter a level you want your pets before mutation.",
-            Callback = function(Value)
-                local num = ParseWholeNumber(Value)
-
-                if not num or num <= 0 then
-                    Library:Notify("Invalid Level: " .. Value, 3)
-                    inputMaxLevel:SetValue(tostring(FSettings.mut_system.level))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.mut_system.level = num
-                    SaveData()
-
-                    inputMaxLevel:SetText(_GetTextMaxLevel())
-                end
-            end
-        })
-
-
-        -- Base Weight max level
-        local inputMaxLevelBaseWeight
-        inputMaxLevelBaseWeight = gMutOnFarm:AddInput("inputMaxLevelBaseWeight", {
-            Text = _GetTextMaxLevelBaseWeight(),
-            Default = FSettings.mut_system.lvl_baseweight,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 40",
-            Tooltip = "Enter a level you want your pets before base weight team is added.",
-            Callback = function(Value)
-                local num = ParseWholeNumber(Value)
-
-                if not num or num <= 0 then
-                    Library:Notify("Invalid Level: " .. Value, 3)
-                    inputMaxLevelBaseWeight:SetValue(tostring(FSettings.mut_system.lvl_baseweight))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.mut_system.lvl_baseweight = num
-                    SaveData()
-
-                    inputMaxLevelBaseWeight:SetText(_GetTextMaxLevelBaseWeight())
-                end
-            end
-        })
-
-
-        -- Base Weight max weight
-        local inputMaxBaseWeight
-        inputMaxBaseWeight = gMutOnFarm:AddInput("inputMaxBaseWeight", {
-            Text = _GetTextMaxWeightBaseWeight(),
-            Default = FSettings.mut_system.required_weight,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 40",
-            Tooltip = "Enter a level you want your pets before base weight team is added.",
-            Callback = function(Value)
-                local num = ParseWeightNumber(Value)
-
-                if not num or num <= 0 then
-                    Library:Notify("Invalid Weight: " .. Value, 3)
-                    inputMaxBaseWeight:SetValue(tostring(FSettings.mut_system.required_weight))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.mut_system.required_weight = num
-                    SaveData()
-
-                    inputMaxBaseWeight:SetText(_GetTextMaxWeightBaseWeight())
-                end
-            end
-        })
-
-        gMutOnFarm:AddDivider()
-        gMutOnFarm:AddToggle("togglelevelonlymode", {
-            Text =
-            "<b><stroke color='#008F27' thickness='1'>⬆️ <font color='#00FF3C'>Level Only Mode</font></stroke></b>",
-            Default = FSettings.mut_system.only_level_mode,
-            Tooltip = "Ignores all the requirements and puts system into leveling mode for any targets selected.",
-            Callback = function(Value)
-                FSettings.mut_system.only_level_mode = Value
-                SaveData()
-            end
-        })
-        gMutOnFarm:AddDivider()
-
-        gMutOnFarm:AddToggle("lvlmaxmutatedpetsss", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>✨ <font color='#00FFFF'>Max Level</font> <font color='#FF69B4'>Mutated</font></stroke></b>",
-            Default = FSettings.mut_system.max_level_enable,
-            Tooltip = "Levels up any pet ✨ that gets the mutations you wanted, <b>automatically</b>!",
-            Callback = function(Value)
-                FSettings.mut_system.max_level_enable = Value
-                SaveData()
-            end
-        })
-
-        gMutOnFarm:AddToggle("lvlmaxmutatedpetsssbatch", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>⚠️ <font color='#00FFFF'>Max Level</font> <font color='#17FFD1'>Batch</font></stroke></b>",
-            Default = FSettings.mut_system.max_lvl_batch,
-            Tooltip =
-            "If max leveling is enabled then it uses batch mode to level. If all the pets have reached required mutations and are not max leveled.",
-            Callback = function(Value)
-                FSettings.mut_system.max_lvl_batch = Value
-                SaveData()
-            end
-        })
-
-
-        gMutOnFarm:AddToggle("enable_continuous_mutation", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>♻️ <font color='#00FFFF'>Continuous</font> <font color='#17FFD1'>Mutation</font></stroke></b>",
-            Default = FSettings.mut_system.continue_enable,
-            Tooltip =
-            "If enabled then the loop will not restart instead pick and place new pets right away.",
-            Callback = function(Value)
-                FSettings.mut_system.continue_enable = Value
-                SaveData()
-            end
-        })
-
-        gMutOnFarm:AddToggle("singleunitmutation", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>🧬 <font color='#00FFFF'>Single Pet</font> <font color='#17FFD1'>Limit</font></stroke></b>",
-            Default = FSettings.mut_system.single_unit_allowed,
-            Tooltip = "Limits mutations to just one pet at a time, regardless of available farm slots.",
-            Callback = function(Value)
-                FSettings.mut_system.single_unit_allowed = Value
-                SaveData()
-            end
-        })
-
-        gMutOnFarm:AddToggle("baseweight_mode", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>🐘 <font color='#00FFFF'>Elephant</font> <font color='#17FFD1'>Mode</font></stroke></b>",
-            Default = FSettings.mut_system.is_baseweight_mode,
-            Tooltip = "If enabled the system will also increase the base weight if mutation is successful.",
-            Callback = function(Value)
-                FSettings.mut_system.is_baseweight_mode = Value
-                SaveData()
-            end
-        })
-
-
-        gMutOnFarm:AddToggle("elephant_hot_swap", {
-            Text =
-            "<b><stroke color='#000000' thickness='1'>♻️ <font color='#00FFFF'>Elephant</font> <font color='#17FFD1'>Hot Swap</font></stroke></b>",
-            Default = FSettings.mut_system.elephant_hotswap,
-            Tooltip =
-            "If enabled pets are hot swapped right away while base weight mutation is active",
-            Callback = function(Value)
-                FSettings.mut_system.elephant_hotswap = Value
-                SaveData()
-            end
-        })
-
-
-        gMutOnFarm:AddButton({
-            Text = "🟢 Start Pet Mutation",
-            Func = function()
-                FSettings.mut_system.is_ruuning = true
-                PetMutation.StartThread()
-            end
-        })
-
-        gMutOnFarm:AddButton({
-            Text = "🔴 Stop Pet Mutation",
-            Func = function()
-                PetMutation.StopThread()
-            end
-        })
-
-        gMutOnFarm:AddDivider()
-        gMutOnFarm:AddButton({
-            Text = "❌ Clear All Team Selections",
-            Func = function()
-                PetMutation.StopThread()
-                FSettings.mut_system.mut_team = {}
-                FSettings.mut_system.targetteam = {}
-                FSettings.mut_system.xpteam = {}
-                FSettings.mut_system.baseweight_team = {}
-                FSettings.mut_system.maxlevel_team = {}
-                SaveData()
-                PetMutation.mut_ui.UpdateTeamsDropdowns()
-            end
-        })
-
-        gMutOnFarm:AddDivider()
-        gMutOnFarm:AddDivider()
-        --== Experiments section
-        local function _GetTextTurboLevelInputText()
-            local level = FSettings.mut_system.turbo_max_level
-            local str = string.format(
-                "<b><font color='#00D7FF'>Minimum Level: </font></b><font color='#00FFFF'>%s</font>", level)
-            return str
-        end
-
-        gMutOnFarm:AddLabel({
-            Text = "--- <b><font color='#FF00A6'>🧪 Experiments</font> <font color='#17FFD1'>Lab 🧬</font></b> ---",
-            DoesWrap = false
-        })
-
-        gMutOnFarm:AddLabel({
-            Text =
-                "💡 Intelligent team switching:\n" ..
-                "⚡ XP team below minimum level, max-level team above.\n" ..
-                "🚀 Speeds up leveling efficiently.\n" ..
-                "🔹 Works with Horseman & Elephant requirements.",
-            DoesWrap = true
-        })
-
-
-        -- Base Weight max weight
-        local inputMinimumTurboLevel
-        inputMinimumTurboLevel = gMutOnFarm:AddInput("inputMinimumTurboLevel", {
-            Text = _GetTextTurboLevelInputText(),
-            Default = FSettings.mut_system.turbo_max_level,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 40",
-            Tooltip = "Set the level at which the system switches from XP team to max-level team.",
-            Callback = function(Value)
-                local num = ParseWholeNumber(Value)
-
-                if not num or num <= 0 then
-                    Library:Notify("Invalid Level: " .. Value, 3)
-                    inputMinimumTurboLevel:SetValue(tostring(FSettings.mut_system.turbo_max_level))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.mut_system.turbo_max_level = num
-                    SaveData()
-
-                    inputMinimumTurboLevel:SetText(_GetTextTurboLevelInputText())
-                end
-            end
-        })
-
-
-        gMutOnFarm:AddToggle("intelligentteams", {
-            Text =
-                "<b><stroke color='#000000' thickness='1'>🧪 <font color='#00FFFF'>Enable</font> " ..
-                "<font color='#17FFD1'>Intelligent Teams</font></stroke></b>",
-            Default = FSettings.mut_system.turbo_xp_teams,
-            Tooltip =
-            "Enable to let the system intelligently boost leveling and increase base weight when mutations succeed.",
-            Callback = function(Value)
-                FSettings.mut_system.turbo_xp_teams = Value
-                SaveData()
-            end
-        })
-
-
-        gMutOnFarm:AddDivider()
-
-        ----============================ Filler Team #fill
-        UI_Dropdown.dropdown_petfiller_team = gMutOnFarm:AddDropdown("dropdown_petfiller_team", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = PetMutation.mut_ui.GetText_FillerTeam(),
-            Tooltip =
-            "Filler Team, Any pets selected here will be used to fill in any missing slots in your teams.Won't work with Continuous Mode, Won't work if single mode active, won't work on mutation stages. Only works for XP and Max leveling.",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-
-
-                if not _allowed then
-                    UI_Dropdown.dropdown_petfiller_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .filler_team))
-                    Library:Notify("This pet is already selected in your other target team.")
-                    return
-                end
-
-                local max_allowed = GetMaxPetCapacity() - 1
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.dropdown_petfiller_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-                        .filler_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.mut_system.filler_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.dropdown_petfiller_team:SetText(PetMutation.mut_ui.GetText_FillerTeam())
-                end
-            end
-        })
-
-        ----============================  END Filler Team
-        gMutOnFarm:AddDivider()
-
-        gMutOnFarm:AddSpacer(300)
-    end
-    ---------------------------------------------------
-    -------- Mutation Pet End
-    ---------------------------------------------------
-
-
-
 
 
 
@@ -30322,6 +30480,20 @@ function SettingsUi()
             Text = "SPY",
             Func = function()
                 _Helper.LoadSpyTool()
+            end
+        })
+
+        devtoolsGroup:AddDivider()
+        devtoolsGroup:AddDivider()
+        devtoolsGroup:AddDivider()
+
+        devtoolsGroup:AddToggle("toggless_", {
+            Text = "Toggle keep off",
+            Default = FSettings.nice_fruit,
+            Tooltip = "toggle test",
+            Callback = function(Value)
+                FSettings.nice_fruit = Value
+                SaveData()
             end
         })
     end
@@ -33747,7 +33919,7 @@ Varz.GetFruitToFavAbuse = function()
     local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 500, true)
 
     if #_tools == 0 then
-        _FruitCollectorMachine.CollectFruitsRandom(3)
+        --_FruitCollectorMachine.CollectFruitsRandom(3)
         task.wait(4)
         return {}
     end
@@ -33798,6 +33970,31 @@ Varz.GetFruitToFavAbuse = function()
     return ls
 end
 
+
+Varz.GetFruitToFavAbuseNew = function()
+    -- Helper to safely get UUID
+
+    local ls = {}
+    local max_fruits = 2 -- Amount to test at once
+
+    -- Fetch all available fruits
+    local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 5, true)
+
+    if #_tools == 0 then
+        if not FSettings.nice_fruit then
+            _FruitCollectorMachine.CollectFruitsRandom(1)
+        end
+        task.wait(1)
+        return {}
+    end
+
+    for _, tx in ipairs(_tools) do
+        table.insert(ls, tx)
+    end
+
+    return ls
+end
+
 -- Reset task if it exists to prevent duplicates
 if TaskManager.loop_egg_enhancer then
     task.cancel(TaskManager.loop_egg_enhancer)
@@ -33826,7 +34023,7 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
 
         -- Main Logic
         local succes, fail = pcall(function()
-            local ls = Varz.GetFruitToFavAbuse()
+            local ls = Varz.GetFruitToFavAbuseNew()
 
             -- Only favorite if we have a list and we haven't locked in the "Old Test" yet
             -- If we are using "Old Test", we generally assume they are already ready,
@@ -34159,6 +34356,110 @@ TaskManager.stuck_var_check = task.spawn(function()
         task.wait(5)
         if not FSettings.is_running then
             Varz.IS_HATCHING = false
+        end
+    end
+end)
+
+
+
+
+
+_Helper.ClickGiftAcceptx = function()
+    local gui = _S.PlayerGui
+    local notif = gui:FindFirstChild("Gift_Notification")
+    if not notif then return end
+
+    if not notif.Enabled then return end
+
+    local frame = notif:FindFirstChild("Frame")
+    if not frame then return end
+
+    -- The ImageLabel you mentioned (the 6th child)
+
+    for _, giftPanel in ipairs(frame:GetChildren()) do
+        if not giftPanel:IsA("ImageLabel") then continue end
+
+        -- Accept button path
+        local accept = giftPanel.Holder.Frame.Accept
+
+        print("Accepting gift.")
+
+        if accept then
+            -- Click it safely
+            local s, f = pcall(function()
+                -- accept:Activate()
+                print("Accept")
+                -- Some UIs use MouseButton1Click instead:
+                if accept.MouseButton1Click then
+                    accept.MouseButton1Click:Fire()
+                end
+            end)
+
+            if not s then
+                print("Error: ", f)
+            end
+        else
+            print("cant Accept")
+        end
+    end
+end
+
+_Helper.ClickGiftAccept = function()
+    local gui = _S.PlayerGui
+    local notif = gui:FindFirstChild("Gift_Notification")
+    if not notif or not notif.Enabled then return end
+
+    local frame = notif:FindFirstChild("Frame")
+    if not frame then return end
+
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    for _, giftPanel in ipairs(frame:GetChildren()) do
+        if not giftPanel:IsA("ImageLabel") then continue end
+
+        -- 1. Verify path exists before accessing
+        local didClick = false
+        if giftPanel:FindFirstChild("Holder") and
+            giftPanel.Holder:FindFirstChild("Frame") and
+            giftPanel.Holder.Frame:FindFirstChild("Accept") then
+            local accept = giftPanel.Holder.Frame.Accept
+
+            if getconnections then
+                for _, connection in pairs(getconnections(accept.MouseButton1Click)) do
+                    connection:Fire()
+                    didClick = true
+                    --print("Fired via getconnections (MouseButton1Click)")
+                end
+                -- Also try 'Activated' as modern UIs often use this instead
+                for _, connection in pairs(getconnections(accept.Activated)) do
+                    connection:Fire()
+                    didClick = true
+                    --print("Fired via getconnections (Activated)")
+                end
+            end
+        else
+            -- print("Could not find button path: giftPanel.Holder.Frame.Accept")
+        end
+
+        if didClick then
+            task.wait(6)
+        end
+    end
+end
+
+-- Check continuously (lightweight)
+
+task.spawn(function()
+    while true do
+        task.wait(3)
+        if not FSettings.is_auto_accept_gift then
+            continue
+        end
+        local x, s = pcall(function()
+            _Helper.ClickGiftAccept()
+        end)
+        if not x then
+            print("Error: ", s)
         end
     end
 end)
