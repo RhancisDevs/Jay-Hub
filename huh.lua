@@ -897,3 +897,11 @@ SaveManager:LoadAutoloadConfig()
 task.wait(5)
 game:GetService("ReplicatedStorage").GameEvents.Finish_Loading:FireServer()
 end
+
+
+local vu = game:GetService("VirtualUser")
+
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    vu:CaptureController()
+    vu:ClickButton2(Vector2.new())
+end)
