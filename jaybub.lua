@@ -152,11 +152,16 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.29.5"
+_S.CurentV = "v1.29.7"
 
 local Varz = {}
 Varz.dev_tools = true
 Varz.is_pro = true
+-- #pro
+
+if _S.LocalPlayer.Name == "goforit887" then
+    --Varz.is_pro = false
+end
 
 Varz.TEXT_HATCH_SYSTEM = ""
 Varz.TEXT_AGEBREAK = ""
@@ -326,148 +331,149 @@ end
 
 -- save for mutations and others
 local FOtherSettings = {
-    max_eggs_to_place = 0,
+    max_eggs_to_place                          = 0,
     -- mutation machine
-    mut_max_level_successfulpets = false,
-    mut_batch_process_enable = false,
-    mut_pet_mode_enable = false,
-    mut_batch_process_turn = "levelteam",
-    mut_target_pets_uuid = {},
-    mut_target_mutations = {},
-    mut_support_team = {},
-    mut_mutation_machineteam = {},
-    mut_claimpet_team = {},
-    mut_required_level = 50,
-    mut_required_level_item = 40,
-    mut_pet_inside_mutation = "",
-    mut_was_running = false,
-    max_mutation_count = 0,
+    mut_max_level_successfulpets               = false,
+    mut_batch_process_enable                   = false,
+    mut_pet_mode_enable                        = false,
+    mut_batch_process_turn                     = "levelteam",
+    mut_target_pets_uuid                       = {},
+    mut_target_mutations                       = {},
+    mut_support_team                           = {},
+    mut_mutation_machineteam                   = {},
+    mut_claimpet_team                          = {},
+    mut_required_level                         = 50,
+    mut_required_level_item                    = 40,
+    mut_pet_inside_mutation                    = "",
+    mut_was_running                            = false,
+    max_mutation_count                         = 0,
 
     -- Chubby Chipmunk
-    chubby_chipmunk_amount_collected = 0,
-    chubby_chipmunk_auto_collect = true,
-    chubby_chipmunk_item_watering_can = 0,
-    chubby_chipmunk_item_event_lantern = 0,
-    chubby_chipmunk_item_godly_sprinkler = 0,
-    chubby_chipmunk_item_legendary_egg = 0,
-    chubby_chipmunk_item_reclaimer = 0,
-    chubby_chipmunk_item_nutty_crate = 0,
-    chubby_chipmunk_item_silver_fertilizer = 0,
-    chubby_chipmunk_item_nutty_chest = 0,
-    chubby_chipmunk_item_master_sprinkler = 0,
-    chubby_chipmunk_item_medium_treat = 0,
-    chubby_chipmunk_item_medium_toy = 0,
-    chubby_chipmunk_item_mythical_egg = 0,
+    chubby_chipmunk_amount_collected           = 0,
+    chubby_chipmunk_auto_collect               = true,
+    chubby_chipmunk_item_watering_can          = 0,
+    chubby_chipmunk_item_event_lantern         = 0,
+    chubby_chipmunk_item_godly_sprinkler       = 0,
+    chubby_chipmunk_item_legendary_egg         = 0,
+    chubby_chipmunk_item_reclaimer             = 0,
+    chubby_chipmunk_item_nutty_crate           = 0,
+    chubby_chipmunk_item_silver_fertilizer     = 0,
+    chubby_chipmunk_item_nutty_chest           = 0,
+    chubby_chipmunk_item_master_sprinkler      = 0,
+    chubby_chipmunk_item_medium_treat          = 0,
+    chubby_chipmunk_item_medium_toy            = 0,
+    chubby_chipmunk_item_mythical_egg          = 0,
     chubby_chipmunk_item_grandmaster_sprinkler = 0,
-    chubby_chipmunk_item_rainbow_fertilizer = 0,
-    chubby_chipmunk_item_petshardnutty = 0,
+    chubby_chipmunk_item_rainbow_fertilizer    = 0,
+    chubby_chipmunk_item_petshardnutty         = 0,
 
     -- marmot
-    marmot_amount_collected = 0,
-    marmot_auto_collect = true,
-    marmot_item_firefly = 0,
-    marmot_item_maple_leaf_kite = 0,
-    marmot_item_sky_lantern = 0,
-    marmot_item_leaf_blower = 0,
-    marmot_item_maple_syrup = 0,
-    marmot_item_maple_sprinkler = 0,
-    marmot_item_golden_acorn = 0,
+    marmot_amount_collected                    = 0,
+    marmot_auto_collect                        = true,
+    marmot_item_firefly                        = 0,
+    marmot_item_maple_leaf_kite                = 0,
+    marmot_item_sky_lantern                    = 0,
+    marmot_item_leaf_blower                    = 0,
+    marmot_item_maple_syrup                    = 0,
+    marmot_item_maple_sprinkler                = 0,
+    marmot_item_golden_acorn                   = 0,
 
     -- jungle
-    is_auto_jungle = false,
+    is_auto_jungle                             = false,
 
-    feeding_auto_collectfruits = true,
-    feed_food_insteadoffruits = false,
-    feeding_pets_timer = 120,
-    feeding_pets_auto = false,
-    force_feed_all_pets = false,
-    feeding_list_pets = {},
-    pet_level_boost_list = "-",
-    pet_auto_level_auto = false,
-    pet_auto_level_max = 1,
-    pet_auto_level_min = 0,
-    pet_level_selected_pets = {},
-    feeding_exlude_food_list = {},
-    g_fruit_weight_max = 99,
-    g_fruit_weight_min = 0,
-    is_fall_event_running = false,
-    is_fall_event_fastmode = false,
-    is_fall_questline_auto = false,
-    is_fall_questline_reroll = false,
-    is_playerstats_running = true,
-    hatch_rare_withbigsizetm = false,
-    web_api_key = "",
-    ascension_max_seeds = 1,
-    auto_ascension = false,
-    auto_sellbackpack = false,
-    is_collect_fruit = false,
-    pet_override_weight = {},
-    mutation_whitelist = {},
-    mutation_blacklist = {},
-    fruit_variants_select = {},
-    fruit_collector_turbo = false,
-    collection_plants = {},
-    sell_mutation_whitelist = {},
-    sell_mutation_blacklist = {},
-    sell_fruit_list = {},
-    auto_sell_backpack_time = false,
-    auto_sell_backpack_every = 60,
+    feeding_auto_collectfruits                 = true,
+    feed_food_insteadoffruits                  = false,
+    feeding_pets_timer                         = 120,
+    feeding_pets_auto                          = false,
+    force_feed_all_pets                        = false,
+    feeding_list_pets                          = {},
+    feeding_list_plants                        = {},
+    pet_level_boost_list                       = "-",
+    pet_auto_level_auto                        = false,
+    pet_auto_level_max                         = 1,
+    pet_auto_level_min                         = 0,
+    pet_level_selected_pets                    = {},
+    feeding_exlude_food_list                   = {},
+    g_fruit_weight_max                         = 99,
+    g_fruit_weight_min                         = 0,
+    is_fall_event_running                      = false,
+    is_fall_event_fastmode                     = false,
+    is_fall_questline_auto                     = false,
+    is_fall_questline_reroll                   = false,
+    is_playerstats_running                     = true,
+    hatch_rare_withbigsizetm                   = false,
+    web_api_key                                = "",
+    ascension_max_seeds                        = 1,
+    auto_ascension                             = false,
+    auto_sellbackpack                          = false,
+    is_collect_fruit                           = false,
+    pet_override_weight                        = {},
+    mutation_whitelist                         = {},
+    mutation_blacklist                         = {},
+    fruit_variants_select                      = {},
+    fruit_collector_turbo                      = false,
+    collection_plants                          = {},
+    sell_mutation_whitelist                    = {},
+    sell_mutation_blacklist                    = {},
+    sell_fruit_list                            = {},
+    auto_sell_backpack_time                    = false,
+    auto_sell_backpack_every                   = 60,
 
     -- SeasonPassShop
-    season_pass_shop_items = {},
+    season_pass_shop_items                     = {},
 
     -- Cooking
-    cook_potone_item1 = "-",
-    cook_potone_item2 = "-",
-    cook_potone_item3 = "-",
-    cook_potone_item4 = "-",
-    cook_potone_item5 = "-",
-    is_auto_cook = false,
-    cooking_autocollect_required = true,
-    cooking_autoplant_required = true,
+    cook_potone_item1                          = "-",
+    cook_potone_item2                          = "-",
+    cook_potone_item3                          = "-",
+    cook_potone_item4                          = "-",
+    cook_potone_item5                          = "-",
+    is_auto_cook                               = false,
+    cooking_autocollect_required               = true,
+    cooking_autoplant_required                 = true,
     -- trowel etc
-    trowel_plants_list = {},
-    trowel_saved_cframe = "0,0,0",
-    shovel_plants_list = {},
-    shovel_keep_amount = 0,
-    is_auto_shovel = false,
+    trowel_plants_list                         = {},
+    trowel_saved_cframe                        = "0,0,0",
+    shovel_plants_list                         = {},
+    shovel_keep_amount                         = 0,
+    is_auto_shovel                             = false,
 
     -- water
-    watering_list_plants = {},
-    watering_is_auto = false,
-    watering_amount_to_water = 2,
-    watering_speed_time = 0.3,
+    watering_list_plants                       = {},
+    watering_is_auto                           = false,
+    watering_amount_to_water                   = 2,
+    watering_speed_time                        = 0.3,
 
     -- event shops
-    fall_pets_shop = {},
-    fall_seeds_shop = {},
-    fall_cosmetic_shop = {},
-    fall_gear_shop = {},
+    fall_pets_shop                             = {},
+    fall_seeds_shop                            = {},
+    fall_cosmetic_shop                         = {},
+    fall_gear_shop                             = {},
 
-    jungle_seed_stages1 = {},
-    jungle_auto_plants_list = {},
+    jungle_seed_stages1                        = {},
+    jungle_auto_plants_list                    = {},
 
     -- team based boosts
-    boost_auto_team_placed_koi = false,
-    boost_koi_team_list = {},
-    boost_sprinkler_koi_team = false,
+    boost_auto_team_placed_koi                 = false,
+    boost_koi_team_list                        = {},
+    boost_sprinkler_koi_team                   = false,
 
     -- sprinklers
-    is_auto_place_sprinkler_hatch = false,
+    is_auto_place_sprinkler_hatch              = false,
 
     -- craft
-    list_gear_event_workbench = {},
-    is_auto_craft = false,
-    craft_autoplant_workbench = true,
-    craft_autofruit_workbench = true,
-    quest_recoll_max_cost = "1.6M",
+    list_gear_event_workbench                  = {},
+    is_auto_craft                              = false,
+    craft_autoplant_workbench                  = true,
+    craft_autofruit_workbench                  = true,
+    quest_recoll_max_cost                      = "1.6M",
 
-    seed_placement_list = {},
-    is_auto_seed = false,
-    seed_keep_amount = 0,
-    seed_speed_timer1 = 0.5,
-    is_seed_random = true,
-    seed_location_vector = "0,0,0",
+    seed_placement_list                        = {},
+    is_auto_seed                               = false,
+    seed_keep_amount                           = 0,
+    seed_speed_timer1                          = 0.5,
+    is_seed_random                             = true,
+    seed_location_vector                       = "0,0,0",
 
 }
 
@@ -494,6 +500,7 @@ local FSettings = {
     is_pc_mode = false,
     fast_ascen = false,
     nice_fruit = false,
+    eggs_center_mode1 = false,
     rng_use_system = false,
     rng_auto_rejoin = false,
     rng_egg_lowers_up = false,
@@ -602,6 +609,9 @@ local FSettings = {
         single_unit_allowed = false,
         is_baseweight_mode = false,
         turbo_xp_teams = false,
+        realtime_monitor_system = false,
+        timeout_system = false,
+        disable_horseman = false,
     },
     show_activepets_ui = true,
     auto_remove_sprinklers = false,
@@ -3098,7 +3108,106 @@ local function getPredefinedEggPositions(center)
 end
 
 
+local function getPredefinedEggPositionsMiddlex(center, taken_vectors_array)
+    local positions = {}
+    local SQUARE_SIZE = 70
+    local GRASS_WIDTH = 14
+    local SPACING = 5
+    local halfOuter = SQUARE_SIZE / 2
+    local halfGrass = GRASS_WIDTH / 2
 
+    for x = -halfOuter, halfOuter, SPACING do
+        for z = -halfOuter, halfOuter, SPACING do
+            -- 1. Shape Check (Left/Right Sides)
+            if math.abs(x) > halfGrass then
+                local worldPos = Vector3.new(center.X + x, center.Y, center.Z + z)
+                local isBlocked = false
+
+                -- 2. "Taken" Check (Filters out existing eggs/obstacles)
+                if taken_vectors_array then
+                    for _, takenPos in ipairs(taken_vectors_array) do
+                        if (worldPos - takenPos).Magnitude < 1.4 then
+                            isBlocked = true
+                            break
+                        end
+                    end
+                end
+
+                if not isBlocked then
+                    table.insert(positions, worldPos)
+                end
+            end
+        end
+    end
+
+    -- 3. Sort (Closest First)
+    table.sort(positions, function(a, b)
+        local distSqA = (a - center).Magnitude * (a - center).Magnitude
+        local distSqB = (b - center).Magnitude * (b - center).Magnitude
+        return distSqA < distSqB
+    end)
+
+    return positions
+end
+
+
+local function getPredefinedEggPositionsMiddle(center, blockedList)
+    local positions = {}
+
+    -- Settings
+    local blockRadius = 4 -- Set default directly
+    local blockDistSq = blockRadius * blockRadius
+
+    local SQUARE_SIZE = 55
+    local GRASS_WIDTH = 14
+    local SPACING = 3
+
+    local halfOuter = SQUARE_SIZE / 2
+    local halfGrass = GRASS_WIDTH / 2
+
+    -- Helper: Check Distance on Floor (X and Z axes)
+    local function isBlocked(worldPos)
+        if not blockedList then return false end
+
+        for _, v3 in ipairs(blockedList) do
+            -- Calculate difference on the horizontal plane (X and Z)
+            local dx = worldPos.X - v3.X
+            local dz = worldPos.Z - v3.Z -- FIXED: Was checking Y previously
+
+            -- Check squared distance (faster than Magnitude)
+            if (dx * dx + dz * dz) <= blockDistSq then
+                return true
+            end
+        end
+
+        return false
+    end
+
+    -- 1. Generate all valid points first
+    for x = -halfOuter, halfOuter, SPACING do
+        for z = -halfOuter, halfOuter, SPACING do
+            -- LOGIC: This creates a hole in the middle (the path).
+            -- If you want to fill the ACTUAL middle, remove this 'if' statement.
+            if math.abs(x) > halfGrass then
+                local worldPos = Vector3.new(center.X + x, center.Y, center.Z + z)
+
+                if not isBlocked(worldPos) then
+                    table.insert(positions, worldPos)
+                end
+            end
+        end
+    end
+
+    -- 2. Sort by distance from Center (This ensures "Middle First" order)
+    table.sort(positions, function(a, b)
+        -- We compare squared magnitude to avoid expensive square root math
+        local distA = (a - center).X ^ 2 + (a - center).Z ^ 2
+        local distB = (b - center).X ^ 2 + (b - center).Z ^ 2
+        return distA < distB
+    end)
+
+    return positions
+end
 
 -- cleans names for boosts
 local function CleanItemNameXpBoosts(rawName)
@@ -6143,13 +6252,31 @@ end
 
 
 _FruitCollectorMachine.GetRandomFruitForFeed = function()
+    local ls = {}
+    local ctool = InventoryManager.CurrentToolEquipped()
+    if ctool then
+        if InventoryManager.IsFruitAndNotFav(ctool) then
+            table.insert(ls, ctool);
+        end
+    end
+
     for _, fruit in ipairs(_S.Backpack:GetChildren()) do
         if InventoryManager.IsFruitAndNotFav(fruit) then
-            if FSettings.safe_fruits[fruit.Name] then
-                continue
-            end
-            return fruit
+            table.insert(ls, fruit);
         end
+    end
+
+    for _, tool in ipairs(ls) do
+        if FSettings.safe_fruits[tool.Name] then
+            continue
+        end
+
+        local fname = tool:GetAttribute("f")
+        if FOtherSettings.feeding_list_plants[fname] then
+            continue
+        end
+
+        return tool
     end
     return nil
 end
@@ -6757,11 +6884,11 @@ InventoryManager.GetFruitOfRarity = function(rarity_list, amount, bypassrarity)
         if tool:IsA("Tool") and InventoryManager.IsFruit(tool) then
             local fruitName = tool:GetAttribute("f")
 
-            if tool.Name then
-                if FSettings.safe_fruits[tool.Name] then
-                    continue
-                end
-            end
+            -- if tool.Name then
+            --     if FSettings.safe_fruits[tool.Name] then
+            --         continue
+            --     end
+            -- end
 
 
             -- Get the Rarity String (e.g., "Legendary")
@@ -6844,6 +6971,8 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig = function(_fruitNa
     local blacklist_mut = config.blacklist_mutation or {}
     local variants = config.variants or {}
     local max_mutation_number = config.mut_count or 0
+    local ignore_fruit_list = config.ignore_fruit or {}
+    local is_random_fruits = config.random or false
 
     -- This list will hold all fruits we find, along with their plant name for sorting
     local allValidFruits = {}
@@ -6854,8 +6983,14 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig = function(_fruitNa
         if not plantModel:IsA("Model") then continue end
 
         -- Get the name and check if it's in our filter
-        local plantName = plantModel.Name
-        if not plantName or not _fruitNames[plantName] then continue end
+        local plantName = plantModel.Name or "-"
+        if not is_random_fruits then
+            if not plantName or not _fruitNames[plantName] then continue end
+        end
+
+        if ignore_fruit_list[plantName] then
+            continue
+        end
 
         local potentialFruits = {}
         local fruitsFolder = plantModel:FindFirstChild("Fruits")
@@ -6876,6 +7011,8 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig = function(_fruitNa
             if not _FruitCollectorMachine.IsFruitReadyToCollect(fruit) then
                 continue
             end
+
+
 
 
             if max_mutation_number > 0 then
@@ -8134,6 +8271,29 @@ end
 
 
 
+_Helper.GetSortedList = function(masterArray, selectedLookup)
+    -- 1. Create a shallow copy so we don't mess up the main 'pcache' for other dropdowns
+    local newList = { table.unpack(masterArray) } -- Use 'unpack(masterArray)' if on older Lua versions
+
+    -- 2. Sort the copy
+    table.sort(newList, function(a, b)
+        -- Check if items are in the selected table (nil checks are treated as false)
+        local isA = selectedLookup[a]
+        local isB = selectedLookup[b]
+
+        -- Priority Logic:
+        if isA and not isB then
+            return true  -- 'a' is selected, 'b' is not -> 'a' goes first
+        elseif isB and not isA then
+            return false -- 'b' is selected, 'a' is not -> 'b' goes first
+        end
+
+        -- Secondary Sort: If both are selected (or both unselected), sort alphabetically
+        return a < b
+    end)
+
+    return newList
+end
 
 
 
@@ -9345,6 +9505,10 @@ PetMutation.mut = {
             bypassmut = true
         end
 
+        if FSettings.mut_system.disable_horseman then
+            bypassmut = true
+        end
+
         for _, _uuid in ipairs(array_pets) do
             local _petData = GetPetDataByUUID(_uuid)
             if not _petData then
@@ -9422,7 +9586,7 @@ PetMutation.mut = {
             -- only checking pets that are added on the field
             if not petsAdded[_uuid] then
                 --warn("Pet not added")
-                continue
+                -- continue
             end
 
 
@@ -9979,6 +10143,10 @@ PetMutation.mut = {
             bypass_mut = true
         end
 
+        if FSettings.mut_system.disable_horseman then
+            bypass_mut = true
+        end
+
         for _, _uuid in ipairs(FSettings.mut_system.targetteam) do
             local _petData = GetPetDataByUUID(_uuid)
             if not _petData then
@@ -10062,6 +10230,10 @@ PetMutation.mut = {
 
         local bypassmut = false
         if is_baseweight_mode and #mut_team_list == 0 then
+            bypassmut = true
+        end
+
+        if FSettings.mut_system.disable_horseman then
             bypassmut = true
         end
 
@@ -10240,6 +10412,10 @@ PetMutation.mut = {
         local bypassmut = false
 
         if is_weight_mode and #mut_team_ls == 0 then
+            bypassmut = true
+        end
+
+        if FSettings.mut_system.disable_horseman then
             bypassmut = true
         end
 
@@ -12518,6 +12694,18 @@ local function UpdateUITeamCount()
 end
 
 
+_Helper.shortenMutation = function(mutation)
+    if not mutation or mutation == "" then return "" end
+
+    -- Remove brackets and trim
+    local clean = mutation:gsub("[%[%]]", "")
+
+    -- Take first 2 letters (you can change to 3 if you want)
+    local short = clean:sub(1, 3):upper()
+
+    return "[" .. short .. "]"
+end
+
 _Helper.RefreshPetData = function()
     print("🔄 Refreshing pet data...")
     -- Get all active pets
@@ -12566,9 +12754,10 @@ _Helper.RefreshPetData = function()
             local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
             local mutation_display = ""
             if CurrentMutationOnPet then
-                mutation_display = string.format("[%s] ", CurrentMutationOnPet)
+                mutation_display = _Helper.shortenMutation(CurrentMutationOnPet)
+                -- string.format("[%s] ", CurrentMutationOnPet)
             end
-            local color = "#FF00FF"
+            local color = "#FFFFFF"
             if onfarmactive[uuidx] then
                 color = "#0CCF19"
             end
@@ -12581,7 +12770,7 @@ _Helper.RefreshPetData = function()
                 str_fav_icon = "❤️"
             end
 
-            local _petname = string.format("<font color='%s'>Lv.%s</font> <font color='#3DD8FF'>%skg</font> %s%s%s ",
+            local _petname = string.format("<font color='%s'>⭐%s</font>•<font color='#3DD8FF'>%skg</font> %s%s%s ",
                 color,
                 _lvl, DisplayWeight,
                 str_fav_icon,
@@ -12643,18 +12832,20 @@ _Helper.RefreshPetData = function()
         local team3data = ConvertUUIDToPetNamesPairs(FSettings.team3)
         local team4data = ConvertUUIDToPetNamesPairs(FSettings.team4)
 
-
-
-        UI_LABELS.MultiDropdownSellTeam:SetValues(pcache);
+        local sortedteam1 = _Helper.GetSortedList(pcache, team1data)
+        UI_LABELS.MultiDropdownSellTeam:SetValues(sortedteam1);
         UI_LABELS.MultiDropdownSellTeam:SetValue(team1data, surpassCallback)
 
-        UI_LABELS.MultiDropdownHatchTeam:SetValues(pcache);
+        local sortedteam2 = _Helper.GetSortedList(pcache, team2data)
+        UI_LABELS.MultiDropdownHatchTeam:SetValues(sortedteam2);
         UI_LABELS.MultiDropdownHatchTeam:SetValue(team2data, surpassCallback)
 
-        UI_LABELS.MultiDropdownEggReductionTeam:SetValues(pcache);
+        local sortedteam3 = _Helper.GetSortedList(pcache, team3data)
+        UI_LABELS.MultiDropdownEggReductionTeam:SetValues(sortedteam3);
         UI_LABELS.MultiDropdownEggReductionTeam:SetValue(team3data, surpassCallback)
 
-        UI_LABELS.MultiDropdownEggPetSizeTeam:SetValues(pcache);
+        local sortedteam4 = _Helper.GetSortedList(pcache, team4data)
+        UI_LABELS.MultiDropdownEggPetSizeTeam:SetValues(sortedteam4);
         UI_LABELS.MultiDropdownEggPetSizeTeam:SetValue(team4data, surpassCallback)
     end
 
@@ -13389,30 +13580,42 @@ end
 
 
 InventoryManager.GetEggToolForHatching = function()
-    local enabledEggs = {}
-    for eggName, data in pairs(FSettings.eggs_to_place_array) do
-        if data.enabled then
-            table.insert(enabledEggs, { name = eggName, order = data.order })
+    local success, result = pcall(function()
+        local enabledEggs = {}
+
+        -- collect enabled eggs
+        for eggName, data in pairs(FSettings.eggs_to_place_array) do
+            if data.enabled then
+                table.insert(enabledEggs, { name = eggName, order = data.order })
+            end
         end
-    end
 
+        -- sort
+        table.sort(enabledEggs, function(a, b)
+            return a.order > b.order
+        end)
 
-    -- Sort by order
-    table.sort(enabledEggs, function(a, b)
-        return a.order > b.order
+        -- loop and find tool
+        for _, egg in ipairs(enabledEggs) do
+            local foundTool = InventoryManager.GetEggUsingNameNew(egg.name)
+
+            if foundTool then
+                return foundTool
+            else
+                warn(egg.name .. " egg not found.")
+            end
+        end
+
+        return nil
     end)
 
-    -- Loop through sorted enabled eggs
-    for _, egg in ipairs(enabledEggs) do
-        local foundTool = InventoryManager.GetEggUsingNameNew(egg.name)
-        if foundTool then
-            return foundTool
-        else
-            warn(egg.name .. " Egg not found.")
-        end
+    -- Handle errors from pcall
+    if not success then
+        warn("[EGG Error] " .. tostring(result))
+        return nil
     end
 
-    return nil
+    return result
 end
 
 
@@ -13482,6 +13685,33 @@ local function GetCountEggsOnFarm()
 
     -- Return count if successful, otherwise 0
     return success and result or 0
+end
+
+_Helper.GetTakenEggPositions = function()
+    local taken_positions = {}
+    -- We use pcall just to be safe, like your example
+    local success, err = pcall(function()
+        local array_ob = FarmManager.mObjects_Physical:GetChildren()
+        if not array_ob then return end
+
+        for _, value in ipairs(array_ob) do
+            -- Check for "PetEgg" Model
+            if value and value:IsA("Model") and value.Name == "PetEgg" then
+                -- Try to get the position safely
+
+                local hitbox = value:FindFirstChild("HitBox", true)
+                if hitbox then
+                    table.insert(taken_positions, hitbox.Position)
+                end
+            end
+        end
+    end)
+
+    if not success then
+        warn("Error getting egg positions:", err)
+    end
+
+    return taken_positions
 end
 
 
@@ -13691,8 +13921,13 @@ MonsterFeeder.FeedHungryPets = function(force_feed, ignore_max_level)
                 if not fruit then
                     --  try to collect some fruits
                     local _success, _error = pcall(function()
-                        local fruits_amount = 8 -- collect fruits max
-                        _FruitCollectorMachine.CollectFruitForSeedingSystem(fruits_amount)
+                        local configx = {
+                            amount = 8,
+                            is_batch = false,
+                            ignore_fruit_list = FOtherSettings.feeding_list_plants,
+                            random = true,
+                        }
+                        _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig({}, configx);
                     end)
 
                     -- wait for collection
@@ -17925,11 +18160,16 @@ _Helper.PlaceEggsForHatching = function()
     local user_max_egg = GetMaxEggCapacity()
     local center = FarmManager.mFarm.Center_Point.Position
 
-    local availablePositions = getPredefinedEggPositions(center)
+    local availablePositions = {}
 
-    for i = #availablePositions, 2, -1 do
-        local j = math.random(i)
-        availablePositions[i], availablePositions[j] = availablePositions[j], availablePositions[i]
+    if FSettings.eggs_center_mode1 then
+        availablePositions = getPredefinedEggPositionsMiddle(center, _Helper.GetTakenEggPositions())
+    else
+        availablePositions = getPredefinedEggPositions(center)
+        for i = #availablePositions, 2, -1 do
+            local j = math.random(i)
+            availablePositions[i], availablePositions[j] = availablePositions[j], availablePositions[i]
+        end
     end
 
     local start_time = os.clock()
@@ -18125,12 +18365,20 @@ local function placeMissingEggs(myFarm)
     end
 
     local center = myFarm.Center_Point.Position
-    local availablePositions = getPredefinedEggPositions(center)
 
-    for i = #availablePositions, 2, -1 do
-        local j = math.random(i)
-        availablePositions[i], availablePositions[j] = availablePositions[j], availablePositions[i]
+
+    local availablePositions = {}
+
+    if FSettings.eggs_center_mode1 then
+        availablePositions = getPredefinedEggPositionsMiddle(center, _Helper.GetTakenEggPositions())
+    else
+        availablePositions = getPredefinedEggPositions(center)
+        for i = #availablePositions, 2, -1 do
+            local j = math.random(i)
+            availablePositions[i], availablePositions[j] = availablePositions[j], availablePositions[i]
+        end
     end
+
 
     local user_defined_max_eggs = tonumber(FOtherSettings.max_eggs_to_place) or 0
     local max_tool_tries = 0
@@ -20332,13 +20580,31 @@ task.spawn(function()
 end)
 
 _Helper.GetUltraMode = function()
-    return FSettings.hatch_ultramode;
+    if Varz.GetCheckIfPro() then
+        return FSettings.hatch_ultramode;
+    end
+    return false
+    --return FSettings.hatch_ultramode;
+end
+_Helper.GetFastHatchMode = function()
+    if Varz.GetCheckIfPro() then
+        return FSettings.hatch_fast_mode;
+    end
+    return false
+    --return FSettings.hatch_fast_mode
 end
 
 local waiting_for_hatch_count = 0
 Varz.spinnerFrames = { "◐", "◓", "◑", "◒" }
 Varz.spinner_frames = 1
 Varz.rejoin_hatch_count = 0
+
+
+_Helper.LockEnhance = function(val)
+    Varz.lock_enhance = val
+end
+
+
 
 -- #hatch
 local function SessionLoop()
@@ -20383,6 +20649,9 @@ local function SessionLoop()
         local eggs_onfarm = GetCountEggsOnFarm()
 
         local start_timer = false
+
+        -- lock enhance system
+        _Helper.LockEnhance(true)
 
         Varz.IS_HATCHING = true
         if FSettings.disable_team3 == false then
@@ -20440,7 +20709,7 @@ local function SessionLoop()
         end
 
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
                 task.wait(0.05)
             else
@@ -20449,7 +20718,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(9.2)
         else
-            task.wait(2.5)
+            task.wait(3.5)
         end
 
         Varz.IS_HATCHING = false
@@ -20593,7 +20862,7 @@ local function SessionLoop()
         if FSettings.pet_pickplace_enabled then
             --task.wait(5)
             -- #fast
-            if FSettings.hatch_fast_mode then
+            if _Helper.GetFastHatchMode() then
                 if _Helper.GetUltraMode() then
                     task.wait(0.05)
                 else
@@ -20602,26 +20871,26 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(12)
             else
-                task.wait(5)
+                task.wait(6)
             end
         end
 
         -- update what we own
         TrackPets()
         local eggs_onfarmx = GetCountEggsOnFarm()
-        --if not FSettings.hatch_fast_mode then task.wait(0.4) else task.wait(0.1) end -- #fast
+        --if not _Helper.GetFastHatchMode() then task.wait(0.4) else task.wait(0.1) end -- #fast
         --task.wait(0.3)
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("⭐ Eggs are ready to hatch!.")
 
         --task.wait(0.5)
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             task.wait(0.1)
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(0.5)
+            task.wait(2.5)
         end
 
         BeforeUpdateEggCountForAllEggs()
@@ -20641,6 +20910,10 @@ local function SessionLoop()
 
 
         local pet_snap_a = InventoryManager.GetAllPetsUUIDS_Backpack()
+
+        -- unlock enhance system
+        _Helper.LockEnhance(false)
+
 
         Varz.SetDisablePickPlaceFor(3)
         --================= HATCH CYCLE =================
@@ -20667,7 +20940,7 @@ local function SessionLoop()
         UPDATE_LABELS_FUNC.UpdateSetLblStats("⏳ Waiting for hatch buffs")
         --task.wait(3.5)
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
                 task.wait(0.05)
             else
@@ -20676,7 +20949,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
-            task.wait(4)
+            task.wait(6)
         end
 
         -- apply any boosts
@@ -20731,7 +21004,7 @@ local function SessionLoop()
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🟢 Hatching Complete.")
         --task.wait(4)
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
                 task.wait(0.05)
             else
@@ -20740,19 +21013,19 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(7)
         else
-            task.wait(5.5)
+            task.wait(7.5)
         end
 
         -- we no longer need hatching team to be equipped
         UnEquipAllPets()
 
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             task.wait(0.2)
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(2)
+            task.wait(3.5)
         end
 
 
@@ -20774,12 +21047,12 @@ local function SessionLoop()
                 end
 
                 -- #fast
-                if FSettings.hatch_fast_mode then
+                if _Helper.GetFastHatchMode() then
                     task.wait(3)
                 elseif FSettings.hatch_slow_mode then
                     task.wait(5)
                 else
-                    task.wait(0.5)
+                    task.wait(3.5)
                 end
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing pet size team...")
                 if not EquipPets(FSettings.team4) then
@@ -20817,12 +21090,12 @@ local function SessionLoop()
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Hatching Big Pets Complete.")
 
                 -- #fast
-                if FSettings.hatch_fast_mode then
+                if _Helper.GetFastHatchMode() then
                     task.wait(3)
                 elseif FSettings.hatch_slow_mode then
-                    task.wait(5)
+                    task.wait(6)
                 else
-                    task.wait(3)
+                    task.wait(5)
                 end
             end
             UnEquipAllPets()
@@ -20932,7 +21205,7 @@ local function SessionLoop()
 
 
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
                 task.wait(0.05)
             else
@@ -20941,7 +21214,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
-            task.wait(2.5)
+            task.wait(5.5)
         end
 
 
@@ -20990,7 +21263,7 @@ local function SessionLoop()
 
             UPDATE_LABELS_FUNC.UpdateSetLblStats("💰 Selling pets...")
             --task.wait(5) -- Wait for sell buffs to apply
-            if FSettings.hatch_fast_mode then
+            if _Helper.GetFastHatchMode() then
                 if FSettings.hatch_sell_delayed then
                     task.wait(4.2)
                 else
@@ -20999,7 +21272,7 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(9)
             else
-                task.wait(4.2)
+                task.wait(5.2)
             end
 
             -- Apply boosts to sell team
@@ -21042,22 +21315,22 @@ local function SessionLoop()
             --task.wait(2)
             UPDATE_LABELS_FUNC.UpdateSetLblStats("Selling complete.")
             -- #fast
-            if FSettings.hatch_fast_mode then
+            if _Helper.GetFastHatchMode() then
                 task.wait(1)
             elseif FSettings.hatch_slow_mode then
                 task.wait(10)
             else
-                task.wait(5)
+                task.wait(7)
             end
         else
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Unable to sell pets, not allowed, due to settings.")
             print("🔴 Unable to sell pets, not allowed, due to settings.")
-            if FSettings.hatch_fast_mode then
+            if _Helper.GetFastHatchMode() then
                 task.wait()
             elseif FSettings.hatch_slow_mode then
                 task.wait(5)
             else
-                task.wait(1)
+                task.wait(3)
             end
         end
         -- =================== SELL DONE
@@ -21069,11 +21342,11 @@ local function SessionLoop()
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🤖 Placing new eggs...")
         UnEquipAllPets()
         -- #place  #eggs #egg
-        placeMissingEggs(FarmManager.mFarm)                                          -- This function will set Varz.is_forced_stop if it runs out of eggs.
+        placeMissingEggs(FarmManager.mFarm)                                           -- This function will set Varz.is_forced_stop if it runs out of eggs.
         --task.wait(0.5)
-        if not FSettings.hatch_fast_mode then task.wait(0.5) else task.wait(0.1) end -- #fast
+        if not _Helper.GetFastHatchMode() then task.wait(0.5) else task.wait(0.1) end -- #fast
 
-        if Varz.is_forced_stop then                                                  -- CRITICAL STOP: This cannot be recovered by retrying.
+        if Varz.is_forced_stop then                                                   -- CRITICAL STOP: This cannot be recovered by retrying.
             UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Out of eggs to place. Stopping farm.")
             --break
         end
@@ -21086,12 +21359,12 @@ local function SessionLoop()
         --task.wait(0.1)
         --UpdatePetData()
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             task.wait(0.1)
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(0.2)
+            task.wait(3)
         end
 
 
@@ -21121,7 +21394,7 @@ local function SessionLoop()
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("Cycle finished. Waiting for next batch.")
 
-        if not FSettings.hatch_fast_mode then task.wait(0.2) else task.wait(0.1) end -- #fast
+        if not _Helper.GetFastHatchMode() then task.wait(0.2) else task.wait(0.1) end -- #fast
 
         -- Check if user requires rejoin.
         if FSettings.auto_restartjoin_server then
@@ -21139,12 +21412,12 @@ local function SessionLoop()
 
 
         -- #fast
-        if FSettings.hatch_fast_mode then
+        if _Helper.GetFastHatchMode() then
             task.wait(0.5)
         elseif FSettings.hatch_slow_mode then
             task.wait(3)
         else
-            task.wait(0.5)
+            task.wait(1.5)
         end
 
 
@@ -21172,19 +21445,23 @@ PetMutation.STATE = {
 -- Pet Mutation #mutloop
 PetMutation.XpBoostApply = function()
     if FSettings.pet_mut_xpteam_boost_enabled then
-        MutationMachineManager.UI.UpdateStats("Applying Boosts!")
-        MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.pet_mut_xpteam_boosts,
+        local didb = MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.pet_mut_xpteam_boosts,
             FSettings.pet_mut_xpteam_petlist);
+        if didb then
+            MutationMachineManager.UI.UpdateStats("Applying Boosts!")
+        end
         task.wait(0.3)
     end
 end
 
 PetMutation.MutationTeamBoostApply = function()
     if FSettings.pet_mutation_team_boost_enabled then
-        task.wait(0.2)
-        MutationMachineManager.UI.UpdateStats("Applying Boosts!")
-        MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.pet_mutation_boost_list,
+        local didb = MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.pet_mutation_boost_list,
             FSettings.pet_mutation_team_list);
+
+        if didb then
+            MutationMachineManager.UI.UpdateStats("Applying Boosts!")
+        end
         task.wait(0.3)
     end
 end
@@ -21198,6 +21475,15 @@ PetMutation.CheckMissingTeam = function(team_array)
     end
     return true
 end
+
+
+Varz.GetMinsToSecs = function(_mins)
+    local safe_mins = tonumber(_mins) or 0
+
+    return safe_mins * 60
+end
+
+
 
 PetMutation.CheckTeamsForMissingPets = function()
     -- Local references for clarity
@@ -21235,6 +21521,97 @@ PetMutation.CheckTeamsForMissingPets = function()
     return true, ""
 end
 
+PetMutation.RestartSystemSafe = function()
+    if FSettings.mut_system.timeout_system then
+        return true
+    end
+end
+
+
+
+
+Varz.horseman_elephant_current_time = os.clock()
+Varz.horseman_ele_max = 5 -- 5s
+
+
+PetMutation.GetExtraPetsAdded = function(stage)
+    if not _Helper.IsTimeUp(Varz.horseman_elephant_current_time, Varz.horseman_ele_max) then
+        return
+    end
+
+    Varz.horseman_elephant_current_time = os.clock()
+
+    -- Get the list of currently equipped/active pets
+    local activepets = FarmManager.GetActivePetsUUIDS()
+    local extra_pets = {} -- This will store the pets that shouldn't be there
+
+    -- Check if anything in active pets is part of the teams passed
+    if stage == "xp" then
+        -- 1. Get the allowed teams (default to empty table if nil to prevent errors)
+        local xpteam1 = FSettings.mut_system.maxlevel_team or {}
+        local xpteam2 = FSettings.mut_system.xpteam or {}
+
+        -- Ensure we do not remove any targets! very important
+        local targets = FSettings.mut_system.targetteam or {}
+
+        -- 2. Create a "Lookup Table" (Set) of all allowed UUIDs
+        -- This allows us to check if a pet is allowed instantly
+        local allowed_uuids = {}
+
+        for _, uuid in ipairs(xpteam1) do allowed_uuids[uuid] = true end
+        for _, uuid in ipairs(xpteam2) do allowed_uuids[uuid] = true end
+        for _, uuid in ipairs(targets) do allowed_uuids[uuid] = true end
+
+        -- 3. Iterate through active pets and find the ones NOT in our allowed list
+
+        for _, uuid in ipairs(activepets) do
+            if not allowed_uuids[uuid] then
+                -- This pet is active but not in any of the allowed teams
+                table.insert(extra_pets, uuid)
+            end
+        end
+    end
+
+    if stage == "elephant" then
+        local eteam1 = FSettings.mut_system.baseweight_team or {}
+        local etargets = FSettings.mut_system.targetteam or {}
+
+        local allowed_uuids = {}
+
+        for _, uuid in ipairs(eteam1) do allowed_uuids[uuid] = true end
+        for _, uuid in ipairs(etargets) do allowed_uuids[uuid] = true end
+
+        for _, uuid in ipairs(activepets) do
+            if not allowed_uuids[uuid] then
+                -- This pet is active but not in any of the allowed teams
+                table.insert(extra_pets, uuid)
+            end
+        end
+    end
+
+    if stage == "horseman" then
+        local hteam1 = FSettings.mut_system.mut_team or {}
+        local htargets = FSettings.mut_system.targetteam or {}
+
+        local allowed_uuids = {}
+
+        for _, uuid in ipairs(hteam1) do allowed_uuids[uuid] = true end
+        for _, uuid in ipairs(htargets) do allowed_uuids[uuid] = true end
+
+        for _, uuid in ipairs(activepets) do
+            if not allowed_uuids[uuid] then
+                -- This pet is active but not in any of the allowed teams
+                table.insert(extra_pets, uuid)
+            end
+        end
+    end
+
+    for _, uuid in ipairs(extra_pets) do
+        _Helper.UnEquipPet(uuid)
+        print("Extra pet was removed")
+    end
+end
+
 PetMutation.Loop = function()
     PetMutation.is_running = true
     while PetMutation.is_running do
@@ -21244,6 +21621,13 @@ PetMutation.Loop = function()
             PetMutation.mut_ui.UpdateStats("🔴 No mutations selected.")
             continue
         end
+
+        if not Varz.GetCheckIfPro() then
+            PetMutation.mut_ui.UpdateStats("🔴 Free user detected. Please upgrade. System will be moved to Premium Only")
+            task.wait(8)
+            --break
+        end
+
 
         local use_always_active_change = FSettings.mut_system.continue_enable
         local is_turbo_mode = FSettings.mut_system.turbo_xp_teams
@@ -21269,7 +21653,14 @@ PetMutation.Loop = function()
             PetMutation.HasCheckedTeams = true
         end
 
+        local time_out_system = os.clock()
+        local timeout_mins = Varz.GetMinsToSecs(9) -- min
+
         -- Check if we need to max level any pets, these are pets that have reached required mutation and have not reached maximum level yet.
+        -- ==============================================
+        -- ==== MAX LEVEL
+        -- ==============================================
+
         if FSettings.mut_system.max_level_enable then
             local max_level_pets, is_turbo_maxed = PetMutation.mut.GetPetsRequireMaxLevel()
             local is_levelOnly = FSettings.mut_system.only_level_mode
@@ -21307,8 +21698,11 @@ PetMutation.Loop = function()
                 local last_boost_timexx = 0
                 local delay_secs_for_boostxx = 10 -- 10s
 
+                -- #timeout
+                time_out_system = os.clock()
+
                 while PetMutation.is_running do
-                    task.wait(0.3)
+                    task.wait(0.5)
                     local anyreached, tbl_names = PetMutation.mut.HasPetReachedMaxLevel(max_level_pets,
                         petsAddedMl, isMaxLevelPlaced)
 
@@ -21317,6 +21711,24 @@ PetMutation.Loop = function()
                         task.wait(0.3)
                         break
                     end
+
+                    -- check timeout
+                    if _Helper.IsTimeUp(time_out_system, timeout_mins) then
+                        if PetMutation.RestartSystemSafe() then
+                            PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
+                            task.wait(3)
+                            break
+                        end
+                    end
+
+
+                    if FSettings.mut_system.realtime_monitor_system then
+                        -- Use the monitor system
+                        -- Detects any pets that should not be here.
+                        PetMutation.GetExtraPetsAdded("xp")
+                    end
+
+
 
 
                     if FSettings.always_active_boosts and (os.clock() - last_boost_timexx >= delay_secs_for_boostxx) then
@@ -21427,8 +21839,12 @@ PetMutation.Loop = function()
             local last_boost_timex = 0
             local delay_secs_for_boostx = 10 -- 10s
 
+
+            -- #timeout
+            time_out_system = os.clock()
+
             while PetMutation.is_running do
-                task.wait(0.3)
+                task.wait(0.5)
                 if next(FSettings.mut_system.wanted) == nil then
                     break
                 end
@@ -21439,6 +21855,23 @@ PetMutation.Loop = function()
                     -- Apply the boost (without waiting/pausing the script)
                     PetMutation.XpBoostApply()
                     task.wait(0.3)
+                end
+
+                -- check timeout
+                if _Helper.IsTimeUp(time_out_system, timeout_mins) then
+                    if PetMutation.RestartSystemSafe() then
+                        PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
+                        task.wait(3)
+                        was_break = true
+                        break
+                    end
+                end
+
+
+                if FSettings.mut_system.realtime_monitor_system then
+                    -- Use the monitor system
+                    -- Detects any pets that should not be here.
+                    PetMutation.GetExtraPetsAdded("xp")
                 end
 
                 -- check if any pets have reached any required levels
@@ -21626,11 +22059,26 @@ PetMutation.Loop = function()
 
             local pass_timex = 0
             _Helper.StartTimer(mut_key)
+
+            -- #timeout
+            time_out_system = os.clock()
+
+
             while PetMutation.is_running do
                 --warn("")
                 task.wait(0.2)
                 if next(FSettings.mut_system.wanted) == nil then
                     break
+                end
+
+                -- check timeout
+                if _Helper.IsTimeUp(time_out_system, timeout_mins) then
+                    if PetMutation.RestartSystemSafe() then
+                        PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
+                        task.wait(3)
+                        was_break = true
+                        break
+                    end
                 end
 
 
@@ -21641,6 +22089,8 @@ PetMutation.Loop = function()
                     PetMutation.MutationTeamBoostApply()
                     task.wait(0.3)
                 end
+
+
 
 
                 -- checks success
@@ -21819,6 +22269,17 @@ PetMutation.Loop = function()
                 end
 
 
+                if FSettings.mut_system.realtime_monitor_system then
+                    -- Use the monitor system
+                    -- Detects any pets that should not be here.
+                    if _flag == "weight" then
+                        PetMutation.GetExtraPetsAdded("elephant")
+                    else
+                        PetMutation.GetExtraPetsAdded("horseman")
+                    end
+                end
+
+
                 local str_names = ""
                 local xlimit_display_names_ui = 6
                 local total_names = #tbl_names
@@ -21849,7 +22310,7 @@ PetMutation.Loop = function()
 
                 -- try to clean any pet mutation.
                 PetMutation.mut.CleanPet(pets_require_mut)
-                task.wait(1)
+                task.wait(2)
             end
 
 
@@ -22720,13 +23181,13 @@ Varz.ProUi = function()
     --- Hatching Advanced Options 🔥
     -- ===============================================
     if gHatchOptionsAdvanced then
-        -- Always capture the reference returned by AddToggle
-
-        gHatchOptionsAdvanced:AddLabel({
-            Text =
-            "🔴 These options will be premium only soon.",
-            DoesWrap = true
-        })
+        if not Varz.GetCheckIfPro() then
+            gHatchOptionsAdvanced:AddLabel({
+                Text =
+                    Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        end
 
         gHatchOptionsAdvanced:AddLabel({
             Text =
@@ -22756,6 +23217,23 @@ Varz.ProUi = function()
                 SaveData()
             end
         })
+
+        gHatchOptionsAdvanced:AddDivider()
+        local toggleCenterEggs = gHatchOptionsAdvanced:AddToggle("toggleCenterEggs", {
+            Text = "<b><stroke color='#000000' thickness='2'><font color='#DCFF00'>🥚 Middle Eggs </font></stroke></b>",
+            Default = FSettings.eggs_center_mode1,
+            Tooltip =
+            "Tries to keep the eggs in middle of the farm.",
+            Callback = function(Value)
+                FSettings.eggs_center_mode1 = Value
+                SaveData()
+            end
+        })
+
+        if not Varz.GetCheckIfPro() then
+            toggleExtremeMode:SetDisabled(true)
+            toggleultradmode:SetDisabled(true)
+        end
 
         gHatchOptionsAdvanced:AddDivider()
     end
@@ -23908,7 +24386,80 @@ Varz.ProUi = function()
 
 
         gMutOnFarm:AddDivider()
+        gMutOnFarm:AddDivider()
 
+        gMutOnFarm:AddLabel({
+            Text = "------",
+            DoesWrap = false
+        })
+
+
+        gMutOnFarm:AddToggle("disablehorsemanteam", {
+            Text =
+                "<b><stroke color='#000000' thickness='1'>🔴 <font color='#ED2200'>Disable</font> " ..
+                "<font color='#B900FF'>Horseman</font></stroke></b>",
+            Default = FSettings.mut_system.disable_horseman,
+            Tooltip =
+            "If set horseman will not be used.",
+            Callback = function(Value)
+                FSettings.mut_system.disable_horseman = Value
+                SaveData()
+            end
+        })
+
+        gMutOnFarm:AddDivider()
+        gMutOnFarm:AddLabel({
+            Text =
+                "🕵️ Monitoring:\n" ..
+                "🔍 Actively watches your active pets. If any unapproved or extra pet is detected, it will be removed automatically.",
+            DoesWrap = true
+        })
+
+        gMutOnFarm:AddToggle("disablehorsemanteamActively", {
+            Text =
+                "<b><stroke color='#000000' thickness='1'>🔍<font color='#4A9AFF'>Realtime</font> " ..
+                "<font color='#FF5757'>Monitoring</font></stroke></b>",
+            Default = FSettings.mut_system.realtime_monitor_system,
+            Tooltip =
+            "When enabled it will remove pets that are not part of the module system.",
+            Callback = function(Value)
+                FSettings.mut_system.realtime_monitor_system = Value
+                SaveData()
+            end
+        })
+        gMutOnFarm:AddDivider()
+
+
+
+
+        gMutOnFarm:AddDivider()
+        gMutOnFarm:AddLabel({
+            Text =
+                "🚨 Restart System:\n" ..
+                "🔄 Restarts every 9 minutes to prevent freezes and automatically recover from unexpected issues.",
+            DoesWrap = true
+        })
+        gMutOnFarm:AddToggle("disablehorsemanteamRestart", {
+            Text =
+                "<b><stroke color='#000000' thickness='1'>🔍<font color='#00FFB3'>Restart</font> " ..
+                "<font color='#E5FF00'>System</font></stroke></b>",
+            Default = FSettings.mut_system.timeout_system,
+            Tooltip =
+            "If enabled it will restart the system every set time.",
+            Callback = function(Value)
+                FSettings.mut_system.timeout_system = Value
+                SaveData()
+            end
+        })
+        gMutOnFarm:AddDivider()
+
+
+
+
+        gMutOnFarm:AddLabel({
+            Text = "------",
+            DoesWrap = false
+        })
         ----============================ Filler Team #fill
         UI_Dropdown.dropdown_petfiller_team = gMutOnFarm:AddDropdown("dropdown_petfiller_team", {
             Values = {},
@@ -28801,6 +29352,31 @@ local function UiPetsSideTab()
 
     PetFeedingGroup:AddDivider()
 
+
+
+    -- Dropdown: Exclude Plants
+    local exlcudeplants = PetFeedingGroup:AddDropdown("exlcudeplants", {
+        Values = {},
+        Default = {},
+        Multi = true,
+        Text = "🌱 Exclude Plants",
+        Searchable = true,
+        MaxVisibleDropdownItems = 10,
+        Changed = function(newSelection)
+            FOtherSettings.feeding_list_plants = {}
+            for key, value in pairs(newSelection) do
+                FOtherSettings.feeding_list_plants[key] = value
+            end
+            SaveDataOther()
+        end
+    })
+
+    -- Populate dropdown with all pet names
+    exlcudeplants:SetValues(GetKeyValuesFromList(all_plants_list))
+    exlcudeplants:SetValue(FOtherSettings.feeding_list_plants)
+
+
+
     PetFeedingGroup:AddLabel({
         Text =
         "⚠️ Feeds all active <font color='#FFFACD'>pets</font> with hunger under <font color='#FF4C4C'>60%</font>. Ignores <font color='#FFA07A'>excluded</font> list pets. Paused if hatching is in progress.",
@@ -30926,7 +31502,8 @@ if not _G.FallEventLoop then
                 ["Snowy"] = true,
                 ["Ornamented"] = true,
                 ["Glacial"] = true,
-                ["Pepermint"] = true
+                ["Pepermint"] = true,
+                ["Arctic"] = true
             }
 
             local collectfruits = {}
@@ -32057,6 +32634,9 @@ if not _G.monsterfeedsy then
             while Varz.feeding_cooldown_timer > 0 and FOtherSettings.feeding_pets_auto do
                 MonsterFeeder.UpdateLblStatsText("🟢 Active. Feed in " .. Varz.feeding_cooldown_timer .. "s")
                 Varz.feeding_cooldown_timer = Varz.feeding_cooldown_timer - 1
+                if not FOtherSettings.feeding_pets_auto then
+                    break
+                end
                 task.wait(1)
             end
 
@@ -33824,7 +34404,7 @@ _Helper.AutoActivateGameData()
 
 
 
--- #fav | fav_fruit_enhancer
+-- #fav | fav_fruit_enhancer  #enhance
 Varz.cache_fruit_fav_abuse = {}
 Varz.cache_reset_timer = 0
 Varz.valid_rarity_filter = { ["Prismatic"] = true, ["Transcendent"] = true } -- Adjust as needed
@@ -33840,6 +34420,7 @@ Varz.StopEnhancer = function(_time)
     task.wait(0.4)
 end
 
+Varz.lock_enhance = true
 
 Varz.GetFruitToFavAbuse = function()
     -- Helper to safely get UUID
@@ -34001,9 +34582,15 @@ if TaskManager.loop_egg_enhancer then
     TaskManager.loop_egg_enhancer = nil
 end
 
+
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
-        task.wait(0.5)
+        task.wait(0.3)
+
+        if Varz.lock_enhance == true then
+            task.wait(0.2)
+            continue
+        end
 
         if Varz.enhancer_locked > 0 then
             task.wait(0.5)
@@ -34030,8 +34617,8 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             -- but favoriting them ensures they are selected.
             if ls and #ls > 0 then
                 MakeFruitsFav(ls)
-                task.wait(0.3) -- Optional: slight delay to ensure server registers fav
-                MakeFruitsFav(ls)
+                --task.wait(0.1) -- Optional: slight delay to ensure server registers fav
+                --MakeFruitsFav(ls)
             end
         end)
 
@@ -34229,6 +34816,7 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         --_Helper.JsonPrint(data)
         if data.invalidp then
+            print("Invalid data detected")
         end
 
         if data.offn then
@@ -34299,6 +34887,11 @@ Varz.MakeDataForInventory = function()
         playerstatus = _playersata,
         is_pro = false,
         serverv = _S.CurentV,
+        mutation = MutationMachineManager.is_running or false,
+        pet_mutation = PetMutation.is_running or false,
+        agebreak = FSettings.agebreak or false,
+        hatchingeggs = FSettings.is_running or false,
+        gameserver = GetServerVersion(),
     }
 
     return datax
