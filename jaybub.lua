@@ -151,7 +151,7 @@ if not Library then
 end
 
 -- #start
-_S.AppName = "Exotic Hub"
+_S.AppName = "Exotic Hub - JH"
 _S.CurentV = "v1.29.7"
 
 local Varz = {}
