@@ -535,17 +535,6 @@ local function processSaleEntry(entry)
     buyer = sanitizeField(buyer)
     item = sanitizeField(item)
     token = sanitizeField(token)
-    local buyerPresent = false
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Name == buyer or p.DisplayName == buyer then
-            buyerPresent = true
-            break
-        end
-    end
-    if not buyerPresent then
-        pcall(function() entry:Destroy() end)
-        return
-    end
     if getgenv().autoThanks then
         if not recentPurchases[buyer] then
             recentPurchases[buyer] = { items = {}, lastTick = tick(), worker = nil }
@@ -561,38 +550,33 @@ end
 
 local function setupHistoryWatcher()
     local gui = LocalPlayer.PlayerGui:WaitForChild("TradeBoothHistory"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
-
     for _, c in ipairs(gui:GetChildren()) do
         pcall(function() c:Destroy() end)
     end
-
     local acc = 0
     local throttle = 0.18
     local conn
-
     conn = RunService.RenderStepped:Connect(function(dt)
         acc += dt
         if acc < throttle then return end
         acc = 0
-
         local children = gui:GetChildren()
         if #children == 0 then return end
-
         for _, child in ipairs(children) do
             if child and child.Parent == gui then
-                local ok, err = pcall(function()
-                    processSaleEntry(child)
-                end)
-                pcall(function() child:Destroy() end)
-                if not ok then
-                    warn("processSaleEntry failed:", tostring(err))
+                local old = child:GetAttribute("Old")
+                if not old then
+                    child:SetAttribute("Old", true)
+                    task.spawn(function()
+                        pcall(function() processSaleEntry(child) end)
+                    end)
                 end
             end
         end
     end)
-
     return conn
 end
+        
 local chatRunning = false
 local function startChatLoop()
     if chatRunning then return end
