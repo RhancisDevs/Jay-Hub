@@ -517,9 +517,11 @@ end
 
 local function processSaleEntry(entry)
     if not entry then return end
-    entry:SetAttribute("Old", true)
     local spacer = entry:FindFirstChild("Spacer") or entry:FindFirstChildWhichIsA("Frame")
-    if not spacer then return end
+    if not spacer then
+        pcall(function() entry:Destroy() end)
+        return
+    end
     local price, buyer, item, token = nil, nil, nil, nil
     local p = spacer:FindFirstChild("Price")
     if p and p:FindFirstChild("Amount") then price = p.Amount.Text end
@@ -533,6 +535,17 @@ local function processSaleEntry(entry)
     buyer = sanitizeField(buyer)
     item = sanitizeField(item)
     token = sanitizeField(token)
+    local buyerPresent = false
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Name == buyer or p.DisplayName == buyer then
+            buyerPresent = true
+            break
+        end
+    end
+    if not buyerPresent then
+        pcall(function() entry:Destroy() end)
+        return
+    end
     if getgenv().autoThanks then
         if not recentPurchases[buyer] then
             recentPurchases[buyer] = { items = {}, lastTick = tick(), worker = nil }
@@ -543,12 +556,14 @@ local function processSaleEntry(entry)
         scheduleBuyerFlush(buyer)
     end
     hopTimeoutTick = math.max(hopTimeoutTick, tick() + (getgenv().slidingHopSeconds or 300))
+    pcall(function() entry:Destroy() end)
 end
 
 local function setupHistoryWatcher()
     local gui = LocalPlayer.PlayerGui:WaitForChild("TradeBoothHistory"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
-    for _, c in ipairs(gui:GetChildren()) do c:SetAttribute("Old", true) end
-    gui.ChildAdded:Connect(function() task.wait(0.05) end)
+    for _, c in ipairs(gui:GetChildren()) do
+        pcall(function() c:Destroy() end)
+    end
     local acc = 0
     local throttle = 0.18
     local conn
@@ -556,11 +571,19 @@ local function setupHistoryWatcher()
         acc += dt
         if acc < throttle then return end
         acc = 0
-        for _, child in ipairs(gui:GetChildren()) do
-            local old = child:GetAttribute("Old")
-            if not old then
-                child:SetAttribute("Old", true)
-                task.spawn(function() pcall(function() processSaleEntry(child) end) end)
+        local children = gui:GetChildren()
+        for _, child in ipairs(children) do
+            if child and child.Parent == gui and (child:IsA("Frame") or child:IsA("ImageLabel") or child:IsA("TextButton") or child:IsA("TextLabel")) then
+                local spacer = child:FindFirstChild("Spacer") or child:FindFirstChildWhichIsA("Frame")
+                if spacer then
+                    task.spawn(function()
+                        pcall(function() processSaleEntry(child) end)
+                    end)
+                else
+                    pcall(function() child:Destroy() end)
+                end
+            else
+                pcall(function() if child and child.Parent == gui then child:Destroy() end end)
             end
         end
     end)
