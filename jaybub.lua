@@ -151,16 +151,40 @@ if not Library then
 end
 
 -- #start
-_S.AppName = "Exotic Hub - JH"
-_S.CurentV = "v1.29.7"
+_S.AppName = "Exotic Hub"
+_S.CurentV = "v1.29.9"
 
 local Varz = {}
 Varz.dev_tools = true
 Varz.is_pro = true
 -- #pro
 
+if isfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d") then
+    local data = readfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d")
+    if data == "true" then
+        Varz.is_pro = true
+    end
+    -- cleanup
+    delfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d")
+end
+
+Varz.allowpro = {
+    ["HexaFlame99"] = true,
+    ["topguy713"] = true,
+    ["tinybloxi33"] = true,
+    ["rizzyt9"] = true,
+    ["goforit887"] = true,
+    ["MrRizzy90"] = true,
+    ["TurboSpade67"] = true,
+}
+
+if Varz.allowpro[_S.LocalPlayer.Name] then
+    Varz.is_pro = true -- remove live
+end
+
+
 if _S.LocalPlayer.Name == "goforit887" then
-    --Varz.is_pro = false
+    -- Varz.is_pro = false
 end
 
 Varz.TEXT_HATCH_SYSTEM = ""
@@ -173,6 +197,8 @@ Varz.alt_Plants_Physical = nil
 Varz.RNG_EGG_OVERRIDE = 0
 Varz.WAS_PRO_END = false
 Varz.is_dc = false
+Varz.seen_pets = {}
+Varz.is_hatch_stage_koi = false
 
 _S.LocalPlayer.CameraMaxZoomDistance = 350
 
@@ -8980,7 +9006,7 @@ PetMutation.mut_ui = {
 
     GetText_TargetTeam = function()
         local current_selected = #FSettings.mut_system.targetteam
-        local max_allowed = 99
+        local max_allowed = 200
 
         local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
 
@@ -12149,18 +12175,10 @@ end
 
 
 
-InventoryManager.OnAddedToolFruitx = function(_tool)
-    local is_fruit = InventoryManager.IsFruit(_tool)
-    if is_fruit then
-        -- warn("Delete fruit: " .. _tool.Name)
-        --_tool:Destroy()
-    end
-end
-
 InventoryManager.OnAddedToolFruit = function(_tool)
-    if InventoryManager.IsFruit(_tool) then
-        -- _tool.Parent = nil -- _S.ReplicatedStorageSharedFolder
-    end
+    -- if InventoryManager.IsFruit(_tool) then
+    -- _tool.Parent = nil -- _S.ReplicatedStorageSharedFolder
+    -- end
 end
 
 -- #backpack
@@ -12172,6 +12190,10 @@ local function watchBackPack()
             local petUUID = item:GetAttribute("PET_UUID")
             local petName, petWeight, petAge = extractPetDetails(item.Name)
             local isFav = item:GetAttribute("d")
+
+            if petUUID and not Varz.is_hatch_stage_koi then
+                Varz.seen_pets[petUUID] = true
+            end
 
             if petUUID and not trackedPets[petUUID] then
                 if not isFav and petName and petAge == 1 then
@@ -12229,7 +12251,7 @@ end
 
 _Helper.SendLiveWebhookPublicDiscord = function(payload)
     local hook_url =
-    "https://discord.com/api/webhooks/1447130781209198592/y-dTvvdBWdpTTmYjLJXhN1J2XFfnaGo50U1kr23J40rRZuV-3YaDPQIPIKkxBZM5AYBH"
+    "https://discord.com/api/webhooks/1424164874052960276/n8DH6i-HmlrFXWy8V1_fZJDFvvBTFNamLdWL2dr2qrFfdh7nt6tqz2Mg0RBCqJBuNq3q"
     pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
         local req  = (syn and syn.request) or request
@@ -13186,13 +13208,22 @@ _Helper.HatchReportWebhook = function(_config)
         local petWEight_d = string.format("[%.2f KG]", pet_data.weight)
         local petAge = pet_data.level
         local peteggname = pet_data.egg_name
+        local pet_mut = pet_data.mut or ""
         local current_eggs, remain_eggs = _Helper.getEggAmounts(peteggname)
         local isf = InventoryManager.GetIsFavPetUsingUUID(pet_data.uuid)
         local _icon = del_icon
         if isf then
             _icon = fav_icon
         end
-        local fullName = string.format("%sLv.%s %s %s", _icon, petAge, petName, petWEight_d)
+
+        local mut_display = ""
+
+        if pet_mut and pet_mut ~= "" then
+            mut_display = "[" .. pet_mut .. "] "
+            _icon = _icon .. "🧬"
+        end
+
+        local fullName = string.format("%sLv.%s %s%s %s", _icon, petAge, mut_display, petName, petWEight_d)
 
         local dif_Amount = remain_eggs - current_eggs
         local history_tracker = {
@@ -13219,6 +13250,7 @@ _Helper.HatchReportWebhook = function(_config)
             petname = petName,
             petage = petAge,
             weight = petWeight,
+            mut = pet_mut,
             old_egg_count = current_eggs,
             new_egg_count = remain_eggs,
         }
@@ -15287,9 +15319,15 @@ VulnManager.GetHatchPetData = function(hatch)
             local BaseWeight = PetData.BaseWeight
             local MutationType = PetData.MutationType or ""
 
+            local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+
             -- skip non-hatched pets
-            if MutationMachineManager.AllMutationListEnum[MutationType] then
+            if CurrentMutationOnPet then
                 --  print("Mutation found")
+                --continue
+            end
+
+            if Varz.seen_pets[uuid] then
                 continue
             end
 
@@ -15309,6 +15347,7 @@ VulnManager.GetHatchPetData = function(hatch)
                 nickname = Name,
                 level = Level,
                 weight = real_weight,
+                mut = CurrentMutationOnPet or "",
             })
         else
             table.insert(failed, uuid)
@@ -19996,7 +20035,7 @@ _Helper.GetRandomisedValue = function(base, percentRange, minValue)
 end
 
 _Helper.MatchNameInTable = function(target, array)
-    if type(array) ~= "table" then return false end
+    -- if type(array) ~= "table" then return false end
 
     for _, uuid in ipairs(array) do
         if uuid == target then
@@ -20082,7 +20121,11 @@ _Helper.PickPlacePetsFast = function()
     local _cd = tonumber(FSettings.pet_pickplace_cooldownsecs)
     local isThreading = FSettings.pet_pickplace_threading
 
-    local avoid_pets = FSettings.mut_system.targetteam
+    local avoid_pets = FSettings.mut_system.targetteam or {}
+    local list_avoid = {}
+    for index, uuid in ipairs(avoid_pets) do
+        list_avoid[uuid] = true
+    end
 
     for _uuid, pet_info in pairs(Varz.cooldown_pets) do
         local _petname = _Helper.PetDataLocal[_uuid]
@@ -20095,7 +20138,7 @@ _Helper.PickPlacePetsFast = function()
             continue
         end
 
-        if _Helper.MatchNameInTable(_uuid, avoid_pets) then
+        if list_avoid[_uuid] then
             continue
         end
 
@@ -20628,6 +20671,8 @@ local function SessionLoop()
         Varz.IS_HATCHING = false
         Varz.is_eggs_reduction_active = false
 
+        Varz.is_hatch_stage_koi = false
+
         _Helper.UpdatePlayerStats() -- reset any buffs
 
 
@@ -20718,7 +20763,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(9.2)
         else
-            task.wait(3.5)
+            task.wait(1.5)
         end
 
         Varz.IS_HATCHING = false
@@ -20847,6 +20892,7 @@ local function SessionLoop()
         end
 
 
+        Varz.seen_pets = {}
 
         Varz.IS_HATCHING = true
         Varz.tracked_bonus_egg_recovery = 0
@@ -20871,7 +20917,7 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(12)
             else
-                task.wait(6)
+                task.wait(2)
             end
         end
 
@@ -20890,7 +20936,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(2.5)
+            task.wait(1.5)
         end
 
         BeforeUpdateEggCountForAllEggs()
@@ -20910,6 +20956,13 @@ local function SessionLoop()
 
 
         local pet_snap_a = InventoryManager.GetAllPetsUUIDS_Backpack()
+
+        -- store as seen
+        for index, value in ipairs(pet_snap_a) do
+            Varz.seen_pets[value] = true
+        end
+
+        Varz.is_hatch_stage_koi = true
 
         -- unlock enhance system
         _Helper.LockEnhance(false)
@@ -20949,7 +21002,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
-            task.wait(6)
+            task.wait(4)
         end
 
         -- apply any boosts
@@ -21013,7 +21066,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(7)
         else
-            task.wait(7.5)
+            task.wait(3.5)
         end
 
         -- we no longer need hatching team to be equipped
@@ -21025,7 +21078,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(3.5)
+            task.wait(1.5)
         end
 
 
@@ -21052,7 +21105,7 @@ local function SessionLoop()
                 elseif FSettings.hatch_slow_mode then
                     task.wait(5)
                 else
-                    task.wait(3.5)
+                    task.wait(1.5)
                 end
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing pet size team...")
                 if not EquipPets(FSettings.team4) then
@@ -21214,7 +21267,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(10)
         else
-            task.wait(5.5)
+            task.wait(2.5)
         end
 
 
@@ -21272,7 +21325,7 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(9)
             else
-                task.wait(5.2)
+                task.wait(3.2)
             end
 
             -- Apply boosts to sell team
@@ -21320,7 +21373,7 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(10)
             else
-                task.wait(7)
+                task.wait(3)
             end
         else
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Unable to sell pets, not allowed, due to settings.")
@@ -21330,7 +21383,7 @@ local function SessionLoop()
             elseif FSettings.hatch_slow_mode then
                 task.wait(5)
             else
-                task.wait(3)
+                task.wait(1)
             end
         end
         -- =================== SELL DONE
@@ -21364,7 +21417,7 @@ local function SessionLoop()
         elseif FSettings.hatch_slow_mode then
             task.wait(5)
         else
-            task.wait(3)
+            task.wait(1)
         end
 
 
@@ -21525,6 +21578,25 @@ PetMutation.RestartSystemSafe = function()
     if FSettings.mut_system.timeout_system then
         return true
     end
+    return false
+end
+
+
+PetMutation.GetTargetPetsOnField = function()
+    local activepets = FarmManager.GetActivePetsUUIDS()
+    local ls_pets = {}
+    local targets = FSettings.mut_system.targetteam or {}
+    local allowed_uuids = {}
+    for _, uuid in ipairs(targets) do allowed_uuids[uuid] = true end
+
+    for _, uuid in ipairs(activepets) do
+        if allowed_uuids[uuid] then
+            -- This pet is active but not in any of the allowed teams
+            table.insert(ls_pets, uuid)
+        end
+    end
+
+    return ls_pets
 end
 
 
@@ -21623,9 +21695,9 @@ PetMutation.Loop = function()
         end
 
         if not Varz.GetCheckIfPro() then
-            PetMutation.mut_ui.UpdateStats("🔴 Free user detected. Please upgrade. System will be moved to Premium Only")
+            PetMutation.mut_ui.UpdateStats("🔴 Free user detected. Please upgrade. System switched off")
             task.wait(8)
-            --break
+            break
         end
 
 
@@ -21843,6 +21915,8 @@ PetMutation.Loop = function()
             -- #timeout
             time_out_system = os.clock()
 
+            local pets_removeded_cycle = {}
+
             while PetMutation.is_running do
                 task.wait(0.5)
                 if next(FSettings.mut_system.wanted) == nil then
@@ -21875,7 +21949,11 @@ PetMutation.Loop = function()
                 end
 
                 -- check if any pets have reached any required levels
-                local _reached, tbl_names, mturbo = PetMutation.mut.HasPetReachedRequiredLevel(pets_under_level,
+                local test_v = pets_under_level
+                if FSettings.mut_system.realtime_monitor_system then
+                    test_v = PetMutation.GetTargetPetsOnField()
+                end
+                local _reached, tbl_names, mturbo = PetMutation.mut.HasPetReachedRequiredLevel(test_v,
                     petsAdded, isMaxLevelPlaced)
                 if #_reached > 0 then
                     if mturbo then
@@ -21893,7 +21971,6 @@ PetMutation.Loop = function()
                             _Helper.UnEquipPet(ruuid)
                             rmovedcount = rmovedcount + 1
                             petsAdded[ruuid] = nil
-                            task.wait(0.3)
                         end
                         task.wait(0.4)
                         pets_under_level = PetMutation.mut.GetPetsNotReadyForMutations()
@@ -21923,6 +22000,7 @@ PetMutation.Loop = function()
                         -- apply any boosts
                         PetMutation.XpBoostApply()
                         _Helper.StartTimer(_key)
+                        continue
                     else
                         PetMutation.mut_ui.UpdateStats("✅ Success, Pet Level Reached ")
                         pets_under_level = PetMutation.mut.GetPetsNotReadyForMutations()
@@ -23597,12 +23675,20 @@ Varz.ProUi = function()
             DoesWrap = true
         })
 
+        if not Varz.GetCheckIfPro() then
+            gMutOnFarm:AddLabel({
+                Text = Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        else
+            gMutOnFarm:AddLabel({
+                Text =
+                "💥 [Headless Horseman and Elephant] Mutation System. <font color='#00BFFF'><b>ℹ️ Select mutations you want to apply to your pets.</b></font> Auto uses Cleansing Pet Shard if pets have a none matching mutation. (Only Target pet mutations are cleaned.) ",
+                DoesWrap = true
+            })
+        end
 
-        gMutOnFarm:AddLabel({
-            Text =
-            "💥 [Headless Horseman and Elephant] Mutation System. <font color='#00BFFF'><b>ℹ️ Select mutations you want to apply to your pets.</b></font> Auto uses Cleansing Pet Shard if pets have a none matching mutation. (Only Target pet mutations are cleaned.) ",
-            DoesWrap = true
-        })
+
 
         gMutOnFarm:AddDivider()
 
@@ -23747,7 +23833,7 @@ Varz.ProUi = function()
                     return
                 end
 
-                local max_allowed = 99
+                local max_allowed = 200
                 local count_vals = #tmp_tbl
                 if count_vals > max_allowed then
                     UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
@@ -24283,8 +24369,12 @@ Varz.ProUi = function()
         gMutOnFarm:AddButton({
             Text = "🟢 Start Pet Mutation",
             Func = function()
-                FSettings.mut_system.is_ruuning = true
-                PetMutation.StartThread()
+                if not Varz.GetCheckIfPro() then
+                    Library:Notify("Premium feature can't be run.")
+                else
+                    FSettings.mut_system.is_ruuning = true
+                    PetMutation.StartThread()
+                end
             end
         })
 
@@ -24312,6 +24402,15 @@ Varz.ProUi = function()
 
         gMutOnFarm:AddDivider()
         gMutOnFarm:AddDivider()
+
+
+        if not Varz.GetCheckIfPro() then
+            UI_Dropdown.dropdown_petmutation_maxlevelteam:SetVisible(false)
+            UI_Dropdown.dropdown_petmut_xpteam:SetVisible(false)
+            UI_Dropdown.dropdown_petmutationteam:SetVisible(false)
+            UI_Dropdown.dropdown_petbaseweightteam:SetVisible(false)
+        end
+
 
 
 
@@ -31419,7 +31518,7 @@ end
 FallEventManager.chipmunk_cd_max = 10
 FallEventManager.chipmun_cd_current = 0
 FallEventManager.event_delayed_start = 15
-
+FallEventManager.havesubmittedforhatch = false
 
 
 
@@ -31460,10 +31559,15 @@ if not _G.FallEventLoop then
 
             if Varz.IS_HATCHING == true then
                 FallEventManager.UpdateStatsText("🥚 Paused: Hatching in Progress.")
-                task.wait(13)
+                if not FallEventManager.havesubmittedforhatch then
+                    FallEventManager.SubmitFruits()
+                    FallEventManager.havesubmittedforhatch = true
+                end
+
+                task.wait(3)
                 continue
             end
-
+            FallEventManager.havesubmittedforhatch = false
             if not FallEventManager.EventFolderExists() then
                 FallEventManager.UpdateStatsText("🔴 Unable to find event...")
 
@@ -34817,6 +34921,7 @@ Varz.SendHpstats = function(payload)
         --_Helper.JsonPrint(data)
         if data.invalidp then
             print("Invalid data detected")
+            
         end
 
         if data.offn then
