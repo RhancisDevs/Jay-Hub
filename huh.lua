@@ -561,35 +561,38 @@ end
 
 local function setupHistoryWatcher()
     local gui = LocalPlayer.PlayerGui:WaitForChild("TradeBoothHistory"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
+
     for _, c in ipairs(gui:GetChildren()) do
         pcall(function() c:Destroy() end)
     end
+
     local acc = 0
     local throttle = 0.18
     local conn
+
     conn = RunService.RenderStepped:Connect(function(dt)
         acc += dt
         if acc < throttle then return end
         acc = 0
+
         local children = gui:GetChildren()
+        if #children == 0 then return end
+
         for _, child in ipairs(children) do
-            if child and child.Parent == gui and (child:IsA("Frame") or child:IsA("ImageLabel") or child:IsA("TextButton") or child:IsA("TextLabel")) then
-                local spacer = child:FindFirstChild("Spacer") or child:FindFirstChildWhichIsA("Frame")
-                if spacer then
-                    task.spawn(function()
-                        pcall(function() processSaleEntry(child) end)
-                    end)
-                else
-                    pcall(function() child:Destroy() end)
+            if child and child.Parent == gui then
+                local ok, err = pcall(function()
+                    processSaleEntry(child)
+                end)
+                pcall(function() child:Destroy() end)
+                if not ok then
+                    warn("processSaleEntry failed:", tostring(err))
                 end
-            else
-                pcall(function() if child and child.Parent == gui then child:Destroy() end end)
             end
         end
     end)
+
     return conn
 end
-
 local chatRunning = false
 local function startChatLoop()
     if chatRunning then return end
