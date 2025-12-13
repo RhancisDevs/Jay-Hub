@@ -644,7 +644,8 @@ local petsOptions = {
     "Brontosaurus",
     "Seal",
     "Headless Horseman",
-    "Spider"
+    "Spider",
+    "Kitsune"
 }
 local skinOptions = {
     "Default",
