@@ -27,6 +27,8 @@ getgenv().thankDelaySeconds = getgenv().thankDelaySeconds or 10
 getgenv().notifyWhenOutOfStock = (getgenv().notifyWhenOutOfStock == nil) and true or getgenv().notifyWhenOutOfStock
 getgenv().kgFilterValue = getgenv().kgFilterValue or 0
 getgenv().kgFilterMode = getgenv().kgFilterMode or "Below"
+getgenv().serverCountry = getgenv().serverCountry or {}
+
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -39,7 +41,7 @@ local hrp = character:WaitForChild("HumanoidRootPart")
 local MOVE_SPEED_ESTIMATE = 16
 local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
-local MAX_TELEPORT_RETRIES = 8
+local MAX_TELEPORT_RETRIES = 15
 
 local visitedJobIds = {}
 local teleportFails = 0
@@ -116,51 +118,90 @@ local function getUserIdFromName(name)
     return nil
 end
 
-local function getRandomServer(maxPages)
-    local validServers = {}
-    local cursor = ""
-    local pagesChecked = 0
-    while pagesChecked < (maxPages or MAX_PAGES) do
-        local url = string.format("https://games.roblox.com/v1/games/%s/servers/Public?cursor=%s&sortOrder=Desc&limit=100", placeId, cursor)
-        local ok, body = sendRequest({Url = url, Method = "GET"})
-        if not ok or not body then break end
-        local data = jsonDecodeSafe(body)
-        if not data or not data.data then break end
-        for _, server in ipairs(data.data) do
-            if server.playing < (server.maxPlayers or 9999) and tostring(server.id) ~= tostring(game.JobId) and not visitedJobIds[tostring(server.id)] then
-                table.insert(validServers, server.id)
+local function fetchServerFromJayHub()
+    local url = "https://jayhubxrobloxapi.onrender.com/fetch-server"
+
+    local ok, body = sendRequest({
+        Url = url,
+        Method = "GET"
+    })
+
+    if not ok or not body then return nil end
+
+    local data = jsonDecodeSafe(body)
+    if not data or type(data.servers) ~= "table" then
+        return nil
+    end
+
+    local candidates = {}
+
+    for _, entry in ipairs(data.servers) do
+        local jobId = entry.server_id
+        local country = entry.country
+
+        if jobId and country then
+            jobId = tostring(jobId)
+
+            if not visitedJobIds[jobId]
+                and isCountryAllowed(country)
+            then
+                table.insert(candidates, {
+                    jobId = jobId,
+                    country = country
+                })
             end
         end
-        if not data.nextPageCursor then break end
-        cursor = data.nextPageCursor
-        pagesChecked += 1
-        task.wait(0.3)
     end
-    if #validServers > 0 then return validServers[math.random(1, #validServers)] end
-    return nil
+
+    if #candidates == 0 then
+        return nil
+    end
+
+    local picked = candidates[math.random(1, #candidates)]
+    return picked.jobId, picked.country
 end
 
 local function serverHop()
-    safeNotify({Title="Server Hop",Content="Finding a new server...",Duration=4})
+    local selected = getgenv().serverCountry or {}
+
+    safeNotify({
+        Title = "Server Hop",
+        Content = (#selected > 0)
+            and "Searching for server in selected countries..."
+            or "Searching for random server...",
+        Duration = 4
+    })
+
     local retries = 0
-    while retries < 20 do
-        local jobId = getRandomServer(MAX_PAGES)
+    local maxRetries = 15
+
+    while retries < maxRetries do
+        local jobId, country = fetchServerFromJayHub()
+
         if not jobId then
             retries += 1
-            task.wait(1)
-        else
-            if not visitedJobIds[tostring(jobId)] then
-                visitedJobIds[tostring(jobId)] = true
-                local ok = pcall(function() TeleportService:TeleportToPlaceInstance(placeId, jobId) end)
-                if ok then return end
-                retries += 1
-                task.wait(1)
-            else
-                retries += 1
-            end
+            task.wait(0.6)
+            continue
         end
+
+        visitedJobIds[jobId] = true
+        safeNotify({
+            Title = "Server Hop",
+            Content = "Joining " .. tostring(country) .. " server",
+            Duration = 3
+        })
+        local ok = pcall(function()
+            TeleportService:TeleportToPlaceInstance(placeId, jobId)
+        end)
+        if ok then
+            return
+        end
+        retries += 1
+        task.wait(1)
     end
-    pcall(function() TeleportService:Teleport(placeId) end)
+    pcall(function()
+        TeleportService:Teleport(placeId)
+    end)
 end
 
 TeleportService.TeleportInitFailed:Connect(function(_, result)
@@ -874,13 +915,34 @@ toggleNotifyOut:OnChanged(function(state)
     getgenv().notifyWhenOutOfStock = state
 end)
 
-server_tab:AddButton({
-    Title = "Server Hop",
-    Description = "Teleport to other server",
-    Callback = function()
-        serverHop()
-    end
+local serverCountryDropdown = server_tab:AddDropdown("ServerCountry", {
+    Title = "Server Country",
+    Description = "Choose one or more countries to hop servers in",
+    Values = {
+        "Japan",
+        "United States",
+        "Brazil",
+        "Singapore",
+        "United Kingdom",
+        "France",
+        "Germany",
+        "Australia"
+    },
+    Default = getgenv().serverCountry,
+    Multi = true
 })
+
+serverCountryDropdown:OnChanged(function(selection)
+    local selected = {}
+    if type(selection) == "table" then
+        for country, enabled in pairs(selection) do
+            if enabled then
+                table.insert(selected, tostring(country))
+            end
+        end
+    end
+    getgenv().serverCountry = selected
+end)
 
 local toggle_start = main_tab:AddToggle("AutoLako", {
     Title = "Auto Lako",
