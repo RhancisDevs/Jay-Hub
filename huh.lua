@@ -196,18 +196,14 @@ local function serverHop()
             local jobId, country = fetchServerFromJayHub(true)
 
             if jobId then
-                visitedJobIds[jobId] = true
-
-                safeNotify({
-                    Title = "Server Hop",
-                    Content = "Joining " .. country .. " server",
-                    Duration = 3
-                })
-
-                pcall(function()
+                local ok = pcall(function()
                     TeleportService:TeleportToPlaceInstance(placeId, jobId)
                 end)
-                return
+
+                if ok then
+                    visitedJobIds[jobId] = true
+                    return
+                end
             end
 
             attempts += 1
@@ -220,23 +216,27 @@ local function serverHop()
             Duration = 5
         })
     end
+
     local retries = 0
     while retries < 10 do
         local jobId, country = fetchServerFromJayHub(false)
 
         if jobId then
-            visitedJobIds[jobId] = true
-
-            safeNotify({
-                Title = "Server Hop",
-                Content = "Joining " .. tostring(country) .. " server",
-                Duration = 3
-            })
-
-            pcall(function()
+            local ok = pcall(function()
                 TeleportService:TeleportToPlaceInstance(placeId, jobId)
             end)
-            return
+
+            if ok then
+                visitedJobIds[jobId] = true
+
+                safeNotify({
+                    Title = "Server Hop",
+                    Content = "Joining " .. tostring(country) .. " server",
+                    Duration = 3
+                })
+
+                return
+            end
         end
 
         retries += 1
