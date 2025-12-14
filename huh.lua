@@ -42,6 +42,8 @@ local MOVE_SPEED_ESTIMATE = 16
 local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
 local MAX_TELEPORT_RETRIES = 15
+local COUNTRY_RETRY_LIMIT = 5
+local COUNTRY_RETRY_DELAY = 5
 
 local visitedJobIds = {}
 local teleportFails = 0
@@ -118,7 +120,21 @@ local function getUserIdFromName(name)
     return nil
 end
 
-local function fetchServerFromJayHub()
+local function isCountryAllowed(country)
+    local list = getgenv().serverCountry
+    if type(list) ~= "table" or #list == 0 then
+        return true
+    end
+    country = tostring(country):lower()
+    for _, c in ipairs(list) do
+        if tostring(c):lower() == country then
+            return true
+        end
+    end
+    return false
+end
+
+local function fetchServerFromJayHub(strictCountry)
     local url = "https://jayhubxrobloxapi.onrender.com/fetch-server"
 
     local ok, body = sendRequest({
@@ -142,13 +158,13 @@ local function fetchServerFromJayHub()
         if jobId and country then
             jobId = tostring(jobId)
 
-            if not visitedJobIds[jobId]
-                and isCountryAllowed(country)
-            then
-                table.insert(candidates, {
-                    jobId = jobId,
-                    country = country
-                })
+            if not visitedJobIds[jobId] then
+                if not strictCountry or isCountryAllowed(country) then
+                    table.insert(candidates, {
+                        jobId = jobId,
+                        country = country
+                    })
+                end
             end
         end
     end
@@ -163,39 +179,66 @@ end
 
 local function serverHop()
     local selected = getgenv().serverCountry or {}
+    local strictCountry = (#selected > 0)
 
     safeNotify({
         Title = "Server Hop",
-        Content = (#selected > 0)
-            and "Searching for server in selected countries..."
+        Content = strictCountry
+            and "Searching for server in selected country..."
             or "Searching for random server...",
         Duration = 4
     })
 
-    local retries = 0
-    local maxRetries = 15
+    local attempts = 0
 
-    while retries < maxRetries do
-        local jobId, country = fetchServerFromJayHub()
+    if strictCountry then
+        while attempts < COUNTRY_RETRY_LIMIT do
+            local jobId, country = fetchServerFromJayHub(true)
 
-        if not jobId then
-            retries += 1
-            task.wait(0.6)
-            continue
+            if jobId then
+                visitedJobIds[jobId] = true
+
+                safeNotify({
+                    Title = "Server Hop",
+                    Content = "Joining " .. country .. " server",
+                    Duration = 3
+                })
+
+                pcall(function()
+                    TeleportService:TeleportToPlaceInstance(placeId, jobId)
+                end)
+                return
+            end
+
+            attempts += 1
+            task.wait(COUNTRY_RETRY_DELAY)
         end
 
-        visitedJobIds[jobId] = true
         safeNotify({
             Title = "Server Hop",
-            Content = "Joining " .. tostring(country) .. " server",
-            Duration = 3
+            Content = "No servers found in selected country. Joining random server.",
+            Duration = 5
         })
-        local ok = pcall(function()
-            TeleportService:TeleportToPlaceInstance(placeId, jobId)
-        end)
-        if ok then
+    end
+    local retries = 0
+    while retries < 10 do
+        local jobId, country = fetchServerFromJayHub(false)
+
+        if jobId then
+            visitedJobIds[jobId] = true
+
+            safeNotify({
+                Title = "Server Hop",
+                Content = "Joining " .. tostring(country) .. " server",
+                Duration = 3
+            })
+
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(placeId, jobId)
+            end)
             return
         end
+
         retries += 1
         task.wait(1)
     end
