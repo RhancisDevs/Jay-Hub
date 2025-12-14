@@ -25,6 +25,8 @@ getgenv().autoChatDelay = getgenv().autoChatDelay or 30
 getgenv().slidingHopSeconds = getgenv().slidingHopSeconds or 300
 getgenv().thankDelaySeconds = getgenv().thankDelaySeconds or 10
 getgenv().notifyWhenOutOfStock = (getgenv().notifyWhenOutOfStock == nil) and true or getgenv().notifyWhenOutOfStock
+getgenv().kgFilterValue = getgenv().kgFilterValue or 0
+getgenv().kgFilterMode = getgenv().kgFilterMode or "Below"
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -266,127 +268,182 @@ end
 
 local function autoListItemsIfNeeded(knownBooth)
     if not getgenv().autoList then return end
-    local createRem = nil
-    local okRem = pcall(function()
-        createRem = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("TradeEvents"):WaitForChild("Booths"):WaitForChild("CreateListing")
+
+    local createRem
+    pcall(function()
+        createRem = ReplicatedStorage
+            :WaitForChild("GameEvents")
+            :WaitForChild("TradeEvents")
+            :WaitForChild("Booths")
+            :WaitForChild("CreateListing")
     end)
     if not createRem then return end
-    local DataServiceModule = nil
-    pcall(function() DataServiceModule = require(ReplicatedStorage.Modules.DataService) end)
+
+    local DataServiceModule
+    pcall(function()
+        DataServiceModule = require(ReplicatedStorage.Modules.DataService)
+    end)
+
     local function getPetData(id)
         if not DataServiceModule then return nil end
-        local ok, data = pcall(function() return DataServiceModule:GetData() end)
+        local ok, data = pcall(function()
+            return DataServiceModule:GetData()
+        end)
         if not ok or not data then return nil end
-        local base = data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data
-        if base and base[id] then return base[id].PetType end
+
+        local base = data.PetsData
+            and data.PetsData.PetInventory
+            and data.PetsData.PetInventory.Data
+
+        if base and base[id] then
+            return base[id]
+        end
         return nil
     end
+
     local function findPlayerBoothExact()
         local tw = workspace:FindFirstChild("TradeWorld")
         if not tw then return nil end
+
         local booths = tw:FindFirstChild("Booths")
         if not booths then return nil end
-        local n1 = "@"..LocalPlayer.Name.."'s Booth"
-        local n2 = "@"..(LocalPlayer.DisplayName or "").."'s Booth"
+
+        local n1 = "@" .. LocalPlayer.Name .. "'s Booth"
+        local n2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
+
         for _, b in ipairs(booths:GetChildren()) do
             local skin = b:FindFirstChild(getgenv().boothSkin)
             if skin then
                 local sign = skin:FindFirstChild("Sign")
-                if sign then
-                    local sg = sign:FindFirstChild("SurfaceGui")
-                    if sg then
-                        local tl = sg:FindFirstChild("TextLabel")
-                        if tl and (tl.Text == n1 or tl.Text == n2) then
-                            return b
-                        end
-                    end
+                local sg = sign and sign:FindFirstChild("SurfaceGui")
+                local tl = sg and sg:FindFirstChild("TextLabel")
+                if tl and (tl.Text == n1 or tl.Text == n2) then
+                    return b
                 end
             end
         end
         return nil
     end
+
     local function waitForPlayerBooth(maxWait)
         local t0 = tick()
         while tick() - t0 < (maxWait or 10) do
-            if knownBooth and knownBooth.Parent then return knownBooth end
+            if knownBooth and knownBooth.Parent then
+                return knownBooth
+            end
             local found = findPlayerBoothExact()
             if found then return found end
             task.wait(0.5)
         end
         return nil
     end
+
     task.spawn(function()
         local backpack = LocalPlayer:WaitForChild("Backpack")
-        while true do
-            if not getgenv().autoList then break end
+
+        while getgenv().autoList do
             local booth = waitForPlayerBooth(10)
             if not booth then
                 task.wait(3)
-            else
-                local dyn = booth:FindFirstChild("DynamicInstances")
-                local dynNames = {}
-                local dynCount = 0
-                if dyn then
-                    for _, child in ipairs(dyn:GetChildren()) do
-                        if child and child.Name then dynNames[tostring(child.Name)] = true end
-                    end
-                    dynCount = #dyn:GetChildren()
+                continue
+            end
+
+            local dyn = booth:FindFirstChild("DynamicInstances")
+            local dynNames = {}
+            local dynCount = 0
+
+            if dyn then
+                for _, child in ipairs(dyn:GetChildren()) do
+                    dynNames[tostring(child.Name)] = true
                 end
-                if dynCount >= 50 then break end
-                local eligible = {}
-                for _, tool in ipairs(backpack:GetChildren()) do
-                    if tool and tool.GetAttribute and tool:GetAttribute("ItemType") ~= nil and tool:GetAttribute("d") ~= true then
-                        local uuid = tool:GetAttribute("PET_UUID")
-                        if uuid and not dynNames[tostring(uuid)] then
-                            local pt = getPetData(uuid)
-                            if pt and table.find(getgenv().petToList, pt) then
-                                table.insert(eligible, { uuid = tostring(uuid), petType = pt })
-                            end
-                        end
-                    end
+                dynCount = #dyn:GetChildren()
+            end
+
+            if dynCount >= 50 then break end
+
+            local eligible = {}
+            local kgValue = tonumber(getgenv().kgFilterValue) or 0
+            local kgMode = getgenv().kgFilterMode
+
+            for _, tool in ipairs(backpack:GetChildren()) do
+                if not getgenv().autoList then break end
+                if not tool or not tool.GetAttribute then continue end
+                if tool:GetAttribute("ItemType") == nil then continue end
+                if tool:GetAttribute("d") == true then continue end -- favorited
+
+                local uuid = tool:GetAttribute("PET_UUID")
+                if not uuid or dynNames[tostring(uuid)] then continue end
+
+                local petData = getPetData(uuid)
+                if not petData then continue end
+
+                local petType = petData.PetType
+                local petKG = petData.PetData and petData.PetData.BaseWeight
+
+                if not petType or not petKG then continue end
+                if not table.find(getgenv().petToList, petType) then continue end
+
+                if kgValue > 0 then
+                    if kgMode == "Above" and petKG < kgValue then continue end
+                    if kgMode == "Below" and petKG > kgValue then continue end
                 end
-                if #eligible == 0 then
-                    if getgenv().notifyWhenOutOfStock and not noStockNotified then
-                        local embed = {
+
+                table.insert(eligible, {
+                    uuid = tostring(uuid),
+                    petType = petType,
+                    kg = petKG
+                })
+            end
+
+            if #eligible == 0 then
+                if getgenv().notifyWhenOutOfStock and not noStockNotified then
+                    sendWebhook({
+                        embeds = {{
                             title = "⚠️ No more items to list",
                             color = 16753920,
                             fields = {
                                 { name = "👤 Player", value = LocalPlayer.Name, inline = true },
                                 { name = "⏳ Date and Time", value = getTime(), inline = true }
                             },
-                          footer = { text = "Made with ❤️ by Jay Hub"}
-                        }
-                        sendWebhook({ embeds = { embed } })
-                        safeNotify({ Title = "Jay Hub - Auto Bot", Content = "No more eligible items to list", Duration = 6 })
-                        noStockNotified = true
-                    end
-                    break
-                else
-                    noStockNotified = false
+                            footer = { text = "Made with ❤️ by Jay Hub" }
+                        }}
+                    })
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "No more eligible items to list",
+                        Duration = 6
+                    })
+                    noStockNotified = true
                 end
-                local anyListed = false
-                for _, pet in ipairs(eligible) do
-                    if not getgenv().autoList then break end
-                    local boothNow = waitForPlayerBooth(3)
-                    if not boothNow then break end
-                    local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                    if dynNow and #dynNow:GetChildren() >= 50 then break end
-                    local args = {"Pet", pet.uuid, getgenv().priceForPetList}
-                    local ok = false
-                    pcall(function()
-                        if typeof(createRem.InvokeServer) == "function" then
-                            createRem:InvokeServer(unpack(args))
-                        else
-                            createRem:FireServer(unpack(args))
-                        end
-                        ok = true
-                    end)
-                    if ok then anyListed = true end
-                    task.wait(5)
-                end
-                if not anyListed then break end
-                task.wait(2)
+                break
             end
+
+            noStockNotified = false
+            local anyListed = false
+
+            for _, pet in ipairs(eligible) do
+                if not getgenv().autoList then break end
+
+                local boothNow = waitForPlayerBooth(3)
+                if not boothNow then break end
+
+                local dynNow = boothNow:FindFirstChild("DynamicInstances")
+                if dynNow and #dynNow:GetChildren() == 50 then break end
+
+                pcall(function()
+                    if typeof(createRem.InvokeServer) == "function" then
+                        createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
+                    else
+                        createRem:FireServer("Pet", pet.uuid, getgenv().priceForPetList)
+                    end
+                end)
+
+                anyListed = true
+                task.wait(5)
+            end
+
+            if not anyListed then break end
+            task.wait(2)
         end
     end)
 end
@@ -518,10 +575,7 @@ end
 local function processSaleEntry(entry)
     if not entry then return end
     local spacer = entry:FindFirstChild("Spacer") or entry:FindFirstChildWhichIsA("Frame")
-    if not spacer then
-        pcall(function() entry:Destroy() end)
-        return
-    end
+    if not spacer then return end
     local price, buyer, item, token = nil, nil, nil, nil
     local p = spacer:FindFirstChild("Price")
     if p and p:FindFirstChild("Amount") then price = p.Amount.Text end
@@ -530,26 +584,37 @@ local function processSaleEntry(entry)
     local nm = spacer:FindFirstChild("ItemName")
     if nm and nm:IsA("TextLabel") then item = nm.Text end
     local tk = LocalPlayer.PlayerGui:FindFirstChild("TradeTokenCurrency_UI")
-    if tk and tk:FindFirstChild("TradeTokens") and tk.TradeTokens:FindFirstChild("TextLabel1") then token = tk.TradeTokens.TextLabel1.Text end
-    price = sanitizeField(price)
+    if tk and tk:FindFirstChild("TradeTokens") and tk.TradeTokens:FindFirstChild("TextLabel1") then
+        token = tk.TradeTokens.TextLabel1.Text
+    end
     buyer = sanitizeField(buyer)
     item = sanitizeField(item)
-    token = sanitizeField(token)
+    if not buyer or buyer == "" then return end
+    if not Players:FindFirstChild(buyer) then return end
     if getgenv().autoThanks then
         if not recentPurchases[buyer] then
-            recentPurchases[buyer] = { items = {}, lastTick = tick(), worker = nil }
+            recentPurchases[buyer] = {
+                items = {},
+                lastTick = tick(),
+                worker = nil
+            }
         end
         local rec = recentPurchases[buyer]
         rec.items[item] = (rec.items[item] or 0) + 1
         rec.lastTick = tick()
         scheduleBuyerFlush(buyer)
     end
-    hopTimeoutTick = math.max(hopTimeoutTick, tick() + (getgenv().slidingHopSeconds or 300))
-    pcall(function() entry:Destroy() end)
+    hopTimeoutTick = math.max(
+        hopTimeoutTick,
+        tick() + (getgenv().slidingHopSeconds or 300)
+    )
 end
 
 local function setupHistoryWatcher()
-    local gui = LocalPlayer.PlayerGui:WaitForChild("TradeBoothHistory"):WaitForChild("Frame"):WaitForChild("ScrollingFrame")
+    local gui = LocalPlayer.PlayerGui
+        :WaitForChild("TradeBoothHistory")
+        :WaitForChild("Frame")
+        :WaitForChild("ScrollingFrame")
     for _, c in ipairs(gui:GetChildren()) do
         pcall(function() c:Destroy() end)
     end
@@ -560,17 +625,14 @@ local function setupHistoryWatcher()
         acc += dt
         if acc < throttle then return end
         acc = 0
-        local children = gui:GetChildren()
-        if #children == 0 then return end
-        for _, child in ipairs(children) do
-            if child and child.Parent == gui then
-                local old = child:GetAttribute("Old")
-                if not old then
-                    child:SetAttribute("Old", true)
-                    task.spawn(function()
-                        pcall(function() processSaleEntry(child) end)
+        for _, child in ipairs(gui:GetChildren()) do
+            if child and not child:GetAttribute("Processed") then
+                child:SetAttribute("Processed", true)
+                task.spawn(function()
+                    pcall(function()
+                        processSaleEntry(child)
                     end)
-                end
+                end)
             end
         end
     end)
@@ -716,6 +778,31 @@ local inpPrice = main_tab:AddInput("PriceForPet", {
     Default = tostring(getgenv().priceForPetList),
     Placeholder = "40"
 })
+
+local inpKG = main_tab:AddInput("KGFilterValue", {
+    Title = "KG Filter",
+    Description = "Minimum / Maximum KG threshold",
+    Default = tostring(getgenv().kgFilterValue),
+    Placeholder = "2"
+})
+
+inpKG:OnChanged(function(val)
+    local n = tonumber(val)
+    if n then
+        getgenv().kgFilterValue = n
+    end
+end)
+
+local ddKGMode = main_tab:AddDropdown("KGFilterMode", {
+    Title = "KG Mode",
+    Description = "List pets Above or Below KG value",
+    Values = { "Above", "Below" },
+    Default = getgenv().kgFilterMode
+})
+
+ddKGMode:OnChanged(function(val)
+    getgenv().kgFilterMode = tostring(val)
+end)
 
 inpPrice:OnChanged(function(val)
     local n = tonumber(val)
