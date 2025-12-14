@@ -462,14 +462,15 @@ local function autoListItemsIfNeeded(knownBooth)
                 if not petData then continue end
 
                 local petType = petData.PetType
-                local petKG = petData.PetData and petData.PetData.BaseWeight
+                local rawKG = petData.PetData and petData.PetData.BaseWeight
+                local petKG = rawKG and math.floor(rawKG * 10) / 10
 
                 if not petType or not petKG then continue end
                 if not table.find(getgenv().petToList, petType) then continue end
 
                 if kgValue > 0 then
                     if kgMode == "Above" and petKG < kgValue then continue end
-                    if kgMode == "Below" and petKG > kgValue then continue end
+                    if kgMode == "Below" and petKG >= kgValue then continue end
                 end
 
                 table.insert(eligible, {
