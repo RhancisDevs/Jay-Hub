@@ -1011,6 +1011,8 @@ serverCountryDropdown:OnChanged(function(selection)
     getgenv().serverCountry = selected
 end)
 
+server_tab:AddButton({ Title = "Server Hop", Description = "Teleport to other server", Callback = function() serverHop() end })
+
 local toggle_start = main_tab:AddToggle("AutoLako", {
     Title = "Auto Lako",
     Description = "Start / Stop Auto Lako",
