@@ -469,7 +469,7 @@ local function autoListItemsIfNeeded(knownBooth)
                 if not table.find(getgenv().petToList, petType) then continue end
 
                 if kgValue > 0 then
-                    if kgMode == "Above" and petKG < kgValue then continue end
+                    if kgMode == "Above" and petKG <= kgValue then continue end
                     if kgMode == "Below" and petKG >= kgValue then continue end
                 end
 
