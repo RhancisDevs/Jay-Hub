@@ -658,23 +658,45 @@ end
 
 local function processSaleEntry(entry)
     if not entry then return end
+
     local spacer = entry:FindFirstChild("Spacer") or entry:FindFirstChildWhichIsA("Frame")
     if not spacer then return end
-    local price, buyer, item, token = nil, nil, nil, nil
-    local p = spacer:FindFirstChild("Price")
-    if p and p:FindFirstChild("Amount") then price = p.Amount.Text end
-    local t = spacer:FindFirstChild("Title")
-    if t and t:FindFirstChild("PlrName") then buyer = t.PlrName.Text end
-    local nm = spacer:FindFirstChild("ItemName")
-    if nm and nm:IsA("TextLabel") then item = nm.Text end
-    local tk = LocalPlayer.PlayerGui:FindFirstChild("TradeTokenCurrency_UI")
-    if tk and tk:FindFirstChild("TradeTokens") and tk.TradeTokens:FindFirstChild("TextLabel1") then
-        token = tk.TradeTokens.TextLabel1.Text
+
+    local title = spacer:FindFirstChild("Title")
+    local statusLabel = title and title:FindFirstChild("Label")
+    if not statusLabel or statusLabel.Text ~= "Sold" then
+        return
     end
+
+    local entryJobId = entry:GetAttribute("JobId")
+    if entryJobId and entryJobId ~= CURRENT_JOB_ID then
+        return
+    end
+    entry:SetAttribute("JobId", CURRENT_JOB_ID)
+
+    local price, buyer, item = nil, nil, nil
+
+    local p = spacer:FindFirstChild("Price")
+    if p and p:FindFirstChild("Amount") then
+        price = p.Amount.Text
+    end
+
+    local t = spacer:FindFirstChild("Title")
+    if t and t:FindFirstChild("PlrName") then
+        buyer = t.PlrName.Text
+    end
+
+    local nm = spacer:FindFirstChild("ItemName")
+    if nm and nm:IsA("TextLabel") then
+        item = nm.Text
+    end
+
     buyer = sanitizeField(buyer)
     item = sanitizeField(item)
+
     if not buyer or buyer == "" then return end
     if not Players:FindFirstChild(buyer) then return end
+
     if getgenv().autoThanks then
         if not recentPurchases[buyer] then
             recentPurchases[buyer] = {
@@ -683,17 +705,19 @@ local function processSaleEntry(entry)
                 worker = nil
             }
         end
+
         local rec = recentPurchases[buyer]
         rec.items[item] = (rec.items[item] or 0) + 1
         rec.lastTick = tick()
         scheduleBuyerFlush(buyer)
     end
+
     hopTimeoutTick = math.max(
         hopTimeoutTick,
         tick() + (getgenv().slidingHopSeconds or 300)
     )
-end
-
+    end
+    
 local function setupHistoryWatcher()
     local gui = LocalPlayer.PlayerGui
         :WaitForChild("TradeBoothHistory")
