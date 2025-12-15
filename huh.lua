@@ -942,15 +942,14 @@ local inpPrice = main_tab:AddInput("PriceForPet", {
 local inpKG = main_tab:AddInput("KGFilterValue", {
     Title = "KG Filter",
     Description = "Minimum / Maximum KG threshold",
-    Default = tostring(getgenv().kgFilterValue),
-    Placeholder = "2"
+    Default = 2,
+    Placeholder = "2",
+    Numeric = true
 })
 
 inpKG:OnChanged(function(val)
     local n = tonumber(val)
-    if n then
-        getgenv().kgFilterValue = n
-    end
+    getgenv().kgFilterValue = n
 end)
 
 local ddKGMode = main_tab:AddDropdown("KGFilterMode", {
