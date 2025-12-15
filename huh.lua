@@ -357,11 +357,7 @@ local function autoListItemsIfNeeded(knownBooth)
 
     local createRem
     pcall(function()
-        createRem = ReplicatedStorage
-            :WaitForChild("GameEvents")
-            :WaitForChild("TradeEvents")
-            :WaitForChild("Booths")
-            :WaitForChild("CreateListing")
+        createRem = ReplicatedStorage.GameEvents.TradeEvents.Booths.CreateListing
     end)
     if not createRem then
         return
@@ -389,10 +385,7 @@ local function autoListItemsIfNeeded(knownBooth)
             and data.PetsData.PetInventory
             and data.PetsData.PetInventory.Data
 
-        if base and base[id] then
-            return base[id]
-        end
-        return nil
+        return base and base[id] or nil
     end
 
     local function findPlayerBoothExact()
@@ -438,7 +431,6 @@ local function autoListItemsIfNeeded(knownBooth)
 
             task.wait(0.5)
         end
-
         return nil
     end
 
@@ -493,12 +485,18 @@ local function autoListItemsIfNeeded(knownBooth)
                     continue
                 end
 
-                local kgValue = tonumber(getgenv().kgFilterValue) or 0
+                local kgValue = tonumber(getgenv().kgFilterValue)
                 local kgMode = getgenv().kgFilterMode
+
+                if kgMode and not kgValue then
+                    continue
+                end
 
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
-                local petKG = rawKG and math.floor(rawKG * 10) / 10
+                local petKG = rawKG and tonumber(
+                    tostring(rawKG):match("^(%d+%.%d%d)") or tostring(rawKG)
+                )
 
                 if not petType or not petKG then
                     continue
@@ -507,25 +505,17 @@ local function autoListItemsIfNeeded(knownBooth)
                     continue
                 end
 
-                if kgValue > 0 then
+                local passesKG = true
+
+                if kgValue and kgValue > 0 then
                     if kgMode == "Above" then
-                        if petKG > kgValue then
-                            table.insert(eligible, {
-                                uuid = tostring(uuid),
-                                petType = petType,
-                                kg = petKG
-                            })
-                        end
+                        passesKG = petKG >= kgValue
                     elseif kgMode == "Below" then
-                        if petKG < kgValue then
-                            table.insert(eligible, {
-                                uuid = tostring(uuid),
-                                petType = petType,
-                                kg = petKG
-                            })
-                        end
+                        passesKG = petKG <= kgValue
                     end
-                else
+                end
+
+                if passesKG then
                     table.insert(eligible, {
                         uuid = tostring(uuid),
                         petType = petType,
