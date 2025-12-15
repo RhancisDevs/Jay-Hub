@@ -154,11 +154,12 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.30.6"
+_S.CurentV = "v1.31.0"
 
 local Varz = {}
 Varz.dev_tools = true
 Varz.is_pro = true
+Varz.mark_save_disabled = false
 -- #pro
 
 if isfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d") then
@@ -780,8 +781,7 @@ local FSettings = {
         -- Exotic Bug Egg [is same as bug egg, dont need]
         -- Pet Eggs [dont need]
         -- Corrupted Zen Egg [dnt need]
-        -- Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
-
+        -- Premium Christmas Egg | Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
 
         -- Christmas Egg
         ["Christmas Egg"] = {
@@ -792,14 +792,6 @@ local FSettings = {
             ["Ice Golem"] = false
         },
 
-        -- Premium Christmas Egg
-        ["Premium Christmas Egg"] = {
-            ["Turtle Dove"] = true,
-            ["Reindeer"] = true,
-            ["Nutcracker"] = true,
-            ["Yeti"] = false,
-            ["Ice Golem"] = false,
-        },
 
         -- Festive Premium Christmas Egg
         ["Festive Premium Christmas Egg"] = {
@@ -2050,8 +2042,45 @@ if not isfile(SaveManager.save_fname) then
     SaveManager.save_s_data = folder_name .. "/" .. Varz.player_userid .. "filesession.json"
 end
 
+-- must match
+Varz.ConfigDeleter = function()
+    local files = {
+        "a_acssave_v15.json",
+        "a_acssave_v15_other.json",
+        "p_sessioondf.json",
+    }
+
+    -- delete root files safely
+    for _, file in ipairs(files) do
+        if isfile(file) then
+            delfile(file)
+        end
+    end
+
+    local folder_name = "exotichub99"
+
+    if isfolder(folder_name) then
+        local uid = tostring(Varz.player_userid)
+
+        local folderFiles = {
+            folder_name .. "/" .. uid .. "file1.json",
+            folder_name .. "/" .. uid .. "file2.json",
+            folder_name .. "/" .. uid .. "filesession.json",
+        }
+
+        for _, file in ipairs(folderFiles) do
+            if isfile(file) then
+                delfile(file)
+            end
+        end
+    end
+end
+
 SaveManager.SaveSessionSettings = {
     SaveFile = function()
+        if Varz.mark_save_disabled then
+            return
+        end
         local success, err = pcall(function()
             local json = _S.HttpService:JSONEncode(FSessionDx)
             writefile(SaveManager.save_s_data, json)
@@ -2099,6 +2128,10 @@ SaveManager.SaveSessionSettings.LoadFile()
 
 
 SaveManager.SyncSaveData = function()
+    if Varz.mark_save_disabled then
+        return
+    end
+
     local success, json = pcall(function()
         return _S.HttpService:JSONEncode(FSettings)
     end)
@@ -2123,6 +2156,9 @@ end
 
 
 SaveManager.SyncSaveDataOther = function()
+    if Varz.mark_save_disabled then
+        return
+    end
     local success, json = pcall(function()
         return _S.HttpService:JSONEncode(FOtherSettings)
     end)
@@ -2284,10 +2320,7 @@ end
 _Helper.task_data_sync = task.spawn(function()
     while true do
         -- Pause
-        if Varz.IsPaused() then
-            task.wait(math.random(2, 5))
-            continue
-        end
+
         task.wait(1)
         if Varz.RequireDataSync_Save then
             --warn("[SAFE] data saved  (SaveData)")
@@ -12693,7 +12726,7 @@ _Helper.getWebhookMockupData = function(_data, is_pub)
     -- }
 
     local data_old = {
-        --username = "Exotic Hub",
+        username = "Exotic Hub",
         --avatar_url = "YOUR_APP_ICON_URL_HERE", -- Optional: Add your icon URL
 
         embeds = {
@@ -12737,7 +12770,7 @@ _Helper.getWebhookMockupData = function(_data, is_pub)
     end
 
     local data = {
-       -- username = "Exotic Hub",
+        username = "Exotic Hub",
         embeds = {
             {
                 title = _title,
@@ -12787,7 +12820,7 @@ _Helper.getWebhookMutMaxLevel = function(_data, is_pub)
 
 
     local data = {
-       -- username = "Exotic Hub",
+        username = "Exotic Hub",
         --avatar_url = "YOUR_APP_ICON_URL_HERE", -- Optional: Add your icon URL
 
         embeds = {
@@ -12880,7 +12913,7 @@ _Helper.getWebhookMockupDataAgeBreak = function(_data, is_pub)
 
     -- Webhook final structure (same format)
     local data = {
-        --username = "Exotic Hub",
+        username = "Exotic Hub",
         embeds = {
             {
                 title = _title,
@@ -14462,13 +14495,13 @@ end
 FallEventManager.SubmitFruits = function()
     -- Remote
     pcall(function()
-        Varz.StopEnhancer(8)
+        Varz.StopEnhancer(3)
     end)
     _Helper.SafeFruitsProccess()
     task.wait(0.4)
     pcall(function()
         task.spawn(function()
-            _S.GameEvents.ChristmasEvent.Christmas_SubmitAll:FireServer(_S.LocalPlayer)
+            _S.GameEvents.ChristmasEvent.ChristmasGiftV2_SubmitAll:FireServer(_S.LocalPlayer)
         end)
     end)
 end
@@ -14565,12 +14598,15 @@ FallEventManager.EventFolderExists = function()
         --  local model = FallEventManager.findInWorkspaceOrInteraction("SafariEvent", "Folder")
         local model = nil
 
-        local modelx = FallEventManager.findInWorkspaceMulti("ChristmasGiftCounterPlatform", "Model")
+        local modelx = FallEventManager.findInWorkspaceMulti("NewChristmasPlatform", "Model")
         for _, mod in ipairs(modelx) do
-            if mod:FindFirstChild("StockCounter") then
-                model = mod
-                break
-            end
+            -- local progressBar = mod:FindFirstChild("ProgressBar", true)
+            -- if progressBar then
+            --     model = mod
+            --     break
+            -- end
+            -- modelx = mod
+            return mod
         end
 
         return model
@@ -14596,7 +14632,9 @@ FallEventManager.GetProgressPercentx = function()
         -- .BillboardGui.RewardProgress
 
         -- // progress
-        local label = ev.Part.ProgressBar.Frame.ProgressBG.TextLabel
+        local progressBar = mod:FindFirstChild("ProgressBar", true)
+        local label = progressBar.Frame.ProgressBG.TextLabel
+
 
         --local label = ev.CauldronProgressUI.ProgressBillboard.Progress
         if not label then return nil end
@@ -14635,7 +14673,9 @@ FallEventManager.GetProgressPercent = function()
             return nil
         end
 
-        local label = ev.Part.ProgressBar.Frame.ProgressBG.TextLabel
+        local progressBar = ev:FindFirstChild("ProgressBar", true)
+        local label = progressBar.Frame.ProgressBG.TextLabel
+        -- local label = ev.Part.ProgressBar.Frame.ProgressBG.TextLabel
         if not label then return nil end
 
         local text = (label.ContentText or ""):match("^%s*(.-)%s*$")
@@ -14659,32 +14699,46 @@ end
 
 FallEventManager.GetCooldown = function()
     -- this event has no cooldown
-    if true then return nil end
+    -- if true then return nil end
 
     local success, seconds = pcall(function()
-        local ev = FallEventManager.findInWorkspaceOrInteraction("WitchesBrewCauldron", "Model")
+        local ev = FallEventManager.EventFolderExists()
         if not ev then
             return nil
         end
-
-        local label = ev.CauldronProgressUI.ProgressBillboard.Progress
-        if not label then
+        --workspace.Interaction.UpdateItems.NewChristmasPlatform.Part.GiftTimer.Frame.Title.Timer
+        local GiftTimer = ev:FindFirstChild("GiftTimer", true)
+        local labelg = GiftTimer.Frame.Title.Timer
+        if not labelg then
             return nil
         end
 
-        local text = (label.ContentText or ""):match("^%s*(.-)%s*$") -- trim spaces
+        local progressBar = ev:FindFirstChild("ProgressBar", true)
+        local label = progressBar.Frame.ProgressBG.TextLabel
+        -- local label = ev.Part.ProgressBar.Frame.ProgressBG.TextLabel
+        if not label then return nil end
 
-        -- Match "Brew Timer: mm:ss"
-        local minutes, secs = text:match("^Brew Timer:%s*(%d+):(%d+)$")
-        if minutes and secs then
-            return tonumber(minutes) * 60 + tonumber(secs)
+        local text_complete = (label.ContentText or "")
+
+
+        local text = (labelg.ContentText or "")
+
+        if text_complete == "Complete!" then
+            return text
         end
 
-        -- Match "Brew Timer: seconds"
-        local secs_only = text:match("^Brew Timer:%s*(%d+)$")
-        if secs_only then
-            return tonumber(secs_only)
-        end
+
+        -- -- Match "Brew Timer: mm:ss"
+        -- local minutes, secs = text:match("^Brew Timer:%s*(%d+):(%d+)$")
+        -- if minutes and secs then
+        --     return tonumber(minutes) * 60 + tonumber(secs)
+        -- end
+
+        -- -- Match "Brew Timer: seconds"
+        -- local secs_only = text:match("^Brew Timer:%s*(%d+)$")
+        -- if secs_only then
+        --     return text
+        -- end
 
         return nil
     end)
@@ -14692,6 +14746,7 @@ FallEventManager.GetCooldown = function()
     if success and seconds then
         return seconds
     else
+        warn("Error", seconds)
         return nil
     end
 end
@@ -19266,7 +19321,7 @@ _Helper.GetPetsToSellForHatching = function()
         local PetData = _petData.PetData
         local PetType = _petData.PetType
 
-        local HatchedFrom = PetData.HatchedFrom
+        -- local HatchedFrom = PetData.HatchedFrom
         local IsFavorite = PetData.IsFavorite
         local Name = PetData.Name
         local Level = PetData.Level
@@ -19322,7 +19377,7 @@ _Helper.GetPetsToSellForHatching = function()
         end
 
         -- if pet is in the list but weight is bigger than sell weight then fav it also
-        if tonumber(petWeight) >= sell_w then
+        if baseWeight_c >= sell_w then
             continue
         end
 
@@ -32411,9 +32466,40 @@ function SettingsUi()
 
     local gLogout = UISettingsTab:AddLeftGroupbox("Logout", "layout-dashboard")
 
+    local gConfig = UISettingsTab:AddRightGroupbox("<font color='#F52727'>Config</font>", "brush-cleaning")
+
     local devtoolsGroup
     if Varz.dev_tools then
         devtoolsGroup = UISettingsTab:AddLeftGroupbox("Dev Tools", "align-center-horizontal")
+    end
+
+
+
+    ---- CONFIG delete #config
+    if gConfig then
+        gConfig:AddLabel({
+            Text = "⚠️ Delete all your config. rejoin after!",
+            DoesWrap = true
+        })
+        gConfig:AddButton({
+            Text = "❌ Delete All Settings",
+            Func = function()
+                Varz.is_forced_stop = true
+                Varz.mark_save_disabled = true
+                MutationMachineManager.StopThread()
+                PetMutation.StopCustomTeams()
+                PetMutation.StopThread()
+                Library:Notify("Deleting please wait.", 4)
+                task.wait(3)
+                pcall(function()
+                    Varz.ConfigDeleter()
+                end)
+
+                Library:Notify("Config deleted. Please exit and rejoin.", 20)
+                task.wait(1)
+                rejoinS()
+            end
+        })
     end
 
 
@@ -32931,12 +33017,18 @@ if not _G.FallEventLoop then
             if cooldown then
                 -- can't collect fruits yet
                 --print("Can't collect cd: ".. cooldown)
-                FallEventManager.UpdateStatsProgressText("⏳ Cooldown: <b>" .. cooldown .. "s </b>")
+                FallEventManager.UpdateStatsProgressText("⏳ Cooldown: <b>" .. cooldown .. " </b>")
                 task.wait(2)
                 continue
             end
 
+            FallEventManager.SubmitFruits()
 
+
+            if FallEventManager.GetCooldown() then
+                task.wait(3)
+                continue
+            end
 
             if typeoffruits and typeoffruits ~= "Any" then
                 --local list_names = _FruitCollectorMachine.GetPlantsByCategoryName(typeoffruits)
@@ -32970,6 +33062,10 @@ if not _G.FallEventLoop then
                                 break
                             end
 
+                            if FallEventManager.GetCooldown() then
+                                break
+                            end
+
 
                             FallEventManager.UpdateStatsText("🟢 Fast collect...")
                             --collected = _FruitCollectorMachine.CollectFruitByNamesBatchMode(list_names, 500)
@@ -32999,6 +33095,10 @@ if not _G.FallEventLoop then
                                 break
                             end
                             if fast_mode then
+                                break
+                            end
+
+                            if FallEventManager.GetCooldown() then
                                 break
                             end
 
@@ -35455,7 +35555,7 @@ _Helper.MakeActivePetUi = function()
                 end
 
                 local skillcd = _Helper.fmt_time(Time)
-                local skillx = string.format('Skill:<font color="#A6FF00">%s</font>', skillcd)
+                local skillx = string.format('%s:<font color="#A6FF00">%s</font>', Passive, skillcd)
 
                 skill_text = skill_text .. " " .. skillx
             end
