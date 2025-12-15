@@ -446,8 +446,6 @@ local function autoListItemsIfNeeded(knownBooth)
             if dynCount >= 50 then break end
 
             local eligible = {}
-            local kgValue = tonumber(getgenv().kgFilterValue) or 0
-            local kgMode = getgenv().kgFilterMode
 
             for _, tool in ipairs(backpack:GetChildren()) do
                 if not getgenv().autoList then break end
@@ -461,12 +459,14 @@ local function autoListItemsIfNeeded(knownBooth)
                 local petData = getPetData(uuid)
                 if not petData then continue end
 
+                local kgValue = tonumber(getgenv().kgFilterValue) or 0
+                local kgMode = getgenv().kgFilterMode
+
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
                 local petKG = rawKG and math.floor(rawKG * 10) / 10
-                print(petType)
-                print(petKG)
-
+                print("PET:", petType, "KG:", petKG, "MODE:", kgMode, "VALUE:", kgValue)
+                        
                 if not petType or not petKG then continue end
                 if not table.find(getgenv().petToList, petType) then continue end
 
