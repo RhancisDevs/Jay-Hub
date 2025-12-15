@@ -2,7 +2,7 @@ getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
 getgenv().Age = 0
-getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune", "Seal"}
+getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune", "Seal", "Yeti", "Ice Golem"}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,7 +58,6 @@ local Minimizer = Fluent:CreateMinimizer({
 })
 
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
-local shop_tab = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" })
 Window:SelectTab(1)
 
 local function getPlayer(name)
