@@ -465,7 +465,13 @@ local function autoListItemsIfNeeded(knownBooth)
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
                 local petKG = rawKG and math.floor(rawKG * 10) / 10
-                print("PET:", petType, "KG:", petKG, "MODE:", kgMode, "VALUE:", kgValue)
+                print("KG DEBUG →",
+                "petKG:", petKG,
+                "kgValue:", kgValue,
+                "kgMode:", "[" .. tostring(kgMode) .. "]",
+                "equalBelow:", tostring(kgMode == "Below")
+                )
+
                         
                 if not petType or not petKG then continue end
                 if not table.find(getgenv().petToList, petType) then continue end
