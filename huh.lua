@@ -351,7 +351,9 @@ local function claimBooth(b)
 end
 
 local function autoListItemsIfNeeded(knownBooth)
-    if not getgenv().autoList then return end
+    if not getgenv().autoList then
+        return
+    end
 
     local createRem
     pcall(function()
@@ -361,7 +363,9 @@ local function autoListItemsIfNeeded(knownBooth)
             :WaitForChild("Booths")
             :WaitForChild("CreateListing")
     end)
-    if not createRem then return end
+    if not createRem then
+        return
+    end
 
     local DataServiceModule
     pcall(function()
@@ -369,24 +373,38 @@ local function autoListItemsIfNeeded(knownBooth)
     end)
 
     local function getPetData(id)
-        if not DataServiceModule then return nil end
+        if not DataServiceModule then
+            return nil
+        end
+
         local ok, data = pcall(function()
             return DataServiceModule:GetData()
         end)
-        if not ok or not data then return nil end
+        if not ok or not data then
+            return nil
+        end
 
-        local base = data.PetsData
+        local base =
+            data.PetsData
             and data.PetsData.PetInventory
             and data.PetsData.PetInventory.Data
 
-        return base and base[id] or nil
+        if base and base[id] then
+            return base[id]
+        end
+        return nil
     end
 
     local function findPlayerBoothExact()
         local tw = workspace:FindFirstChild("TradeWorld")
-        if not tw then return nil end
+        if not tw then
+            return nil
+        end
+
         local booths = tw:FindFirstChild("Booths")
-        if not booths then return nil end
+        if not booths then
+            return nil
+        end
 
         local n1 = "@" .. LocalPlayer.Name .. "'s Booth"
         local n2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
@@ -402,6 +420,7 @@ local function autoListItemsIfNeeded(knownBooth)
                 end
             end
         end
+
         return nil
     end
 
@@ -411,10 +430,15 @@ local function autoListItemsIfNeeded(knownBooth)
             if knownBooth and knownBooth.Parent then
                 return knownBooth
             end
+
             local found = findPlayerBoothExact()
-            if found then return found end
+            if found then
+                return found
+            end
+
             task.wait(0.5)
         end
+
         return nil
     end
 
@@ -430,48 +454,84 @@ local function autoListItemsIfNeeded(knownBooth)
 
             local dyn = booth:FindFirstChild("DynamicInstances")
             local dynNames = {}
+            local dynCount = 0
+
             if dyn then
                 for _, child in ipairs(dyn:GetChildren()) do
                     dynNames[tostring(child.Name)] = true
                 end
-                if #dyn:GetChildren() >= 50 then break end
+                dynCount = #dyn:GetChildren()
+            end
+
+            if dynCount >= 50 then
+                break
             end
 
             local eligible = {}
 
-            local kgValue = tonumber(getgenv().kgFilterValue) or 0
-            local kgMode = tostring(getgenv().kgFilterMode or ""):lower()
-
             for _, tool in ipairs(backpack:GetChildren()) do
-                if not getgenv().autoList then break end
-                if not tool or not tool.GetAttribute then continue end
-                if tool:GetAttribute("ItemType") == nil then continue end
-                if tool:GetAttribute("d") == true then continue end
+                if not getgenv().autoList then
+                    break
+                end
+                if not tool or not tool.GetAttribute then
+                    continue
+                end
+                if tool:GetAttribute("ItemType") == nil then
+                    continue
+                end
+                if tool:GetAttribute("d") == true then
+                    continue
+                end
 
                 local uuid = tool:GetAttribute("PET_UUID")
-                if not uuid or dynNames[tostring(uuid)] then continue end
+                if not uuid or dynNames[tostring(uuid)] then
+                    continue
+                end
 
                 local petData = getPetData(uuid)
-                if not petData then continue end
+                if not petData then
+                    continue
+                end
+
+                local kgValue = tonumber(getgenv().kgFilterValue) or 0
+                local kgMode = getgenv().kgFilterMode
 
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
                 local petKG = rawKG and math.floor(rawKG * 10) / 10
 
-                if not petType or not petKG then continue end
-                if not table.find(getgenv().petToList, petType) then continue end
-
-                if kgValue > 0 then
-                    if kgMode == "Below" and petKG >= kgValue then continue end
-                    if kgMode == "Above" and petKG <= kgValue then continue end
-                    if kgMode ~= "Below" and kgMode ~= "Above" then continue end
+                if not petType or not petKG then
+                    continue
+                end
+                if not table.find(getgenv().petToList, petType) then
+                    continue
                 end
 
-                table.insert(eligible, {
-                    uuid = tostring(uuid),
-                    petType = petType,
-                    kg = petKG
-                })
+                if kgValue > 0 then
+                    if kgMode == "Above" then
+                        if petKG > kgValue then
+                            table.insert(eligible, {
+                                uuid = tostring(uuid),
+                                petType = petType,
+                                kg = petKG
+                            })
+                        end
+                    elseif kgMode == "Below" then
+                        if petKG < kgValue then
+                            table.insert(eligible, {
+                                uuid = tostring(uuid),
+                                petType = petType,
+                                kg = petKG
+                            })
+                        end
+                    end
+                else
+                    table.insert(eligible, {
+                        uuid = tostring(uuid),
+                        petType = petType,
+                        kg = petKG
+                    })
+                end
             end
 
             if #eligible == 0 then
@@ -487,44 +547,53 @@ local function autoListItemsIfNeeded(knownBooth)
                             footer = { text = "Made with ❤️ by Jay Hub" }
                         }}
                     })
+
                     safeNotify({
                         Title = "Jay Hub - Auto Bot",
                         Content = "No more eligible items to list",
                         Duration = 6
                     })
+
                     noStockNotified = true
                 end
                 break
             end
 
             noStockNotified = false
+            local anyListed = false
 
             for _, pet in ipairs(eligible) do
-                if not getgenv().autoList then break end
-
-                if kgValue > 0 then
-                    if kgMode == "Below" and pet.kg >= kgValue then continue end
-                    if kgMode == "Above" and pet.kg <= kgValue then continue end
+                if not getgenv().autoList then
+                    break
                 end
 
                 local boothNow = waitForPlayerBooth(3)
-                if not boothNow then break end
+                if not boothNow then
+                    break
+                end
 
                 local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() >= 50 then break end
+                if dynNow and #dynNow:GetChildren() == 50 then
+                    break
+                end
 
                 pcall(function()
                     createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
                 end)
 
+                anyListed = true
                 task.wait(5)
+            end
+
+            if not anyListed then
+                break
             end
 
             task.wait(2)
         end
     end)
 end
-
+    
 local _cachedChatChannel = nil
 local function getChatChannel()
     if _cachedChatChannel and _cachedChatChannel.Parent then return _cachedChatChannel end
