@@ -789,7 +789,8 @@ local petsOptions = {
     "Seal",
     "Headless Horseman",
     "Spider",
-    "Kitsune"
+    "Kitsune",
+    "French Fry Ferret"
 }
 local skinOptions = {
     "Default",
