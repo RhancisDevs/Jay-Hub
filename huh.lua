@@ -45,6 +45,7 @@ local MAX_TELEPORT_RETRIES = 15
 local COUNTRY_RETRY_LIMIT = 5
 local COUNTRY_RETRY_DELAY = 5
 
+local StoredIds = {}
 local visitedJobIds = {}
 local teleportFails = 0
 local placeId = game.PlaceId
@@ -136,22 +137,21 @@ end
 
 local function fetchServerFromJayHub(strictCountry)
     local url = "https://jayhubxrobloxapi.onrender.com/fetch-server"
-
     local MAX_API_RETRIES = 5
 
-    for attempt = 1, MAX_API_RETRIES do
+    for _ = 1, MAX_API_RETRIES do
         local ok, body = sendRequest({
             Url = url,
             Method = "GET"
         })
 
         if not ok or not body then
-            return nil
+            return false
         end
 
         local data = jsonDecodeSafe(body)
         if not data then
-            return nil
+            return false
         end
 
         if data.returned == 0 then
@@ -160,42 +160,46 @@ local function fetchServerFromJayHub(strictCountry)
         end
 
         if type(data.servers) ~= "table" then
-            return nil
+            return false
         end
 
-        local candidates = {}
+        local seen = {}
+        StoredIds = {}
 
         for _, entry in ipairs(data.servers) do
             local jobId = entry.server_id
             local country = entry.country
-            print(country)
-            print(jobId)
 
             if jobId and country then
                 jobId = tostring(jobId)
-
-                if not visitedJobIds[jobId] then
-                    if not strictCountry or isCountryAllowed(country) then
-                        table.insert(candidates, {
-                            jobId = jobId,
-                            country = country
-                        })
-                    end
+                if not visitedJobIds[jobId]
+                    and not seen[jobId]
+                    and (not strictCountry or isCountryAllowed(country)) then
+                    seen[jobId] = true
+                    table.insert(StoredIds, {
+                        jobId = jobId,
+                        country = country
+                    })
                 end
             end
         end
 
-        if #candidates > 0 then
-            local picked = candidates[math.random(1, #candidates)]
-            return picked.jobId, picked.country
-        end
-
-        return nil
+        return #StoredIds > 0
     end
 
+    return false
+end
+
+local function getNextStoredServer()
+    while #StoredIds > 0 do
+        local entry = table.remove(StoredIds, 1)
+        if entry and not visitedJobIds[entry.jobId] then
+            return entry.jobId, entry.country
+        end
+    end
     return nil
 end
-    
+
 local function serverHop()
     local selected = getgenv().serverCountry or {}
     local strictCountry = (#selected > 0)
@@ -212,8 +216,11 @@ local function serverHop()
 
     if strictCountry then
         while attempts < COUNTRY_RETRY_LIMIT do
-            local jobId, country = fetchServerFromJayHub(true)
+            if #StoredIds == 0 then
+                fetchServerFromJayHub(true)
+            end
 
+            local jobId, _ = getNextStoredServer()
             if jobId then
                 local ok = pcall(function()
                     TeleportService:TeleportToPlaceInstance(placeId, jobId)
@@ -238,8 +245,11 @@ local function serverHop()
 
     local retries = 0
     while retries < 10 do
-        local jobId, country = fetchServerFromJayHub(false)
+        if #StoredIds == 0 then
+            fetchServerFromJayHub(false)
+        end
 
+        local jobId, country = getNextStoredServer()
         if jobId then
             local ok = pcall(function()
                 TeleportService:TeleportToPlaceInstance(placeId, jobId)
@@ -247,13 +257,11 @@ local function serverHop()
 
             if ok then
                 visitedJobIds[jobId] = true
-
                 safeNotify({
                     Title = "Server Hop",
                     Content = "Joining " .. tostring(country) .. " server",
                     Duration = 3
                 })
-
                 return
             end
         end
@@ -261,6 +269,7 @@ local function serverHop()
         retries += 1
         task.wait(1)
     end
+
     pcall(function()
         TeleportService:Teleport(placeId)
     end)
@@ -268,13 +277,14 @@ end
 
 TeleportService.TeleportInitFailed:Connect(function(_, result)
     teleportFails += 1
-    if result == Enum.TeleportResult.Unauthorized then
-        visitedJobIds[tostring(game.JobId)] = true
-    end
+    visitedJobIds[tostring(game.JobId)] = true
+
     if teleportFails >= MAX_TELEPORT_RETRIES then
         teleportFails = 0
         task.wait(2)
-        pcall(function() TeleportService:Teleport(placeId) end)
+        pcall(function()
+            TeleportService:Teleport(placeId)
+        end)
     else
         task.wait(2)
         serverHop()
