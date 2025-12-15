@@ -477,11 +477,20 @@ local function autoListItemsIfNeeded(knownBooth)
                 if not table.find(getgenv().petToList, petType) then continue end
 
                 if kgValue > 0 then
-                    if kgMode == "Above" and petKG <= kgValue then continue end
-                    if kgMode == "Below" and petKG >= kgValue then continue end
-                end
-
-                table.insert(eligible, {
+                            if kgMode == "below" then
+                            if petKG >= kgValue then
+                            continue
+                    end
+                            elseif kgMode == "above" thenif petKG <= kgValue then
+                            continue
+                    end
+                            else
+                              -- unknown mode → DO NOT LIST
+                            continue
+                        end
+                    end
+                        
+                 table.insert(eligible, {
                     uuid = tostring(uuid),
                     petType = petType,
                     kg = petKG
