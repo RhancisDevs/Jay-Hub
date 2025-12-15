@@ -23,7 +23,7 @@ getgenv().autoThanks = (getgenv().autoThanks == nil) and false or getgenv().auto
 getgenv().autoList = (getgenv().autoList == nil) and false or getgenv().autoList
 getgenv().autoChatDelay = getgenv().autoChatDelay or 30
 getgenv().slidingHopSeconds = getgenv().slidingHopSeconds or 300
-getgenv().thankDelaySeconds = getgenv().thankDelaySeconds or 10
+getgenv().thankDelaySeconds = getgenv().thankDelaySeconds or 15
 getgenv().notifyWhenOutOfStock = (getgenv().notifyWhenOutOfStock == nil) and true or getgenv().notifyWhenOutOfStock
 getgenv().kgFilterValue = getgenv().kgFilterValue or 0
 getgenv().kgFilterMode = getgenv().kgFilterMode or "Below"
