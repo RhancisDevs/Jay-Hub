@@ -137,46 +137,65 @@ end
 local function fetchServerFromJayHub(strictCountry)
     local url = "https://jayhubxrobloxapi.onrender.com/fetch-server"
 
-    local ok, body = sendRequest({
-        Url = url,
-        Method = "GET"
-    })
+    local MAX_API_RETRIES = 5
 
-    if not ok or not body then return nil end
+    for attempt = 1, MAX_API_RETRIES do
+        local ok, body = sendRequest({
+            Url = url,
+            Method = "GET"
+        })
 
-    local data = jsonDecodeSafe(body)
-    if not data or type(data.servers) ~= "table" then
-        return nil
-    end
+        if not ok or not body then
+            return nil
+        end
 
-    local candidates = {}
+        local data = jsonDecodeSafe(body)
+        if not data then
+            return nil
+        end
 
-    for _, entry in ipairs(data.servers) do
-        local jobId = entry.server_id
-        local country = entry.country
+        if data.returned == 0 then
+            task.wait(5)
+            continue
+        end
 
-        if jobId and country then
-            jobId = tostring(jobId)
+        if type(data.servers) ~= "table" then
+            return nil
+        end
 
-            if not visitedJobIds[jobId] then
-                if not strictCountry or isCountryAllowed(country) then
-                    table.insert(candidates, {
-                        jobId = jobId,
-                        country = country
-                    })
+        local candidates = {}
+
+        for _, entry in ipairs(data.servers) do
+            local jobId = entry.server_id
+            local country = entry.country
+            print(country)
+            print(jobId)
+
+            if jobId and country then
+                jobId = tostring(jobId)
+
+                if not visitedJobIds[jobId] then
+                    if not strictCountry or isCountryAllowed(country) then
+                        table.insert(candidates, {
+                            jobId = jobId,
+                            country = country
+                        })
+                    end
                 end
             end
         end
-    end
 
-    if #candidates == 0 then
+        if #candidates > 0 then
+            local picked = candidates[math.random(1, #candidates)]
+            return picked.jobId, picked.country
+        end
+
         return nil
     end
 
-    local picked = candidates[math.random(1, #candidates)]
-    return picked.jobId, picked.country
+    return nil
 end
-
+    
 local function serverHop()
     local selected = getgenv().serverCountry or {}
     local strictCountry = (#selected > 0)
@@ -485,7 +504,7 @@ local function autoListItemsIfNeeded(knownBooth)
                     continue
                 end
 
-                local kgValue = tonumber(getgenv().kgFilterValue)
+                local kgValue = getgenv().kgFilterValue
                 local kgMode = getgenv().kgFilterMode
 
                 if kgMode and not kgValue then
@@ -942,9 +961,9 @@ local inpPrice = main_tab:AddInput("PriceForPet", {
 local inpKG = main_tab:AddInput("KGFilterValue", {
     Title = "KG Filter",
     Description = "Minimum / Maximum KG threshold",
-    Default = 2,
+    Default = "2",
     Placeholder = "2",
-    Numeric = true
+    Numeric = false
 })
 
 inpKG:OnChanged(function(val)
