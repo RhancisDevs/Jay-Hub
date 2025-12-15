@@ -379,16 +379,12 @@ local function autoListItemsIfNeeded(knownBooth)
             and data.PetsData.PetInventory
             and data.PetsData.PetInventory.Data
 
-        if base and base[id] then
-            return base[id]
-        end
-        return nil
+        return base and base[id] or nil
     end
 
     local function findPlayerBoothExact()
         local tw = workspace:FindFirstChild("TradeWorld")
         if not tw then return nil end
-
         local booths = tw:FindFirstChild("Booths")
         if not booths then return nil end
 
@@ -434,24 +430,23 @@ local function autoListItemsIfNeeded(knownBooth)
 
             local dyn = booth:FindFirstChild("DynamicInstances")
             local dynNames = {}
-            local dynCount = 0
-
             if dyn then
                 for _, child in ipairs(dyn:GetChildren()) do
                     dynNames[tostring(child.Name)] = true
                 end
-                dynCount = #dyn:GetChildren()
+                if #dyn:GetChildren() >= 50 then break end
             end
 
-            if dynCount >= 50 then break end
-
             local eligible = {}
+
+            local kgValue = tonumber(getgenv().kgFilterValue) or 0
+            local kgMode = tostring(getgenv().kgFilterMode or ""):lower()
 
             for _, tool in ipairs(backpack:GetChildren()) do
                 if not getgenv().autoList then break end
                 if not tool or not tool.GetAttribute then continue end
                 if tool:GetAttribute("ItemType") == nil then continue end
-                if tool:GetAttribute("d") == true then continue end -- favorited
+                if tool:GetAttribute("d") == true then continue end
 
                 local uuid = tool:GetAttribute("PET_UUID")
                 if not uuid or dynNames[tostring(uuid)] then continue end
@@ -459,38 +454,20 @@ local function autoListItemsIfNeeded(knownBooth)
                 local petData = getPetData(uuid)
                 if not petData then continue end
 
-                local kgValue = tonumber(getgenv().kgFilterValue) or 0
-                local kgMode = getgenv().kgFilterMode
-
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
                 local petKG = rawKG and math.floor(rawKG * 10) / 10
-                print("KG DEBUG →",
-                "petKG:", petKG,
-                "kgValue:", kgValue,
-                "kgMode:", "[" .. tostring(kgMode) .. "]",
-                "equalBelow:", tostring(kgMode == "Below")
-                )
 
-                        
                 if not petType or not petKG then continue end
                 if not table.find(getgenv().petToList, petType) then continue end
 
                 if kgValue > 0 then
-                            if kgMode == "below" then
-                            if petKG >= kgValue then
-                            continue
-                    end
-                            elseif kgMode == "above" thenif petKG <= kgValue then
-                            continue
-                    end
-                            else
-                              -- unknown mode → DO NOT LIST
-                            continue
-                        end
-                    end
-                        
-                 table.insert(eligible, {
+                    if kgMode == "Below" and petKG >= kgValue then continue end
+                    if kgMode == "Above" and petKG <= kgValue then continue end
+                    if kgMode ~= "Below" and kgMode ~= "Above" then continue end
+                end
+
+                table.insert(eligible, {
                     uuid = tostring(uuid),
                     petType = petType,
                     kg = petKG
@@ -521,30 +498,28 @@ local function autoListItemsIfNeeded(knownBooth)
             end
 
             noStockNotified = false
-            local anyListed = false
 
             for _, pet in ipairs(eligible) do
                 if not getgenv().autoList then break end
+
+                if kgValue > 0 then
+                    if kgMode == "Below" and pet.kg >= kgValue then continue end
+                    if kgMode == "Above" and pet.kg <= kgValue then continue end
+                end
 
                 local boothNow = waitForPlayerBooth(3)
                 if not boothNow then break end
 
                 local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() == 50 then break end
+                if dynNow and #dynNow:GetChildren() >= 50 then break end
 
                 pcall(function()
-                    if typeof(createRem.InvokeServer) == "function" then
-                        createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
-                    else
-                        createRem:FireServer("Pet", pet.uuid, getgenv().priceForPetList)
-                    end
+                    createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
                 end)
 
-                anyListed = true
                 task.wait(5)
             end
 
-            if not anyListed then break end
             task.wait(2)
         end
     end)
