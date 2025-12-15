@@ -121,160 +121,53 @@ local function getUserIdFromName(name)
     return nil
 end
 
-local function isCountryAllowed(country)
-    local list = getgenv().serverCountry
-    if type(list) ~= "table" or #list == 0 then
-        return true
-    end
-    country = tostring(country):lower()
-    for _, c in ipairs(list) do
-        if tostring(c):lower() == country then
-            return true
-        end
-    end
-    return false
-end
-
-local function fetchServerFromJayHub(strictCountry)
-    local url = "https://jayhubxrobloxapi.onrender.com/fetch-server"
-    local MAX_API_RETRIES = 5
-
-    for _ = 1, MAX_API_RETRIES do
-        local ok, body = sendRequest({
-            Url = url,
-            Method = "GET"
-        })
-
-        if not ok or not body then
-            return false
-        end
-
+local function getRandomServer(maxPages)
+    local validServers = {}
+    local cursor = ""
+    local pagesChecked = 0
+    while pagesChecked < (maxPages or MAX_PAGES) do
+        local url = string.format("https://games.roblox.com/v1/games/%s/servers/Public?cursor=%s&sortOrder=Desc&limit=100", placeId, cursor)
+        local ok, body = sendRequest({Url = url, Method = "GET"})
+        if not ok or not body then break end
         local data = jsonDecodeSafe(body)
-        if not data then
-            return false
-        end
-
-        if data.returned == 0 then
-            task.wait(5)
-            continue
-        end
-
-        if type(data.servers) ~= "table" then
-            return false
-        end
-
-        local seen = {}
-        StoredIds = {}
-
-        for _, entry in ipairs(data.servers) do
-            local jobId = entry.server_id
-            local country = entry.country
-
-            if jobId and country then
-                jobId = tostring(jobId)
-                if not visitedJobIds[jobId]
-                    and not seen[jobId]
-                    and (not strictCountry or isCountryAllowed(country)) then
-                    seen[jobId] = true
-                    table.insert(StoredIds, {
-                        jobId = jobId,
-                        country = country
-                    })
-                end
+        if not data or not data.data then break end
+        for _, server in ipairs(data.data) do
+            if server.playing < (server.maxPlayers or 9999) and tostring(server.id) ~= tostring(game.JobId) and not visitedJobIds[tostring(server.id)] then
+                table.insert(validServers, server.id)
             end
         end
-
-        return #StoredIds > 0
+        if not data.nextPageCursor then break end
+        cursor = data.nextPageCursor
+        pagesChecked += 1
+        task.wait(0.3)
     end
-
-    return false
-end
-
-local function getNextStoredServer()
-    while #StoredIds > 0 do
-        local entry = table.remove(StoredIds, 1)
-        if entry and not visitedJobIds[entry.jobId] then
-            return entry.jobId, entry.country
-        end
-    end
+    if #validServers > 0 then return validServers[math.random(1, #validServers)] end
     return nil
 end
 
 local function serverHop()
-    local selected = getgenv().serverCountry or {}
-    local strictCountry = (#selected > 0)
-
-    safeNotify({
-        Title = "Server Hop",
-        Content = strictCountry
-            and "Searching for server in selected country..."
-            or "Searching for random server...",
-        Duration = 4
-    })
-
-    local attempts = 0
-
-    if strictCountry then
-        while attempts < COUNTRY_RETRY_LIMIT do
-            if #StoredIds == 0 then
-                fetchServerFromJayHub(true)
-            end
-
-            local jobId, _ = getNextStoredServer()
-            if jobId then
-                local ok = pcall(function()
-                    TeleportService:TeleportToPlaceInstance(placeId, jobId)
-                end)
-
-                if ok then
-                    visitedJobIds[jobId] = true
-                    return
-                end
-            end
-
-            attempts += 1
-            task.wait(COUNTRY_RETRY_DELAY)
-        end
-
-        safeNotify({
-            Title = "Server Hop",
-            Content = "No servers found in selected country. Joining random server.",
-            Duration = 5
-        })
-    end
-
+    safeNotify({Title="Server Hop",Content="Finding a new server...",Duration=4})
     local retries = 0
-    while retries < 10 do
-        if #StoredIds == 0 then
-            fetchServerFromJayHub(false)
-        end
-
-        local jobId, country = getNextStoredServer()
-        if jobId then
-            local ok = pcall(function()
-                TeleportService:TeleportToPlaceInstance(placeId, jobId)
-            end)
-
-            if ok then
-                visitedJobIds[jobId] = true
-                safeNotify({
-                    Title = "Server Hop",
-                    Content = "Joining " .. tostring(country) .. " server",
-                    Duration = 3
-                })
-                return
+    while retries < 20 do
+        local jobId = getRandomServer(MAX_PAGES)
+        if not jobId then
+            retries += 1
+            task.wait(1)
+        else
+            if not visitedJobIds[tostring(jobId)] then
+                visitedJobIds[tostring(jobId)] = true
+                local ok = pcall(function() TeleportService:TeleportToPlaceInstance(placeId, jobId) end)
+                if ok then return end
+                retries += 1
+                task.wait(1)
+            else
+                retries += 1
             end
         end
-
-        retries += 1
-        task.wait(1)
     end
-
-    pcall(function()
-        TeleportService:Teleport(placeId)
-    end)
+    pcall(function() TeleportService:Teleport(placeId) end)
 end
-
+    
 TeleportService.TeleportInitFailed:Connect(function(_, result)
     teleportFails += 1
     visitedJobIds[tostring(game.JobId)] = true
@@ -1060,35 +953,6 @@ local toggleNotifyOut = webhook_tab:AddToggle("NotifyOut", {
 
 toggleNotifyOut:OnChanged(function(state)
     getgenv().notifyWhenOutOfStock = state
-end)
-
-local serverCountryDropdown = server_tab:AddDropdown("ServerCountry", {
-    Title = "Server Country",
-    Description = "Choose one or more countries to hop servers in",
-    Values = {
-        "Japan",
-        "United States",
-        "Brazil",
-        "Singapore",
-        "United Kingdom",
-        "France",
-        "Germany",
-        "Australia"
-    },
-    Default = getgenv().serverCountry,
-    Multi = true
-})
-
-serverCountryDropdown:OnChanged(function(selection)
-    local selected = {}
-    if type(selection) == "table" then
-        for country, enabled in pairs(selection) do
-            if enabled then
-                table.insert(selected, tostring(country))
-            end
-        end
-    end
-    getgenv().serverCountry = selected
 end)
 
 server_tab:AddButton({ Title = "Server Hop", Description = "Teleport to other server", Callback = function() serverHop() end })
