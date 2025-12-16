@@ -556,7 +556,7 @@ local function flushBuyerPurchases(buyer)
         local price = tonumber(data.price) or 0
 
         totalCount += count
-        totalAmount += price
+        totalAmount += (count * price)
 
         table.insert(parts, string.format("%dx %s", count, itemName))
     end
