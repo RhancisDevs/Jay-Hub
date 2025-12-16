@@ -144,7 +144,7 @@ _S.PROXY_URL = "https://bit.ly/exotichubp"
 local Library = loadstring(game:HttpGet("https://exotichub.app/ui_loader.lua"))()
 --local Library = getgenv().Library
 if Library then
-    Library:SetWatermarkVisibility(true)
+    Library:SetWatermarkVisibility(false)
     Library:SetWatermark("Eren Is Handsome!")
 end
 
