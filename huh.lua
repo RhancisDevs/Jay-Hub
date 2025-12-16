@@ -747,7 +747,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | " .. (pcall(function() return MarketplaceService:GetProductInfo(126884695634066).Name end) and MarketplaceService:GetProductInfo(126884695634066).Name or "Trade"),
+    Title = "Jay Hub | Auto Lako",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
