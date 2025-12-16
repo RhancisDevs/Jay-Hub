@@ -2,7 +2,8 @@
 if not game:IsLoaded() then game.Loaded:Wait() end;
 task.wait(3)
 print("exo start > ")
---print("PlaceId:", game.PlaceId) -- 129954712878723
+
+
 local _S                         = {}
 
 -- Game services
@@ -143,8 +144,8 @@ _S.PROXY_URL = "https://bit.ly/exotichubp"
 local Library = loadstring(game:HttpGet("https://exotichub.app/ui_loader.lua"))()
 --local Library = getgenv().Library
 if Library then
-    Library:SetWatermarkVisibility(false)
-    Library:SetWatermark("0:0:00")
+    Library:SetWatermarkVisibility(true)
+    Library:SetWatermark("Eren Is Handsome!")
 end
 
 if not Library then
@@ -154,7 +155,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.31.0"
+_S.CurentV = "v1.31.2"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -181,6 +182,16 @@ Varz.allowpro = {
     ["TurboSpade67"] = true,
 }
 
+Varz.AllTradeWorld = function()
+    local wlist = {
+        ["BlazeTopUpPet5"] = true
+    }
+    if Varz.allowpro[_S.LocalPlayer.Name] or wlist[_S.LocalPlayer.Name] then
+        return true
+    end
+    return false
+end
+
 if Varz.allowpro[_S.LocalPlayer.Name] then
     Varz.is_pro = true -- remove live
 end
@@ -190,11 +201,13 @@ if _S.LocalPlayer.Name == "goforit887" then
     -- Varz.is_pro = false
 end
 
+
 Varz.HATCH_STATES = {
     NORMAL = "NORMAL",
     EGG_PHASE = "EGG_PHASE",
 }
 
+Varz.TEXT_TRADE_WORLD = ""
 Varz.TEXT_HATCH_SYSTEM = ""
 Varz.TEXT_AGEBREAK = ""
 Varz.TEXT_CRAFT_TEAMS = ""
@@ -519,6 +532,8 @@ local FOtherSettings = {
 
 
 local FSessionDx = {
+    is_trading_world_mode = false,
+    trade_worldtp_delay = 60,
     was_dc = false,
     LevelTimer = {
         times = {},
@@ -556,7 +571,7 @@ local FSettings = {
     fast_ascen = false,
     nice_fruit = false,
     sell_mode_hatch_selected = false,
-    auto_fav_after_hatch = false,
+    auto_fav_after_hatch = true,
     eggs_center_mode1 = false,
     rng_use_system = false,
     rng_auto_rejoin = false,
@@ -2273,6 +2288,39 @@ if FSettings.is_first_time then
     LoadData();
     LoadDataOther();
 end
+
+
+
+-- Data correction
+if FSettings.sell_pets and FSettings.sell_pets["Premium Christmas Egg"] then
+    print("Found data for Premium Christmas Egg")
+    FSettings.sell_pets["Premium Christmas Egg"] = nil
+    -- remove this
+    SaveData(true) -- direct save
+    print("removed data")
+    task.wait(3)
+end
+
+
+-- Loaded. Decide based if we trading mode #trade
+
+if tostring(game.PlaceId) == "129954712878723" then
+    -- We are in trading world. load different script
+    if Varz.GetCheckIfPro() and Varz.AllTradeWorld() then
+        print("Sending to trade world.")
+        loadstring(game:HttpGet("https://exotichub.app/sc_files/test/gagtrade.lua"))()
+        task.wait(1)
+        return
+    end
+end
+
+
+
+
+
+
+
+
 
 
 --  these are pets. its only used to detect if we found and rare pet.
@@ -23766,9 +23814,7 @@ TaskManager.gift_loops = task.spawn(function()
     while true do
         Varz.IS_GIFT = false
 
-        task.wait(3)
-
-
+        task.wait(2)
         local ui_text = TaskManager.GiftSystem.UpdateUiGiftSystem
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
@@ -23821,7 +23867,7 @@ TaskManager.gift_loops = task.spawn(function()
 
         ui_text("🤖 Found pets: " .. #pets)
 
-        local delay = 8
+        local delay = 3
         local tries = 0
         for index, datax in ipairs(pets) do
             task.wait()
@@ -23895,7 +23941,7 @@ TaskManager.gift_loops = task.spawn(function()
             task.wait(delay)
         end
 
-        task.wait(1)
+        task.wait(0.05)
     end
 end)
 
@@ -24123,6 +24169,48 @@ Varz.ProUi = function()
 
     local gTargetEnhance = UIProTab:AddLeftGroupbox("<b><font color='#ffffff'>Test Options</font></b>",
         "flame-kindling")
+
+    local gTradeWorld = UIProTab:AddRightGroupbox("Trade World",
+        "baggage-claim")
+
+    -- ===============================================
+    --- Trade Wordl 🔥 #trade #tradeui
+    -- ===============================================
+
+
+    if gTradeWorld then
+        gTradeWorld:AddLabel({
+            Text =
+            "⚠️ If this mode is enabled. the system will teleport to the trading world after delay. To stop this. you must disable it here.",
+            DoesWrap = true
+        })
+
+
+
+
+        if Varz.AllTradeWorld() then
+            local toggleTradeWorld = gTradeWorld:AddToggle("toggleTradeWorld", {
+                Text =
+                "<b>💰 Trading Mode</b>",
+                Default = c,
+                Tooltip =
+                "Enables auto trading world teleport",
+                Callback = function(Value)
+                    FSessionDx.is_trading_world_mode = Value
+                    SaveManager.SaveSessionSettings.SaveFile()
+                end
+            })
+        else
+            gTradeWorld:AddLabel({
+                Text =
+                "<font color='#FF2D00'>🔴 Coming soon!!</font>",
+                DoesWrap = true
+            })
+        end
+    end
+
+
+
 
 
     -- ===============================================
@@ -33274,6 +33362,77 @@ TaskManager.loop_tradeevent = task.spawn(function()
 end)
 
 
+
+
+
+-- #trade #tradeloop
+-- #smith
+if TaskManager.task_trade_tp then
+    pcall(function()
+        task.cancel(TaskManager.task_trade_tp)
+    end)
+    TaskManager.task_trade_tp = nil
+end
+
+TaskManager.task_trade_tp = task.spawn(function()
+    while true do
+        task.wait(3)
+
+        if not Varz.AllTradeWorld() then
+            break
+        end
+
+        if not FSessionDx.is_trading_world_mode then
+            task.wait(1)
+            continue
+        end
+
+        Varz.TEXT_TRADE_WORLD = "🔴 [TRADE MODE ACTIVE] waiting for farm to load."
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            task.wait(5)
+            continue
+        end
+        local count = 0
+        while true do
+            task.wait(1)
+            count = count + 1
+            if count >= FSessionDx.trade_worldtp_delay then
+                break
+            end
+            if not FSessionDx.is_trading_world_mode then
+                break
+            end
+            local left = FSessionDx.trade_worldtp_delay - count
+            Varz.TEXT_TRADE_WORLD = "⏳ <font color='#FF2D00'>[TRADE MODE ACTIVE]</font> teleport in " .. left .. "s"
+        end
+
+        if not FSessionDx.is_trading_world_mode then
+            break
+        end
+        -- Teleport here.
+        Varz.TEXT_TRADE_WORLD = "✅ [TRADE MODE ACTIVE] trying to teleport..."
+        local pp = FallEventManager.findInWorkspace("PermPortalPlatform", "Model");
+        if pp then
+            local TradeWorldPrompt = pp:FindFirstChild("TradeWorldPrompt", true)
+
+            if TradeWorldPrompt then
+                fireproximityprompt(TradeWorldPrompt)
+                task.wait(10)
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+
+
+
+
+
+
+
+
 -- #smith
 if TaskManager.loop_smithman then
     task.cancel(TaskManager.loop_smithman)
@@ -35713,6 +35872,10 @@ if not _G.service_ui_labelupdates then
                 table.insert(tbl_stats, Varz.TEXT_GIFT)
             end
 
+            if FSessionDx.is_trading_world_mode then
+                table.insert(tbl_stats, Varz.TEXT_TRADE_WORLD)
+            end
+
             if FSettings.pause_systems then
                 local txtsel = "<font color='#FF5555'>❌ All Systems Are Paused ❌</font>"
                 table.insert(tbl_stats, txtsel)
@@ -36353,7 +36516,8 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         --_Helper.JsonPrint(data)
         if data.invalidp then
-            print("Invalid data detected")
+            -- print("Invalid data detected")
+            
         end
 
         if data.offn then
@@ -36495,46 +36659,6 @@ end)
 
 
 
-_Helper.ClickGiftAcceptx = function()
-    local gui = _S.PlayerGui
-    local notif = gui:FindFirstChild("Gift_Notification")
-    if not notif then return end
-
-    if not notif.Enabled then return end
-
-    local frame = notif:FindFirstChild("Frame")
-    if not frame then return end
-
-    -- The ImageLabel you mentioned (the 6th child)
-
-    for _, giftPanel in ipairs(frame:GetChildren()) do
-        if not giftPanel:IsA("ImageLabel") then continue end
-
-        -- Accept button path
-        local accept = giftPanel.Holder.Frame.Accept
-
-        print("Accepting gift.")
-
-        if accept then
-            -- Click it safely
-            local s, f = pcall(function()
-                -- accept:Activate()
-                print("Accept")
-                -- Some UIs use MouseButton1Click instead:
-                if accept.MouseButton1Click then
-                    accept.MouseButton1Click:Fire()
-                end
-            end)
-
-            if not s then
-                print("Error: ", f)
-            end
-        else
-            print("cant Accept")
-        end
-    end
-end
-
 _Helper.ClickGiftAccept = function()
     local gui = _S.PlayerGui
     local notif = gui:FindFirstChild("Gift_Notification")
@@ -36573,16 +36697,19 @@ _Helper.ClickGiftAccept = function()
         end
 
         if didClick then
-            task.wait(6)
+            task.wait(4)
         end
     end
 end
 
 -- Check continuously (lightweight)
-
-task.spawn(function()
+if TaskManager.task_auto_accept then
+    task.cancel(TaskManager.task_auto_accept)
+    TaskManager.task_auto_accept = nil
+end
+TaskManager.task_auto_accept = task.spawn(function()
     while true do
-        task.wait(3)
+        task.wait(2)
         if not FSettings.is_auto_accept_gift then
             continue
         end
