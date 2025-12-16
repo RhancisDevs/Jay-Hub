@@ -546,69 +546,84 @@ end
 local function flushBuyerPurchases(buyer)
     local entry = recentPurchases[buyer]
     if not entry or not entry.items then return end
+
     local parts = {}
     local totalCount = 0
-    local pricePer = tonumber(getgenv().priceForPetList) or 0
-    for itemName, count in pairs(entry.items) do
-        local c = count or 0
-        totalCount = totalCount + c
-        table.insert(parts, tostring(count).." "..tostring(itemName))
+    local totalAmount = 0
+
+    for itemName, data in pairs(entry.items) do
+        local count = tonumber(data.count) or 0
+        local price = tonumber(data.price) or 0
+
+        totalCount += count
+        totalAmount += price
+
+        table.insert(parts, string.format("%dx %s", count, itemName))
     end
+
     local itemsStr = table.concat(parts, ", ")
-    local totalAmount = totalCount * pricePer
     local tokenNow = (type(readPlayerTokens) == "function" and readPlayerTokens()) or "Unknown"
     local tnow = getTime()
-    local thumbnail = nil
+
+    local thumbnail
     local buyerId = getUserIdFromName(buyer)
-    if buyerId then thumbnail = fetchThumbnail(buyerId) end
+    if buyerId then
+        thumbnail = fetchThumbnail(buyerId)
+    end
 
     if totalCount <= 1 then
-        local singleItemName = next(entry.items)
-        local chatMsg = ("Thank you for buying, %s!"):format(buyer or "Buyer")
+        local itemName, itemData = next(entry.items)
+        local itemPrice = itemData and itemData.price or 0
+
         if getgenv().autoThanks then
-            pcall(function() sendChat(chatMsg) end)
+            pcall(function()
+                sendChat(("Thank you for buying, %s!"):format(buyer or "Buyer"))
+            end)
         end
+
         local embed = {
             title = "🎉 Item Successfully Sold!",
             color = 5814783,
             fields = {
                 { name = "👤 Buyer", value = tostring(buyer or "Unknown"), inline = true },
-                { name = "📦 Item", value = tostring(singleItemName or "Unknown"), inline = true },
-                { name = "💰 Price", value = tostring(pricePer), inline = true },
+                { name = "📦 Item", value = tostring(itemName or "Unknown"), inline = true },
+                { name = "💰 Price", value = tostring(itemPrice), inline = true },
                 { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
                 { name = "⏳ Date and Time", value = tnow, inline = true }
             },
             footer = { text = "Made with ❤️ by Jay Hub | " .. tnow }
         }
+
         if thumbnail then embed.thumbnail = { url = thumbnail } end
         sendWebhook({ embeds = { embed } })
+
     else
-        local chatMsg = ("Thank you for buying %s, %s!"):format(itemsStr, buyer or "Buyer")
         if getgenv().autoThanks then
-            pcall(function() sendChat(chatMsg) end)
+            pcall(function()
+                sendChat(("Thank you for buying %s, %s!"):format(itemsStr, buyer or "Buyer"))
+            end)
         end
+
         local embed = {
             title = "🎉 Bulk Item Successfully Sold!",
             color = 3066993,
             fields = {
                 { name = "👤 Buyer", value = tostring(buyer or "Unknown"), inline = true },
-                { name = "📦 Total Items", value = itemsStr, inline = true },
+                { name = "📦 Items", value = itemsStr, inline = true },
                 { name = "📜 Total Amount", value = tostring(totalAmount), inline = true },
                 { name = "🪙 Token Now", value = tostring(tokenNow), inline = true },
                 { name = "⏳ Date and Time", value = tnow, inline = true }
             },
             footer = { text = "Made with ❤️ by Jay Hub | " .. tnow }
         }
+
         if thumbnail then embed.thumbnail = { url = thumbnail } end
-        sendWebhook({
-            content = "@everyone",
-            embeds = { embed }
-        })
+        sendWebhook({ content = "@everyone", embeds = { embed } })
     end
 
     recentPurchases[buyer] = nil
 end
-    
+
 local function scheduleBuyerFlush(buyer)
     local entry = recentPurchases[buyer]
     if not entry then return end
@@ -652,7 +667,7 @@ local function processSaleEntry(entry)
 
     local p = spacer:FindFirstChild("Price")
     if p and p:FindFirstChild("Amount") then
-        price = p.Amount.Text
+        price = tonumber(p.Amount.Text)
     end
 
     local t = spacer:FindFirstChild("Title")
@@ -680,18 +695,28 @@ local function processSaleEntry(entry)
             }
         end
 
-        local rec = recentPurchases[buyer]
-        rec.items[item] = (rec.items[item] or 0) + 1
-        rec.lastTick = tick()
-        scheduleBuyerFlush(buyer)
+    local rec = recentPurchases[buyer]
+        
+    if not rec.items[item] then
+      rec.items[item] = {
+        count =0,
+        price = price
+      }
     end
-
+        
+    rec.items[item].count += 1
+    rec.items[item].price = price
+    rec.lastTick = tick()
+        
+    scheduleBuyerFlush(buyer)
+        
     hopTimeoutTick = math.max(
         hopTimeoutTick,
         tick() + (getgenv().slidingHopSeconds or 300)
     )
     end
-    
+end
+
 local function setupHistoryWatcher()
     local gui = LocalPlayer.PlayerGui
         :WaitForChild("TradeBoothHistory")
