@@ -90,6 +90,18 @@ local function sendWebhook(data)
     return false
 end
 
+local function sendPaldo(data)
+    if not getgenv().EARNINGS_WEBHOOK_URL or getgenv().EARNINGS_WEBHOOK_URL == "" then return false end
+    local okEnc, payload = pcall(function() return HttpService:JSONEncode(data) end)
+    if not okEnc then return false end
+    for i = 1, 3 do
+        local ok, _ = sendRequest({Url = getgenv().EARNINGS_WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
+        if ok then return true end
+        task.wait(0.6 * i)
+    end
+    return false
+end
+
 local function getTime()
     local utc = os.time()
     return os.date("%I:%M:%S %p (%m/%d/%y)", utc)
@@ -507,9 +519,46 @@ local function autoListItemsIfNeeded(knownBooth)
         end
     end)
 end
+    
+local _cachedChatChannel = nil
+local function getChatChannel()
+    if _cachedChatChannel and _cachedChatChannel.Parent then return _cachedChatChannel end
+    local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+    if ch then _cachedChatChannel = ch end
+    return ch
+end
+
+local function sendChat(message)
+    if not message or message == "" then return false end
+    local ch = getChatChannel()
+    if not ch then
+        ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
+        if ch then _cachedChatChannel = ch end
+    end
+    if not ch then return false end
+    local ok = pcall(function() ch:SendAsync(tostring(message)) end)
+    return ok
+end
+
+local function sanitizeField(str)
+    if not str then return "Unknown" end
+    str = tostring(str)
+    if #str > 100 then str = str:sub(1,97).."..." end
+    return str
+end
+
+local function readPlayerTokens()
+    local tk = LocalPlayer.PlayerGui:FindFirstChild("TradeTokenCurrency_UI")
+    if not tk then return nil end
+    local tradeTokens = tk:FindFirstChild("TradeTokens")
+    if not tradeTokens then return nil end
+    local label = tradeTokens:FindFirstChild("TextLabel1")
+    if not label then return nil end
+    return tostring(label.Text)
+end
 
 local function sendServerEarningsWebhook()
-    if total_earn <= 50 then
+    if total_earn <= 5000 then
         return
     end
 
@@ -555,47 +604,9 @@ local function sendServerEarningsWebhook()
         embed.thumbnail = { url = thumbnail }
     end
 
-    sendWebhook({
-        url = EARNINGS_WEBHOOK_URL,
+    sendPaldo({
         embeds = { embed }
     })
-end
-    
-local _cachedChatChannel = nil
-local function getChatChannel()
-    if _cachedChatChannel and _cachedChatChannel.Parent then return _cachedChatChannel end
-    local ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-    if ch then _cachedChatChannel = ch end
-    return ch
-end
-
-local function sendChat(message)
-    if not message or message == "" then return false end
-    local ch = getChatChannel()
-    if not ch then
-        ch = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
-        if ch then _cachedChatChannel = ch end
-    end
-    if not ch then return false end
-    local ok = pcall(function() ch:SendAsync(tostring(message)) end)
-    return ok
-end
-
-local function sanitizeField(str)
-    if not str then return "Unknown" end
-    str = tostring(str)
-    if #str > 100 then str = str:sub(1,97).."..." end
-    return str
-end
-
-local function readPlayerTokens()
-    local tk = LocalPlayer.PlayerGui:FindFirstChild("TradeTokenCurrency_UI")
-    if not tk then return nil end
-    local tradeTokens = tk:FindFirstChild("TradeTokens")
-    if not tradeTokens then return nil end
-    local label = tradeTokens:FindFirstChild("TextLabel1")
-    if not label then return nil end
-    return tostring(label.Text)
 end
 
 local function flushBuyerPurchases(buyer)
@@ -828,7 +839,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako",
+    Title = "Jay Hub | Auto Lako | 1.3.5",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
