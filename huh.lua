@@ -509,7 +509,7 @@ local function autoListItemsIfNeeded(knownBooth)
 end
 
 local function sendServerEarningsWebhook()
-    if total_earn <= 5000 then
+    if total_earn <= 50 then
         return
     end
 
