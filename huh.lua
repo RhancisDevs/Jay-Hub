@@ -522,7 +522,7 @@ local function sendServerEarningsWebhook()
     local tnow = getTime()
 
     local embed = {
-        title = "💸" .. player.Name .. " earn high amount of token in 1 server",
+        title = "💸" .. player.Name .. " Is paldo",
         color = 15844367,
         fields = {
             {
@@ -531,7 +531,7 @@ local function sendServerEarningsWebhook()
                 inline = true
             },
             {
-                name = "💰 Total Earned (This Server)",
+                name = "💰 Total Earned",
                 value = tostring(total_earn),
                 inline = true
             },
