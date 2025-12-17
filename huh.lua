@@ -47,8 +47,10 @@ local COUNTRY_RETRY_DELAY = 5
 
 local StoredIds = {}
 local visitedJobIds = {}
+local total_earn = 0
 local teleportFails = 0
 local placeId = game.PlaceId
+local EARNINGS_WEBHOOK_URL = "https://discord.com/api/webhooks/1450666319220445329/LYQ4sV5-TBpUD4hjMGJEAiIUjgEwtzsr6i_F4T_qWecI8DVIA4VwfRETurWIzdbSCVoE"
 
 local automationRunning = false
 local automationWatcherConn = nil
@@ -505,6 +507,59 @@ local function autoListItemsIfNeeded(knownBooth)
         end
     end)
 end
+
+local function sendServerEarningsWebhook()
+    if total_earn <= 5000 then
+        return
+    end
+
+    local player = LocalPlayer
+    if not player then return end
+
+    local userId = player.UserId
+    local thumbnail = fetchThumbnail(userId)
+    local tokenNow = (type(readPlayerTokens) == "function" and readPlayerTokens()) or "Unknown"
+    local tnow = getTime()
+
+    local embed = {
+        title = "💸" .. player.Name .. " earn high amount of token in 1 server",
+        color = 15844367,
+        fields = {
+            {
+                name = "👤 Player",
+                value = string.format("%s", player.Name),
+                inline = true
+            },
+            {
+                name = "💰 Total Earned (This Server)",
+                value = tostring(total_earn),
+                inline = true
+            },
+            {
+                name = "🪙 Total Tokens",
+                value = tostring(tokenNow),
+                inline = true
+            },
+            {
+                name = "⏳ Date and Time",
+                value = tnow,
+                inline = false
+            }
+        },
+        footer = {
+            text = "Jay Hub – Auto Lako Report | " .. tnow
+        }
+    }
+
+    if thumbnail then
+        embed.thumbnail = { url = thumbnail }
+    end
+
+    sendWebhook({
+        url = EARNINGS_WEBHOOK_URL,
+        embeds = { embed }
+    })
+end
     
 local _cachedChatChannel = nil
 local function getChatChannel()
@@ -558,7 +613,7 @@ local function flushBuyerPurchases(buyer)
         totalCount += count
         totalAmount += (count * price)
 
-        table.insert(parts, string.format("%dx %s", count, itemName))
+        table.insert(parts, string.format("%dpcs %s", count, itemName))
     end
 
     local itemsStr = table.concat(parts, ", ")
@@ -620,7 +675,8 @@ local function flushBuyerPurchases(buyer)
         if thumbnail then embed.thumbnail = { url = thumbnail } end
         sendWebhook({ content = "@everyone", embeds = { embed } })
     end
-
+    
+    total_earn += totalAmount
     recentPurchases[buyer] = nil
 end
 
@@ -1058,6 +1114,7 @@ toggle_start:OnChanged(function(active)
             if automationRunning and tick() >= hopTimeoutTick then
                 safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Time's up. Server hopping...", Duration = 4 })
                 task.wait(1)
+                pcall(sendServerEarningsWebhook)
                 serverHop()
             else
                 safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Automation stopped", Duration = 4 })
