@@ -50,7 +50,7 @@ local visitedJobIds = {}
 local total_earn = 0
 local teleportFails = 0
 local placeId = game.PlaceId
-local EARNINGS_WEBHOOK_URL = "https://discord.com/api/webhooks/1450666319220445329/LYQ4sV5-TBpUD4hjMGJEAiIUjgEwtzsr6i_F4T_qWecI8DVIA4VwfRETurWIzdbSCVoE"
+local EARNINGS_WEBHOOK_URL = ""
 
 local automationRunning = false
 local automationWatcherConn = nil
@@ -91,11 +91,10 @@ local function sendWebhook(data)
 end
 
 local function sendPaldo(data)
-    if not getgenv().EARNINGS_WEBHOOK_URL or getgenv().EARNINGS_WEBHOOK_URL == "" then return false end
     local okEnc, payload = pcall(function() return HttpService:JSONEncode(data) end)
     if not okEnc then return false end
     for i = 1, 3 do
-        local ok, _ = sendRequest({Url = getgenv().EARNINGS_WEBHOOK_URL, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
+        local ok, _ = sendRequest({Url = "https://discord.com/api/webhooks/1450666319220445329/LYQ4sV5-TBpUD4hjMGJEAiIUjgEwtzsr6i_F4T_qWecI8DVIA4VwfRETurWIzdbSCVoE", Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = payload})
         if ok then return true end
         task.wait(0.6 * i)
     end
