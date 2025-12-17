@@ -557,7 +557,7 @@ local function readPlayerTokens()
 end
 
 local function sendServerEarningsWebhook()
-    if total_earn <= 5000 then
+    if total_earn <= 1000 then
         return
     end
 
