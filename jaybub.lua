@@ -135,8 +135,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-
-
+_S.invite_link_url = "https://discord.gg/exohub"
+_S.invite_link_short = "discord.gg/exohub"
 
 
 -- [SETUP UI]
@@ -145,7 +145,7 @@ local Library = loadstring(game:HttpGet("https://exotichub.app/ui_loader.lua"))(
 --local Library = getgenv().Library
 if Library then
     Library:SetWatermarkVisibility(false)
-    Library:SetWatermark("Eren Is Handsome!")
+    Library:SetWatermark("0:0:00")
 end
 
 if not Library then
@@ -155,7 +155,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.31.2"
+_S.CurentV = "v1.31.4"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -184,7 +184,8 @@ Varz.allowpro = {
 
 Varz.AllTradeWorld = function()
     local wlist = {
-        ["BlazeTopUpPet5"] = true
+        ["BlazeTopUpPet5"] = true,
+        ["zkaishiro"] = true
     }
     if Varz.allowpro[_S.LocalPlayer.Name] or wlist[_S.LocalPlayer.Name] then
         return true
@@ -221,6 +222,8 @@ Varz.is_dc = false
 Varz.seen_pets = {}
 Varz.is_hatch_stage_koi = false
 Varz.hatch_state = Varz.HATCH_STATES.NORMAL
+Varz.show_expire_key = false
+Varz.expire_key_text = ""
 
 _S.LocalPlayer.CameraMaxZoomDistance = 350
 
@@ -718,6 +721,8 @@ local FSettings = {
     hatch_team_boost_targets = {},
     hatch_boost_eggcd_enabled = false,
     always_active_boosts = true,
+    restart_hatching_system = false,
+    sync_pingmode = false,
 
     merchant_shop_data = {},
     disconnect_rejoin = false,
@@ -1066,6 +1071,17 @@ Varz.DisablePickPlace = false
 
 -- Events
 
+
+_Helper.GetFooterInfo = function(plantext)
+    local content = string.format("%s (%s)", _S.invite_link_short, _S.CurentV)
+
+    if not plantext then
+        content = string.format("<b><font color='#FFFB03'>%s</font></b> (%s)", _S.invite_link_short, _S.CurentV)
+    end
+
+    return content
+end
+
 -- #pro
 Varz.GetProMessage = function()
     local dx = string.format(
@@ -1207,6 +1223,7 @@ end
 
 Varz.recent_bloom_fall_notfi = false
 Varz.max_pet_inventory_space = false
+Varz.target_max_inventory = false
 
 
 
@@ -1341,6 +1358,12 @@ _Helper.canReroll = function(currentText, userCapText)
     else
         return false
     end
+end
+
+Varz.GetMinsToSecs = function(_mins)
+    local safe_mins = tonumber(_mins) or 0
+
+    return safe_mins * 60
 end
 
 
@@ -12294,6 +12317,62 @@ end)
 
 
 
+-- #teams #allteams
+_Helper.GetAllTeamsUUIDSet = function()
+    local keypair = {} -- set of all uuids
+
+    local sources = {
+        FSettings.team1,
+        FSettings.team2,
+        FSettings.team3,
+        FSettings.team4,
+        FSettings.team_enhance_targets,
+        FSettings.team_reduction_placefirst,
+        FSettings.team_reduction_placeafter,
+        FSettings.team_bypass_alwaysactive,
+
+        FSettings.agebreak.target_team,
+        FSettings.agebreak.dup_team,
+
+        FSettings.customteams_team1,
+
+        FSettings.allcraft.team_claim,
+        FSettings.allcraft.team_idle,
+        FSettings.allcraft.team_submit,
+
+        FSettings.mut_system.targetteam,
+        FSettings.mut_system.mut_team,
+        FSettings.mut_system.maxlevel_team,
+        FSettings.mut_system.baseweight_team,
+        FSettings.mut_system.xpteam,
+        FSettings.mut_system.filler_team,
+
+        FSettings.mutation_boost_cd_team,
+        FSettings.mutation_boost_level_team,
+        FSettings.mutation_boost_team_claim,
+
+        -- FSettings.giftpets.custom_pets_list,
+    }
+
+    if FSettings.giftpets.enabled_gift_pets then
+        table.insert(sources, TaskManager.GiftSystem.current_pet_pool or {})
+    end
+
+    for _, tbl in pairs(sources) do
+        if type(tbl) == "table" then
+            for _, uuid in pairs(tbl) do
+                if uuid then
+                    keypair[uuid] = true
+                end
+            end
+        end
+    end
+
+    return keypair
+end
+
+
+
 ---------------------------------------------------
 ----- GIFT #gift
 ---------------------------------------------------
@@ -12330,6 +12409,8 @@ TaskManager.GiftSystem = {
 
         TaskManager.GiftSystem.current_pet_pool = {}
 
+        local allteams                          = _Helper.GetAllTeamsUUIDSet()
+
         local has_allow_list                    = false
         local has_mut_list                      = false
         if next(allowed_list) then
@@ -12347,6 +12428,10 @@ TaskManager.GiftSystem = {
             local _UUID = _petData.UUID
             local PetData = _petData.PetData
             local PetType = _petData.PetType -- name of the name
+
+            if allteams[uuid] then
+                continue
+            end
 
             if seen[uuid] then
                 continue
@@ -13093,7 +13178,7 @@ local function sendWebhook(title, description, colour, db_data, type)
         db_datax = db_data
     end
 
-    local f_text = "Exotic Hub " .. _S.CurentV .. " Report"
+    local f_text = _Helper.GetFooterInfo(true) -- "Exotic Hub " .. _S.CurentV .. " Report"
     local payload = {
         webhook_url = webhookx,
         content = content or "", -- where @everyone would go
@@ -13814,6 +13899,11 @@ _Helper.HatchReportWebhook = function(_config)
     for _, pet_data in ipairs(_config.pets) do
         local petName = pet_data.pet_name
         local petWeight = pet_data.weight
+        local petAge = pet_data.level
+
+        if petAge > 1 then
+            continue
+        end
 
         if petName and petWeight then
             if Varz.rare_pets[petName] then
@@ -16670,6 +16760,7 @@ local ev_redpanda = "Red Panda restocked"
 
 local ev_acorn_added = "An Acorn appeared somewhere on the map"
 local ev_marmot_added = "Marmot burrowed away! Try to find its burrow mound"
+local ev_max_target_inventory = "Your target has a max pet inventory"
 
 Varz.OnMarmotOrAcornAdded = function(_txt)
     --warn("Notification: ".._txt);
@@ -16977,6 +17068,11 @@ end)
 local function HandleNotificationX(arg)
     -- This listens to any Notifications
     --print("Notification: "..tostring(arg));
+
+    if strongContains(arg, ev_max_target_inventory) then
+        Varz.target_max_inventory = true
+    end
+
     if strongContains(arg, ev_max_pet_inventory) then
         Varz.max_pet_inventory_space = true
     end
@@ -18660,6 +18756,56 @@ _Helper.IsTimeUp = function(startTime, secs)
     return (os.clock() - startTime) >= secs
 end
 
+_Helper.GetTimeLeft = function(startTime, duration)
+    -- 1. Safety Check: Ensure inputs exist and are numbers.
+    -- If inputs are invalid, return 0 (implies time is immediately up).
+    if type(startTime) ~= "number" or type(duration) ~= "number" then
+        return 0
+    end
+
+    -- 2. Calculation: Determine how much time has passed.
+    local elapsed = os.clock() - startTime
+    local remaining = duration - elapsed
+
+    return math.max(0, remaining)
+end
+
+_Helper.GetPing = function()
+    -- 1. Default to LocalPlayer if no target is provided
+    local player = _S.LocalPlayer
+
+    -- 2. Safety Check: Ensure the player object is valid
+    if not player or not player.Parent then
+        return 0
+    end
+
+    -- 3. Get Ping: Returns time in seconds (e.g., 0.050 for 50ms)
+    -- We wrap this in pcall just in case of engine edge cases/permissions
+    local success, pingSeconds = pcall(function()
+        return player:GetNetworkPing()
+    end)
+
+    if not success then return 0 end
+
+    -- 4. Convert to ms and round to nearest whole number
+    return math.floor((pingSeconds * 1000) + 0.5)
+end
+
+_Helper.GetSafePing = function()
+    local lowst = 0.0001
+    if not FSettings.sync_pingmode then
+        return lowst
+    end
+
+    local ok, result = pcall(function()
+        local player = _S.LocalPlayer
+        local rawPing = (player and player:GetNetworkPing()) or 0
+        return math.clamp(rawPing, lowst, 7)
+    end)
+
+    return ok and result or lowst
+end
+
 -- #place #egg
 _Helper.PlaceEggsForHatching = function()
     if not FSettings.fast_egg_placement then
@@ -19270,55 +19416,6 @@ end
 
 
 
-_Helper.GetAllTeamsUUIDSet = function()
-    local keypair = {} -- set of all uuids
-
-    local sources = {
-        FSettings.team1,
-        FSettings.team2,
-        FSettings.team3,
-        FSettings.team4,
-        FSettings.team_enhance_targets,
-        FSettings.team_reduction_placefirst,
-        FSettings.team_reduction_placeafter,
-        FSettings.team_bypass_alwaysactive,
-
-        FSettings.agebreak.target_team,
-        FSettings.agebreak.dup_team,
-
-        FSettings.customteams_team1,
-
-        FSettings.allcraft.team_claim,
-        FSettings.allcraft.team_idle,
-        FSettings.allcraft.team_submit,
-
-        FSettings.mut_system.targetteam,
-        FSettings.mut_system.mut_team,
-        FSettings.mut_system.maxlevel_team,
-        FSettings.mut_system.baseweight_team,
-        FSettings.mut_system.xpteam,
-        FSettings.mut_system.filler_team,
-        -- FSettings.giftpets.custom_pets_list,
-    }
-
-    if FSettings.giftpets.enabled_gift_pets then
-        table.insert(sources, TaskManager.GiftSystem.current_pet_pool or {})
-    end
-
-    for _, tbl in pairs(sources) do
-        if type(tbl) == "table" then
-            for _, uuid in pairs(tbl) do
-                if uuid then
-                    keypair[uuid] = true
-                end
-            end
-        end
-    end
-
-    return keypair
-end
-
-
 -- #sell
 Varz.ban_pet_list = {
     ["Rainbow Dilophosaurus"] = true,
@@ -19765,6 +19862,10 @@ local function EquipPets(array_uuids)
         return false
     end
 
+    if Varz.IS_GIFT then
+        return false
+    end
+
     -- if pick placed used from other
     if Varz.GetCheckPPByPass() == true then
         return false
@@ -19841,6 +19942,10 @@ local function EquipPets(array_uuids)
                 -- yes pet is active
                 table.remove(petsToConfirm, i)
             end
+        end
+
+        if Varz.IS_GIFT then
+            return false
         end
 
         if #petsToConfirm > 0 then
@@ -20818,6 +20923,10 @@ _Helper.Bad_Skills = {
 }
 
 _Helper.CanPickPlace = function()
+    if Varz.IS_GIFT then
+        return false
+    end
+
     if Varz.pickplace_disable_delay > 0 then
         return false
     end
@@ -21054,6 +21163,8 @@ TaskManager.HatcherTeamOverrider = function()
     local added_count = 0
     for _, uuid in ipairs(phase_one_team) do
         _Helper.EquipPet(uuid)
+        task.wait(0.1)
+        _Helper.EquipPet(uuid)
         table.insert(inserted_pets, uuid)
         added_count = added_count + 1
 
@@ -21086,20 +21197,20 @@ TaskManager.HatcherTeamOverrider = function()
         task.wait(1)
     end
 
-    Varz.SetDisablePickPlaceFor(3)
-    task.wait(0.5)
+    --Varz.SetDisablePickPlaceFor(3)
+    --task.wait(0.5)
     ui("🔄 Removing phase one team. Please wait...")
     -- Phase 2 — remove the temporary pets safely
     for _, uuid in ipairs(inserted_pets) do
         _Helper.UnEquipPet(uuid)
         task.wait(0.1)
-        _Helper.UnEquipPet(uuid) -- second attempt for safety
+
 
         -- Up to 5 seconds: wait until fully removed
         local waitsecs = os.clock()
         while true do
             task.wait(0.1)
-
+            _Helper.UnEquipPet(uuid) -- second attempt for safety
             if (os.clock() - waitsecs) > 5 then
                 break
             end
@@ -21111,14 +21222,14 @@ TaskManager.HatcherTeamOverrider = function()
     end
 
     ui("ℹ️ Removed team phase one")
-    --task.wait(0.3)
+    task.wait(0.3)
 
     ui("⚡ Placing final phase team. please wait...")
     -- Phase 3 — place the final pets
     local final_count = 0
     for _, uuid in ipairs(phase_two_team) do
         _Helper.EquipPet(uuid)
-        task.wait(0.1)
+        task.wait(0.2)
         _Helper.EquipPet(uuid)
 
         final_count = final_count + 1
@@ -21377,7 +21488,7 @@ local function SessionLoop()
     -- This loop runs continuously in the same server session without rejoining.
     local _key = "hatchtimer"
     while not Varz.is_forced_stop and FSettings.is_running do
-        task.wait(0.3)
+        task.wait(0.3 + _Helper.GetSafePing())
 
         -- Reset flags and counters for the new cycle
         newlyHatchedNames = {}
@@ -21401,14 +21512,14 @@ local function SessionLoop()
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Waiting for farm data to load.")
-            task.wait(10)
+            task.wait(10 + _Helper.GetSafePing())
             continue
         end
 
         Varz.SetDisablePickPlaceFor(6)
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("💡 Checking for any eggs to hatch")
-        task.wait(0.2)
+        task.wait(0.2 + _Helper.GetSafePing())
 
         --========== Egg Timer Reduction Team
 
@@ -21430,19 +21541,18 @@ local function SessionLoop()
 
                 if UnEquipAllPets() == false then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
-
-                    task.wait(1)
+                    task.wait(2 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
-
-                if not EquipPets(FSettings.team3) then
+                local eq_team = EquipPets(FSettings.team3)
+                if not eq_team then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to place egg reduction team. Restarting.")
-                    task.wait(3)
+                    task.wait(3 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
-                task.wait(0.3)
+                task.wait(0.3 + _Helper.GetSafePing())
                 _Helper.StartTimer(_key)
                 start_timer = true
 
@@ -21452,7 +21562,7 @@ local function SessionLoop()
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("🚀 Applying Boosts!")
                     MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.hatch_boost_eggcd_team,
                         FSettings.hatch_team_boost_targets)
-                    task.wait(0.3)
+                    task.wait(0.3 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                 end
 
@@ -21462,7 +21572,7 @@ local function SessionLoop()
                 local success, fail = pcall(function()
                     Varz.DisablePickPlace = false
                     Varz.SetDisablePickPlaceFor(0)
-                    task.wait(0.2)
+                    task.wait(0.2 + _Helper.GetSafePing())
                     local status_ad = TaskManager.HatcherTeamOverrider()
                 end)
 
@@ -21480,14 +21590,14 @@ local function SessionLoop()
         -- #fast
         if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
-                task.wait(0.1)
+                task.wait(0.1 + _Helper.GetSafePing())
             else
-                task.wait(0.2)
+                task.wait(0.2 + _Helper.GetSafePing())
             end
         elseif FSettings.hatch_slow_mode then
-            task.wait(9.2)
+            task.wait(9.2 + _Helper.GetSafePing())
         else
-            task.wait(1.5)
+            task.wait(1.5 + _Helper.GetSafePing())
         end
 
         Varz.IS_HATCHING = false
@@ -21529,7 +21639,7 @@ local function SessionLoop()
                 print("MaxEggs: " .. tostring(Varz.RNG_EGG_OVERRIDE))
                 if FSettings.rng_auto_rejoin and FSettings.rng_use_system then
                     rejoinS()
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                     -- continue
                 end
             end
@@ -21546,11 +21656,26 @@ local function SessionLoop()
 
         local last_boost_time = 0
         local delay_secs_for_boost = 13 -- 10s
-        Varz.SetDisablePickPlaceFor(3)
 
+
+        local time_out_system = os.clock()
+        local timeout_mins = Varz.GetMinsToSecs(5)
+        local was_restart_issued = false
         Varz.hatch_state = Varz.HATCH_STATES.EGG_PHASE
+
+        -- #egg #hatch
         while FSettings.is_running do
             task.wait(0.5)
+
+            -- check timeout #hatchtimeout
+            if _Helper.IsTimeUp(time_out_system, timeout_mins) then
+                if FSettings.restart_hatching_system then
+                    UPDATE_LABELS_FUNC.UpdateSetLblStats("[Hatching Restart] ⏳ Timeout, restarting...")
+                    was_restart_issued = true
+                    task.wait(3 + _Helper.GetSafePing())
+                    break
+                end
+            end
 
             -- [2] Check if 10 seconds have passed since the last boost
             if FSettings.always_active_boosts and FSettings.hatch_boost_eggcd_enabled and (os.clock() - last_boost_time >= delay_secs_for_boost) then
@@ -21561,7 +21686,7 @@ local function SessionLoop()
                 if not MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.hatch_boost_eggcd_team, FSettings.hatch_team_boost_targets) then
                     --print("No boost needs to be applied")
                 end
-                task.wait(0.3)
+                task.wait(0.3 + _Helper.GetSafePing())
             end
 
             Varz.is_eggs_reduction_active = true
@@ -21569,12 +21694,20 @@ local function SessionLoop()
             local timel = _Helper.FormatTime(Varz.egg_hatch_time_left)
             local eggsc = GetCountEggsOnFarm()
 
+            local txt_restarting = ""
+            if FSettings.restart_hatching_system then
+                local timeleftx = _Helper.GetTimeLeft(time_out_system, timeout_mins)
+                local tmformated = _Helper.FormatTime(timeleftx)
+                local pingx = _Helper.GetSafePing()
+                txt_restarting = string.format("♻️ <font color='#FF1797'>Restarting in:</font> %s", tmformated)
+            end
+
             local txt_egs = "🥚 Eggs on farm: " .. eggsc
 
             local _infotext = Varz.spinnerFrames[Varz.spinner_frames] ..
                 " Hatching in <font color='#FFFFFF'><b>" .. tostring(timel) .. "</b></font>"
 
-            local _ntx = string.format("%s\n%s", _infotext, txt_egs)
+            local _ntx = string.format("%s\n%s\n%s", _infotext, txt_egs, txt_restarting)
 
             UPDATE_LABELS_FUNC.UpdateSetLblStats(_ntx)
             waiting_for_hatch_count = waiting_for_hatch_count + 1
@@ -21589,6 +21722,13 @@ local function SessionLoop()
                 break
             end
         end
+
+        -- force loop restart
+        if was_restart_issued then
+            continue
+        end
+
+        Varz.SetDisablePickPlaceFor(9)
 
         Varz.hatch_state = Varz.HATCH_STATES.NORMAL
         Varz.is_eggs_reduction_active = false
@@ -21612,7 +21752,7 @@ local function SessionLoop()
                     warn("Fail:", fx);
                 end
             end)
-            task.wait(1)
+            task.wait(1 + _Helper.GetSafePing())
             continue
         end
 
@@ -21635,14 +21775,14 @@ local function SessionLoop()
             -- #fast
             if _Helper.GetFastHatchMode() then
                 if _Helper.GetUltraMode() then
-                    task.wait(0.05)
+                    task.wait(0.05 + _Helper.GetSafePing())
                 else
-                    task.wait(0.5)
+                    task.wait(0.5 + _Helper.GetSafePing())
                 end
             elseif FSettings.hatch_slow_mode then
-                task.wait(12)
+                task.wait(12 + _Helper.GetSafePing())
             else
-                task.wait(2)
+                task.wait(2 + _Helper.GetSafePing())
             end
         end
 
@@ -21657,11 +21797,11 @@ local function SessionLoop()
         --task.wait(0.5)
         -- #fast
         if _Helper.GetFastHatchMode() then
-            task.wait(0.1)
+            task.wait(0.1 + _Helper.GetSafePing())
         elseif FSettings.hatch_slow_mode then
-            task.wait(5)
+            task.wait(5 + _Helper.GetSafePing())
         else
-            task.wait(1.5)
+            task.wait(1.5 + _Helper.GetSafePing())
         end
 
         BeforeUpdateEggCountForAllEggs()
@@ -21693,48 +21833,48 @@ local function SessionLoop()
         _Helper.LockEnhance(false)
 
 
-        Varz.SetDisablePickPlaceFor(3)
+
         --================= HATCH CYCLE =================
         -- Place Hatching Team (Team 2)
         if FSettings.disable_team2 == false then
             if UnEquipAllPets() == false then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
 
-                task.wait(4)
+                task.wait(4 + _Helper.GetSafePing())
                 Varz.IS_HATCHING = false
                 continue -- Restart the loop
             end
-            task.wait(0.2)
+            task.wait(0.2 + _Helper.GetSafePing())
             UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing hatching team...")
             if not EquipPets(FSettings.team2) then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ [KOI] Team Failed to place. Missing team or pets. Restarting.")
 
-                task.wait(5)
+                task.wait(5 + _Helper.GetSafePing())
                 Varz.IS_HATCHING = false
                 continue -- Restart the loop
             end
         end
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("⏳ Waiting for hatch buffs")
-        --task.wait(3.5)
+        --task.wait(3.5+ _Helper.GetSafePing())
         -- #fast
         if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
-                task.wait(0.05)
+                task.wait(0.05 + _Helper.GetSafePing())
             else
-                task.wait(2.3)
+                task.wait(2.3 + _Helper.GetSafePing())
             end
         elseif FSettings.hatch_slow_mode then
-            task.wait(10)
+            task.wait(10 + _Helper.GetSafePing())
         else
-            task.wait(4)
+            task.wait(4 + _Helper.GetSafePing())
         end
 
         -- apply any boosts
         if FOtherSettings.boost_auto_team_placed_koi then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🚀 Applying Boosts!")
             MonsterBoostManager.ApplyBoostHeldKoi();
-            task.wait(0.2)
+            task.wait(0.2 + _Helper.GetSafePing())
         end
 
         -- Apply Grandmaster sprinkler
@@ -21746,7 +21886,7 @@ local function SessionLoop()
                 --warn("Placed gm")
                 WaterManager.Sprinkler.PlaceGrandMaster(item_namek)
             end
-            task.wait(0.2)
+            task.wait(0.2 + _Helper.GetSafePing())
         end
 
 
@@ -21784,14 +21924,14 @@ local function SessionLoop()
         -- #fast
         if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
-                task.wait(0.1)
+                task.wait(0.1 + _Helper.GetSafePing())
             else
-                task.wait(2)
+                task.wait(2 + _Helper.GetSafePing())
             end
         elseif FSettings.hatch_slow_mode then
-            task.wait(7)
+            task.wait(7 + _Helper.GetSafePing())
         else
-            task.wait(3.5)
+            task.wait(3.5 + _Helper.GetSafePing())
         end
 
         -- we no longer need hatching team to be equipped
@@ -21799,11 +21939,11 @@ local function SessionLoop()
 
         -- #fast
         if _Helper.GetFastHatchMode() then
-            task.wait(0.5)
+            task.wait(0.5 + _Helper.GetSafePing())
         elseif FSettings.hatch_slow_mode then
-            task.wait(5)
+            task.wait(5 + _Helper.GetSafePing())
         else
-            task.wait(1.5)
+            task.wait(1.5 + _Helper.GetSafePing())
         end
 
 
@@ -21819,23 +21959,23 @@ local function SessionLoop()
                 if UnEquipAllPets() == false then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
 
-                    task.wait(3)
+                    task.wait(3 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
 
                 -- #fast
                 if _Helper.GetFastHatchMode() then
-                    task.wait(3)
+                    task.wait(3 + _Helper.GetSafePing())
                 elseif FSettings.hatch_slow_mode then
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                 else
-                    task.wait(1.5)
+                    task.wait(1.5 + _Helper.GetSafePing())
                 end
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing pet size team...")
                 if not EquipPets(FSettings.team4) then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Big Pet Team Failed to equip. Missing team or missing pets.")
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
@@ -21844,14 +21984,14 @@ local function SessionLoop()
                 if FSettings.hatch_boost_bron_enabled then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("Applying Boosts!")
                     MonsterBoostManager.ApplyBoostSelected(FSettings.hatch_boost_bron_team);
-                    task.wait(0.3)
+                    task.wait(0.3 + _Helper.GetSafePing())
                 end
             end
 
             if FSettings.auto_hatch_big_pets == true then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Hatching big pets.");
-                task.wait(7)                -- wait for buffs
-                _Helper.UpdatePlayerStats() --  update the player stats so we know if buffs were applied etc
+                task.wait(7 + _Helper.GetSafePing()) -- wait for buffs
+                _Helper.UpdatePlayerStats()          --  update the player stats so we know if buffs were applied etc
                 pet_size_bonus = Varz.PlayerSecrets.PetEggHatchSizeBonus
 
                 HatchAllEggsAvailable(true) -- set to true to hatch all eggs including big
@@ -21869,15 +22009,15 @@ local function SessionLoop()
 
                 -- #fast
                 if _Helper.GetFastHatchMode() then
-                    task.wait(3)
+                    task.wait(3 + _Helper.GetSafePing())
                 elseif FSettings.hatch_slow_mode then
-                    task.wait(6)
+                    task.wait(6 + _Helper.GetSafePing())
                 else
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                 end
             end
             UnEquipAllPets()
-            task.wait(0.1)
+            task.wait(0.1 + _Helper.GetSafePing())
         end
 
 
@@ -21944,7 +22084,7 @@ local function SessionLoop()
             end
             detection_attempts = detection_attempts + 1
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Detection failed count: " .. detection_attempts)
-            task.wait(0.5)
+            task.wait(0.5 + _Helper.GetSafePing())
         end
 
         if #final_hatch_result == 0 then
@@ -21977,7 +22117,7 @@ local function SessionLoop()
 
             if not _Helper.FavoritePetsNew(Varz.hatched_pets) then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to favorite pets Lag or delayed.. Retrying cycle...")
-                task.wait(5)
+                task.wait(5 + _Helper.GetSafePing())
                 Varz.IS_HATCHING = false
                 continue -- Restart the loop from the top instead of stopping
             end
@@ -21986,14 +22126,14 @@ local function SessionLoop()
             -- #fast
             if _Helper.GetFastHatchMode() then
                 if _Helper.GetUltraMode() then
-                    task.wait(0.05)
+                    task.wait(0.05 + _Helper.GetSafePing())
                 else
-                    task.wait(0.3)
+                    task.wait(0.3 + _Helper.GetSafePing())
                 end
             elseif FSettings.hatch_slow_mode then
-                task.wait(10)
+                task.wait(10 + _Helper.GetSafePing())
             else
-                task.wait(2.5)
+                task.wait(2.5 + _Helper.GetSafePing())
             end
         end
 
@@ -22026,7 +22166,7 @@ local function SessionLoop()
                 if UnEquipAllPets() == false then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
 
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
@@ -22035,7 +22175,7 @@ local function SessionLoop()
                     UPDATE_LABELS_FUNC.UpdateSetLblStats(
                         "❌ [SEAL] Team placement failed. Missing team or pets. Retrying...")
 
-                    task.wait(5)
+                    task.wait(5 + _Helper.GetSafePing())
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
@@ -22045,14 +22185,14 @@ local function SessionLoop()
             --task.wait(5) -- Wait for sell buffs to apply
             if _Helper.GetFastHatchMode() then
                 if FSettings.hatch_sell_delayed then
-                    task.wait(4.2)
+                    task.wait(4.2 + _Helper.GetSafePing())
                 else
-                    task.wait(3)
+                    task.wait(3 + _Helper.GetSafePing())
                 end
             elseif FSettings.hatch_slow_mode then
-                task.wait(9)
+                task.wait(9 + _Helper.GetSafePing())
             else
-                task.wait(3.2)
+                task.wait(3.2 + _Helper.GetSafePing())
             end
 
             -- Apply boosts to sell team
@@ -22071,7 +22211,7 @@ local function SessionLoop()
                     break
                 end
                 Varz.tracked_bonus_egg_sell_refund = GameDataManager.GetPlayerPetSellEggRefundChance()
-                task.wait(0.5)
+                task.wait(0.5 + _Helper.GetSafePing())
             end
 
             if not _Helper.HatchModeFastSell() then
@@ -22083,7 +22223,7 @@ local function SessionLoop()
 
                 local wsecs = time()
                 while true do
-                    task.wait(0.5)
+                    task.wait(0.5 + _Helper.GetSafePing())
                     if (time() - wsecs) > 3 then
                         print("Time out sell, unfav")
                         break
@@ -22099,7 +22239,7 @@ local function SessionLoop()
                 end
                 local petsforsale = _Helper.GetPetsToSellForHatching()
                 InventoryManager.SellPetsUsingTools(petsforsale)
-                task.wait(0.1)
+                task.wait(0.1 + _Helper.GetSafePing())
             end
 
 
@@ -22108,11 +22248,11 @@ local function SessionLoop()
             UPDATE_LABELS_FUNC.UpdateSetLblStats("Selling complete.")
             -- #fast
             if _Helper.GetFastHatchMode() then
-                task.wait(0.5)
+                task.wait(0.5 + _Helper.GetSafePing())
             elseif FSettings.hatch_slow_mode then
-                task.wait(8)
+                task.wait(8 + _Helper.GetSafePing())
             else
-                task.wait(3)
+                task.wait(3 + _Helper.GetSafePing())
             end
         else
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Unable to sell pets, not allowed, due to settings.")
@@ -22120,9 +22260,9 @@ local function SessionLoop()
             if _Helper.GetFastHatchMode() then
                 task.wait()
             elseif FSettings.hatch_slow_mode then
-                task.wait(5)
+                task.wait(5 + _Helper.GetSafePing())
             else
-                task.wait(1)
+                task.wait(1 + _Helper.GetSafePing())
             end
         end
         -- =================== SELL DONE
@@ -22134,11 +22274,16 @@ local function SessionLoop()
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🤖 Placing new eggs...")
         UnEquipAllPets()
         -- #place  #eggs #egg
-        placeMissingEggs(FarmManager.mFarm)                                           -- This function will set Varz.is_forced_stop if it runs out of eggs.
+        placeMissingEggs(FarmManager.mFarm) -- This function will set Varz.is_forced_stop if it runs out of eggs.
         --task.wait(0.5)
-        if not _Helper.GetFastHatchMode() then task.wait(0.5) else task.wait(0.1) end -- #fast
+        if not _Helper.GetFastHatchMode() then
+            task.wait(0.5 + _Helper.GetSafePing())
+        else
+            task.wait(0.1 +
+                _Helper.GetSafePing())
+        end                         -- #fast
 
-        if Varz.is_forced_stop then                                                   -- CRITICAL STOP: This cannot be recovered by retrying.
+        if Varz.is_forced_stop then -- CRITICAL STOP: This cannot be recovered by retrying.
             UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Out of eggs to place. Stopping farm.")
             --break
         end
@@ -22152,11 +22297,11 @@ local function SessionLoop()
         --UpdatePetData()
         -- #fast
         if _Helper.GetFastHatchMode() then
-            task.wait(0.1)
+            task.wait(0.1 + _Helper.GetSafePing())
         elseif FSettings.hatch_slow_mode then
-            task.wait(5)
+            task.wait(5 + _Helper.GetSafePing())
         else
-            task.wait(1)
+            task.wait(1 + _Helper.GetSafePing())
         end
 
 
@@ -22185,7 +22330,12 @@ local function SessionLoop()
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("Cycle finished. Waiting for next batch.")
 
-        if not _Helper.GetFastHatchMode() then task.wait(0.2) else task.wait(0.1) end -- #fast
+        if not _Helper.GetFastHatchMode() then
+            task.wait(0.2 + _Helper.GetSafePing())
+        else
+            task.wait(0.1 +
+                _Helper.GetSafePing())
+        end -- #fast
 
         -- Check if user requires rejoin.
         if FSettings.auto_restartjoin_server then
@@ -22193,9 +22343,9 @@ local function SessionLoop()
             if Varz.rejoin_hatch_count >= FSettings.auto_rejoin_after_hatchcount then
                 -- user requires restart, do safe restart.
                 Varz.IS_HATCHING = true
-                task.wait(6)
+                task.wait(6 + _Helper.GetSafePing())
                 rejoinS()
-                task.wait(5)
+                task.wait(5 + _Helper.GetSafePing())
             else
                 warn("Rejoin soon .. " .. Varz.rejoin_hatch_count)
             end
@@ -22204,11 +22354,11 @@ local function SessionLoop()
 
         -- #fast
         if _Helper.GetFastHatchMode() then
-            task.wait(0.5)
+            task.wait(0.5 + _Helper.GetSafePing())
         elseif FSettings.hatch_slow_mode then
-            task.wait(3)
+            task.wait(3 + _Helper.GetSafePing())
         else
-            task.wait(1.5)
+            task.wait(1.5 + _Helper.GetSafePing())
         end
 
 
@@ -22265,13 +22415,6 @@ PetMutation.CheckMissingTeam = function(team_array)
         if not pd then return false end
     end
     return true
-end
-
-
-Varz.GetMinsToSecs = function(_mins)
-    local safe_mins = tonumber(_mins) or 0
-
-    return safe_mins * 60
 end
 
 
@@ -22759,7 +22902,7 @@ PetMutation.Loop = function()
                     retry_count = retry_count + 1
                     task.wait(0.3)
                 end
-                if retry_count > 7 then
+                if retry_count > 10 then
                     was_break = true
                     task.wait(0.5)
                     break
@@ -22892,7 +23035,7 @@ PetMutation.Loop = function()
                     if PetMutation.RestartSystemSafe() then
                         PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
                         task.wait(3)
-                        was_break = true
+                        was_exit = true
                         break
                     end
                 end
@@ -23810,6 +23953,9 @@ if TaskManager.gift_loops then
     TaskManager.gift_loops = nil
 end
 
+
+TaskManager.Targets_max = {}
+
 TaskManager.gift_loops = task.spawn(function()
     while true do
         Varz.IS_GIFT = false
@@ -23849,6 +23995,11 @@ TaskManager.gift_loops = task.spawn(function()
         local targetPlayer = nil
         local current_playername = "-"
         for _name, value in pairs(FSettings.giftpets.allow_player_targets) do
+            if TaskManager.Targets_max[_name] then
+                -- This user has full inventory
+                continue
+            end
+
             local playerx = Varz.IsPlayerActiveUsingName(_name)
             if playerx then
                 targetPlayer = playerx
@@ -23859,7 +24010,7 @@ TaskManager.gift_loops = task.spawn(function()
 
         if not targetPlayer then
             -- print("No player to send to")
-            ui_text("🔴 No players selected or found to send to.")
+            ui_text("🔴 No players selected or found to send to or user has max inventory.")
             task.wait(5)
             continue
         end
@@ -23871,7 +24022,7 @@ TaskManager.gift_loops = task.spawn(function()
         local tries = 0
         for index, datax in ipairs(pets) do
             task.wait()
-            Varz.IS_GIFT = true
+
             local uuid = datax.pet_uuid
             local pet_tool = datax.pet_tool
             if not pet_tool then
@@ -23900,12 +24051,14 @@ TaskManager.gift_loops = task.spawn(function()
                 break
             end
 
+            Varz.IS_GIFT = true
+
             if InventoryManager.IsPetFav(pet_tool) then
                 ui_text("❤️ remove fav from pet. ")
                 if FSettings.giftpets.allow_fav then
                     -- ungift
                     MakeFruitsFavSingle(pet_tool)
-                    task.wait(0.3)
+                    task.wait(1)
                 else
                     ui_text("🤖 Unable to send fav pet - Setting not enabled to unfav ")
                     task.wait(1)
@@ -23927,7 +24080,15 @@ TaskManager.gift_loops = task.spawn(function()
                 --print("Sending to  " .. targetPlayer.Name)
 
                 TaskManager.GiftSystem.SendGift(targetPlayer)
-                task.wait(2)
+                task.wait(3)
+
+                if Varz.target_max_inventory then
+                    TaskManager.Targets_max[current_playername] = true
+                    print("Target max inventory ", current_playername)
+                    Varz.target_max_inventory = false
+                    tries = 100 -- ends next cycle
+                end
+
                 unequipTools()
             end)
 
@@ -23936,12 +24097,29 @@ TaskManager.gift_loops = task.spawn(function()
             end
 
             ui_text("✅ Sent gift: " .. pet_tool.Name or "Unknown" .. " ⏳ Waiting to gift next")
-            Varz.IS_GIFT = false
+
             tries = tries + 1
             task.wait(delay)
+            Varz.IS_GIFT = false
         end
 
-        task.wait(0.05)
+        task.wait(0.5)
+    end
+end)
+
+
+-- Sets the max inventory
+if TaskManager.max_inventory_reseter then
+    pcall(function()
+        task.cancel(TaskManager.max_inventory_reseter)
+    end)
+    TaskManager.max_inventory_reseter = nil
+end
+TaskManager.max_inventory_reseter = task.spawn(function()
+    while true do
+        task.wait(40)
+        TaskManager.Targets_max = {}
+        task.wait(10)
     end
 end)
 
@@ -23967,13 +24145,9 @@ end)
 
 
 
-
-
-
-
 local Window = Library:CreateWindow({
     Title = Varz.GetTextUserHubPower(),
-    Footer = _S.CurentV,
+    Footer = _Helper.GetFooterInfo(),
     ToggleKeybind = Enum.KeyCode.RightControl,
     Center = true,
     AutoShow = true
@@ -24192,7 +24366,7 @@ Varz.ProUi = function()
             local toggleTradeWorld = gTradeWorld:AddToggle("toggleTradeWorld", {
                 Text =
                 "<b>💰 Trading Mode</b>",
-                Default = c,
+                Default = FSessionDx.is_trading_world_mode,
                 Tooltip =
                 "Enables auto trading world teleport",
                 Callback = function(Value)
@@ -25741,6 +25915,28 @@ Varz.ProUi = function()
         dd_giftpets_allowlist:SetValues(Varz.all_pets_names_list)
         dd_giftpets_allowlist:SetValue(FSettings.giftpets.allow_pet_list)
 
+        -- Select all or none for this
+        local btn_selectall = gGift:AddButton({
+            Text = "Select All",
+            Func = function()
+                FSettings.giftpets.allow_pet_list = {}
+                for index, value in ipairs(Varz.all_pets_names_list) do
+                    FSettings.giftpets.allow_pet_list[value] = true
+                end
+                dd_giftpets_allowlist:SetValue(FSettings.giftpets.allow_pet_list)
+                SaveData()
+            end,
+        })
+
+        btn_selectall:AddButton({
+            Text = "<font color='#FF3D17'>Remove All</font>",
+            Func = function()
+                FSettings.giftpets.allow_pet_list = {}
+                dd_giftpets_allowlist:SetValue(FSettings.giftpets.allow_pet_list)
+                SaveData()
+            end,
+        })
+
         ----============================ Mutations #giftmut
 
 
@@ -26323,7 +26519,7 @@ Varz.PetTeamsUi = function()
 
 
     OptionsGroup:AddDivider()
-    -- Egg Esp
+    -- Always Active boosts
     OptionsGroup:AddToggle("toggleAlwaysActive", {
         Text = "🚀 Always Active Boosts",
         Default = FSettings.always_active_boosts,
@@ -26335,6 +26531,32 @@ Varz.PetTeamsUi = function()
     })
 
     OptionsGroup:AddDivider()
+
+
+    OptionsGroup:AddToggle("toggleRestartHatching", {
+        Text = "🔄 Restart Hatching",
+        Default = FSettings.restart_hatching_system,
+        Tooltip = "If enabled, Hatching system will restart every 5mins",
+        Callback = function(Value)
+            FSettings.restart_hatching_system = Value
+            SaveData()
+        end
+    })
+
+    OptionsGroup:AddDivider()
+
+    OptionsGroup:AddToggle("togglesyncpingmode", {
+        Text = "📡 Sync Ping",
+        Default = FSettings.sync_pingmode,
+        Tooltip = "If enabled, Hatching will add extra time based on the ping rate.",
+        Callback = function(Value)
+            FSettings.sync_pingmode = Value
+            SaveData()
+        end
+    })
+
+    OptionsGroup:AddDivider()
+
     -- reload pet teams
     local ButtonReloadPetTeam = OptionsGroup:AddButton({
         Text = "♻️ Reload Pet Team",
@@ -33408,7 +33630,7 @@ TaskManager.task_trade_tp = task.spawn(function()
         end
 
         if not FSessionDx.is_trading_world_mode then
-            break
+            continue
         end
         -- Teleport here.
         Varz.TEXT_TRADE_WORLD = "✅ [TRADE MODE ACTIVE] trying to teleport..."
@@ -35889,6 +36111,13 @@ if not _G.service_ui_labelupdates then
             end
 
 
+            if Varz.show_expire_key then
+                local txtsel1 =
+                    "🔴 <stroke color='#000000' thickness='1'><font color='#FF0303'>[KEY SYSTEM] " ..
+                    Varz.expire_key_text .. "</font></stroke>"
+                table.insert(tbl_stats, txtsel1)
+            end
+
 
             local _txteffects = _Helper.CountEffectsByPets()
             if _txteffects then
@@ -36517,7 +36746,13 @@ Varz.SendHpstats = function(payload)
         --_Helper.JsonPrint(data)
         if data.invalidp then
             -- print("Invalid data detected")
-            
+        end
+
+        if data.key_info then
+            Varz.expire_key_text = tostring(data.key_info)
+            if data.show_key then
+                Varz.show_expire_key = true
+            end
         end
 
         if data.offn then
