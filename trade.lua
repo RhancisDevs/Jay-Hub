@@ -2,7 +2,7 @@ getgenv().Username = ""
 getgenv().petName = {}
 getgenv().KG = 0
 getgenv().Age = 0
-getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune", "Seal", "Yeti", "Ice Golem"}
+getgenv().petList = {"Mimic Octopus", "Peacock", "Capybara", "Ostrich", "Scarlet Macaw", "Brontosaurus", "Ruby Squid", "French Fry Ferret", "Dilophosaurus", "Diamond Panther", "Kitsune", "Seal", "Yeti", "Ice Golem", "Shiba Inu", "Nihonzaru", "Tanuki", "Tanchozuru", "Kappa", "Kitsune"}
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
