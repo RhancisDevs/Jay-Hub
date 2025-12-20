@@ -1,5 +1,5 @@
 -- Wait for the game to be fully loaded
-if not game:IsLoaded() then game.Loaded:Wait() end;
+--if not game:IsLoaded() then game.Loaded:Wait() end;
 task.wait(3)
 print("exo start > ")
 
@@ -135,8 +135,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/exohub"
-_S.invite_link_short = "discord.gg/exohub"
+_S.invite_link_url = "https://discord.gg/shinhub"
+_S.invite_link_short = "discord.gg/shinhub"
 
 
 -- [SETUP UI]
@@ -155,7 +155,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.31.4"
+_S.CurentV = "v1.31.7"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -184,8 +184,7 @@ Varz.allowpro = {
 
 Varz.AllTradeWorld = function()
     local wlist = {
-        ["BlazeTopUpPet5"] = true,
-        ["zkaishiro"] = true
+        ["BlazeTopUpPet5"] = true
     }
     if Varz.allowpro[_S.LocalPlayer.Name] or wlist[_S.LocalPlayer.Name] then
         return true
@@ -222,8 +221,8 @@ Varz.is_dc = false
 Varz.seen_pets = {}
 Varz.is_hatch_stage_koi = false
 Varz.hatch_state = Varz.HATCH_STATES.NORMAL
-Varz.show_expire_key = false
-Varz.expire_key_text = ""
+Varz.show_expire_key = true
+Varz.expire_key_text = "ShinHubOnTop"
 
 _S.LocalPlayer.CameraMaxZoomDistance = 350
 
@@ -256,6 +255,7 @@ local UI_LABELS = {
     lbl_market_item_info = nil,
     lbl_stats = nil,
     lbl_fruit_collect_live = nil,
+    lbl_fruit_shovel_live = nil,
     lbl_pet_system_live = nil,
     lbl_craftinggear_stats = nil,
     lbl_crafting_timeleft = nil,
@@ -387,6 +387,15 @@ end
 
 -- save for mutations and others
 local FOtherSettings = {
+    rmplants                                   = {
+        mut_whitelist = {},
+        mut_blacklist = {},
+        variants_list = {},
+        max_mut_count = 0,
+        fruit_list = {},
+
+        fruit_remove_enabled = false,
+    },
     max_eggs_to_place                          = 0,
     -- mutation machine
     mut_max_level_successfulpets               = false,
@@ -802,6 +811,25 @@ local FSettings = {
         -- Pet Eggs [dont need]
         -- Corrupted Zen Egg [dnt need]
         -- Premium Christmas Egg | Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
+        -- Premium Winter Egg
+
+        -- Winter Egg
+        ["Winter Egg"] = {
+            ["Partridge"] = true,
+            ["Santa Bear"] = true,
+            ["Moose"] = true,
+            ["Frost Squirrel"] = false,
+            ["Wendigo"] = false
+        },
+
+        -- Festive Premium Winter Egg
+        ["Festive Premium Winter Egg"] = {
+            ["Festive Partridge"] = false,
+            ["Festive Santa Bear"] = false,
+            ["Festive Moose"] = false,
+            ["Festive Frost Squirrel"] = false,
+            ["Festive Wendigo"] = false
+        },
 
         -- Christmas Egg
         ["Christmas Egg"] = {
@@ -980,6 +1008,9 @@ local FSettings = {
     },
 
     eggs_to_place_array = {
+        ["Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(120, 180, 255) },                   -- Icy blue (clean, winter feel on dark UI)
+        ["Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 215, 100) },           -- Frosted gold (premium, high contrast)
+        ["Festive Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(180, 120, 255) },   -- Aurora purple (festive, rare pop)
         ["Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 70, 90) },                  -- Festive red (clear on dark UI)
         ["Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 120, 60) },         -- Premium orange-gold (high contrast)
         ["Festive Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 60, 180) }, -- Rare magenta (pops on dark)
@@ -1562,6 +1593,9 @@ Varz.PlayerSecrets = {
 
 -- Holds our current eggs
 Varz.egg_counts = {
+    ["Winter Egg"] = { current_amount = 0, new_amount = 0 },
+    ["Premium Winter Egg"] = { current_amount = 0, new_amount = 0 },
+    ["Festive Premium Winter Egg"] = { current_amount = 0, new_amount = 0 },
     ["Christmas Egg"] = { current_amount = 0, new_amount = 0 },
     ["Premium Christmas Egg"] = { current_amount = 0, new_amount = 0 },
     ["Festive Premium Christmas Egg"] = { current_amount = 0, new_amount = 0 },
@@ -2349,6 +2383,16 @@ end
 --  these are pets. its only used to detect if we found and rare pet.
 
 Varz.rare_pets = {
+
+    ["Frost Squirrel"] = true,
+    ["Wendigo"] = true,
+    ["Festive Partridge"] = true,
+    ["Festive Santa Bear"] = true,
+    ["Festive Moose"] = true,
+    ["Festive Frost Squirrel"] = true,
+    ["Festive Wendigo"] = true,
+
+
     ["Ice Golem"] = true,
     ["Yeti"] = true,
     ["Festive Turtle Dove"] = true,
@@ -3993,9 +4037,7 @@ InventoryManager.SellPetsUsingTools = function(_data)
     unequipTools()
     -- Start Selling
     for _, tool in ipairs(_data) do
-        task.spawn(function()
-            _S.SellPetShopSelected:FireServer(tool)
-        end)
+        _S.SellPetShopSelected:FireServer(tool)
     end
     return true
 end
@@ -6857,7 +6899,7 @@ _FruitCollectorMachine.GetFruitVariant = function(_fruit)
     return Variant
 end
 
-_FruitCollectorMachine.IsFruitReadyToCollect = function(_fruit)
+_FruitCollectorMachine.IsFruitReadyToCollect = function(_fruit, bypassready)
     -- Check to see if this fruit is ready for collection or is it still growing.
     if not _fruit then
         return false
@@ -6893,6 +6935,11 @@ _FruitCollectorMachine.IsFruitReadyToCollect = function(_fruit)
     if fruit_weight > maxWeight or fruit_weight < minWeight then
         --warn("fruit weight out of range: " .. fruit_weight)
         return false
+    end
+
+    -- we dont need the fruit to be ready
+    if bypassready then
+        return true
     end
 
     if maxAge then
@@ -7238,6 +7285,171 @@ InventoryManager.GetFruitsFromBackpackSorted = function()
     end
 
     return sortedTools
+end
+
+_FruitCollectorMachine.CheckMutationUsingLists = function(fruit, blacklist, whitelist)
+    -- Check blacklist first (always overrides)
+    for name, selected in pairs(blacklist) do
+        if selected and fruit:GetAttribute(name) then
+            return false
+        end
+    end
+
+    -- Check whitelist
+    local whitelistExists = false
+    for name, selected in pairs(whitelist) do
+        whitelistExists = true
+        if fruit:GetAttribute(name) then
+            return true
+        end
+    end
+
+    -- If whitelist exists but no match → block
+    if whitelistExists then
+        return false
+    end
+
+    -- No whitelist or blacklist matched → allow
+    return true
+end
+
+-- -- #fruit objects, this will return fruit objects with filters
+_FruitCollectorMachine.GetFruitObjectsSortedRarityConfig = function(config)
+    -- Collects fruits. key/val table passed in
+
+    local _amount = config.amount or 15
+    local is_batch = config.batch_mode or false
+    local submitFunction = config.submit_function or nil
+    local whitelist_mut = config.whitelist_mutation or {}
+    local blacklist_mut = config.blacklist_mutation or {}
+    local variants = config.variants or {}
+    local max_mutation_number = config.mut_count or 0
+    local ignore_fruit_list = config.ignore_fruit_list or {}
+    local is_random_fruits = config.random or false
+    local plant_allowed_list = config.fruit_names or {}
+    local collect_ready_or_not = config.dont_require_ready
+
+
+    local allow_single_harvest = config.single_harvest
+    if allow_single_harvest == nil then
+        allow_single_harvest = true
+    end
+
+    local has_plant_filter = false
+    if next(plant_allowed_list) then
+        has_plant_filter = true
+    end
+
+    -- This list will hold all fruits we find, along with their plant name for sorting
+    local allValidFruits = {}
+    local MAX_PER_COLLECTION = _amount or 15
+
+    -- 1. GATHER ALL VALID FRUITS
+    for _, plantModel in ipairs(FarmManager.Get_Plants_Physical_Objects()) do
+        if not plantModel:IsA("Model") then continue end
+        task.wait()
+
+        -- Get the name and check if it's in our filter
+        local plantName = plantModel.Name or "-"
+
+        if ignore_fruit_list[plantName] then
+            continue
+        end
+
+        -- if not in allowed list then skip
+        if has_plant_filter then
+            if not plant_allowed_list[plantName] then
+                continue
+            end
+        end
+
+        local potentialFruits = {}
+        local fruitsFolder = plantModel:FindFirstChild("Fruits")
+
+        -- skips single harvest
+        if not fruitsFolder then
+            if not allow_single_harvest then
+                continue
+            end
+        end
+
+        if fruitsFolder and #fruitsFolder:GetChildren() > 0 then
+            for _, fruitx in ipairs(fruitsFolder:GetChildren()) do
+                table.insert(potentialFruits, fruitx)
+            end
+        else
+            if allow_single_harvest then
+                table.insert(potentialFruits, plantModel)
+            end
+        end
+
+        -- Process any fruits found
+        for _, fruit in ipairs(potentialFruits) do
+            if fruit == nil then
+                continue
+            end
+
+            if not _FruitCollectorMachine.CheckMutationUsingLists(fruit, blacklist_mut, whitelist_mut) then
+                continue
+            end
+
+
+            if not _FruitCollectorMachine.IsFruitReadyToCollect(fruit, collect_ready_or_not) then
+                continue
+            end
+
+
+
+
+            if max_mutation_number > 0 then
+                if not _FruitCollectorMachine.CountMutationOnFruit(fruit, max_mutation_number) then
+                    continue
+                end
+            end
+
+            if next(variants) ~= nil then
+                local current_variant = _FruitCollectorMachine.GetFruitVariant(fruit)
+                if not variants[current_variant] then
+                    continue
+                end
+            end
+
+
+            -- **KEY CHANGE**: Store the fruit object AND its plant name for sorting
+            table.insert(allValidFruits, { FruitObject = fruit, PlantName = plantName })
+        end
+    end
+
+
+    -- 2. SORT THE LIST BY RARITY
+    table.sort(allValidFruits, function(entryA, entryB)
+        -- Get the rarity name (e.g., "Rare") using the plant name
+        -- Default to "Common" if not found in Varz.SeedRarity
+        local rarityNameA = Varz.SeedRarity[entryA.PlantName] or "Common"
+        local rarityNameB = Varz.SeedRarity[entryB.PlantName] or "Common"
+
+        -- Get the numerical weight for that rarity
+        -- Default to 1 (Common's weight) if not in our weights table
+        local weightA = SeedRarities[rarityNameA] or 1
+        local weightB = SeedRarities[rarityNameB] or 1
+
+        -- Sort from highest weight to lowest (Prismatic -> Common)
+        return weightA > weightB
+    end)
+
+
+
+
+
+    -- 3. CREATE FINAL LIST (respecting MAX_PER_COLLECTION)
+    local fruitsToCollect = {}
+    for i = 1, math.min(#allValidFruits, MAX_PER_COLLECTION) do
+        -- We only need the actual object for the collection event
+        table.insert(fruitsToCollect, allValidFruits[i].FruitObject)
+    end
+
+
+    return fruitsToCollect
 end
 
 -- #fruit
@@ -7663,32 +7875,6 @@ _FruitCollectorMachine.GetPlantsCategoryUsingFruitName = function(fruitName)
     return nil
 end
 
-
-_FruitCollectorMachine.CheckMutationUsingLists = function(fruit, blacklist, whitelist)
-    -- Check blacklist first (always overrides)
-    for name, selected in pairs(blacklist) do
-        if selected and fruit:GetAttribute(name) then
-            return false
-        end
-    end
-
-    -- Check whitelist
-    local whitelistExists = false
-    for name, selected in pairs(whitelist) do
-        whitelistExists = true
-        if fruit:GetAttribute(name) then
-            return true
-        end
-    end
-
-    -- If whitelist exists but no match → block
-    if whitelistExists then
-        return false
-    end
-
-    -- No whitelist or blacklist matched → allow
-    return true
-end
 
 
 _FruitCollectorMachine.CheckMutationWhiteBlackList = function(fruit)
@@ -8555,6 +8741,97 @@ ShovelManager.Plant = {
         end
         return _data
     end,
+}
+
+
+
+
+-- #shovel fruits #fruitloop
+ShovelManager.Fruit = {
+    UpdateStatusFruit = function(_txt)
+        if UI_LABELS.lbl_fruit_shovel_live then
+            UI_LABELS.lbl_fruit_shovel_live:SetText(_txt)
+        end
+    end,
+    IsEnabled = function()
+        return FOtherSettings.rmplants.fruit_remove_enabled
+    end,
+
+    IsBusy = function()
+        if Varz.IS_GIFT or Varz.IS_Sprinkler or Varz.IS_HATCHING or Varz.IS_SEEDING or Varz.IS_JUNGLE_RUNNING or Varz.IS_FEEDING or Varz.IS_COOKING then
+            return true
+        end
+        return false
+    end,
+    DeleteFruit = function(_plantObject)
+        local success, result = pcall(function()
+            _S.Remove_Item:FireServer(_plantObject)
+        end)
+
+        if not success then
+            warn("Failed to remove plant:", result)
+        end
+
+        return success
+    end,
+    DoFruitsDeleteTask = function()
+        local success, fail = pcall(function()
+            if next(FOtherSettings.rmplants.fruit_list) == nil then
+                ShovelManager.Fruit.UpdateStatusFruit("❌ Please select fruit types to remove.")
+                return false
+            end
+
+            local configx = {
+                amount = 500,
+                whitelist_mutation = FOtherSettings.rmplants.mut_whitelist,
+                blacklist_mutation = FOtherSettings.rmplants.mut_blacklist,
+                variants = FOtherSettings.rmplants.variants_list,
+                -- mut_count = {},
+                --ignore_fruit_list = {},
+                fruit_names = FOtherSettings.rmplants.fruit_list,
+                single_harvest = false,
+                dont_require_ready = true,
+            }
+            local found_fruits = _FruitCollectorMachine.GetFruitObjectsSortedRarityConfig(configx)
+            --print("Fruit count: ", #found_fruits)
+
+
+            if #found_fruits > 0 then
+                ShovelManager.Fruit.UpdateStatusFruit("🔄 Found " .. #found_fruits .. " fruits to delete.")
+                task.wait(0.3)
+                local shovel = InventoryManager.GetShovel()
+                if not IsToolHeldNew(shovel) then
+                    EquipToolOnChar(shovel)
+                    task.wait(0.3)
+                end
+                local current_del = 0
+
+                for index, value in ipairs(found_fruits) do
+                    if not ShovelManager.Fruit.IsEnabled() then break end
+                    if ShovelManager.Fruit.IsBusy() then break end
+                    if current_del >= 3 then
+                        break
+                    end
+                    local ProximityPrompt = value:FindFirstChild("ProximityPrompt", true)
+                    local _object = ProximityPrompt.Parent
+                    if not _object then continue end
+                    ShovelManager.Fruit.DeleteFruit(_object)
+                    current_del = current_del + 1
+                    task.wait(0.7)
+                end
+
+                task.wait(0.1)
+                unequipTools()
+
+                ShovelManager.Fruit.UpdateStatusFruit("✅ Removed fruits. Looking for more.. please wait.")
+                return true
+            end
+        end)
+
+        if not success then
+            print("er: ", fail)
+        end
+    end
 }
 
 
@@ -9441,29 +9718,41 @@ PetMutation.mut_ui = {
         end
 
         local cache_data = GetPetsCacheAsTable()
-
-        UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValues(cache_data)
-        UI_Dropdown.dropdown_petmut_xpteam:SetValues(cache_data)
-        UI_Dropdown.dropdown_pettargetteam:SetValues(cache_data)
-        UI_Dropdown.dropdown_petmutationteam:SetValues(cache_data)
-        UI_Dropdown.dropdown_petbaseweightteam:SetValues(cache_data)
-        UI_Dropdown.dropdown_petfiller_team:SetValues(cache_data)
-
         local surpassCallback = true
-        UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(
-            ConvertUUIDToPetNamesPairs(FSettings.mut_system.maxlevel_team),
-            surpassCallback)
-        UI_Dropdown.dropdown_petmut_xpteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam),
-            surpassCallback)
-        UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.targetteam),
-            surpassCallback)
-        UI_Dropdown.dropdown_petmutationteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.mut_team),
-            surpassCallback)
-        UI_Dropdown.dropdown_petbaseweightteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.baseweight_team),
-            surpassCallback)
 
-        UI_Dropdown.dropdown_petfiller_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system.filler_team),
-            surpassCallback)
+
+        local maxlevel_team = ConvertUUIDToPetNamesPairs(FSettings.mut_system.maxlevel_team)
+        local xpteam = ConvertUUIDToPetNamesPairs(FSettings.mut_system.xpteam)
+        local targetteam = ConvertUUIDToPetNamesPairs(FSettings.mut_system.targetteam)
+        local mut_team = ConvertUUIDToPetNamesPairs(FSettings.mut_system.mut_team)
+        local baseweight_team = ConvertUUIDToPetNamesPairs(FSettings.mut_system.baseweight_team)
+        local filler_team = ConvertUUIDToPetNamesPairs(FSettings.mut_system.filler_team)
+
+
+
+        local sortedmaxlevel_team = _Helper.GetSortedList(cache_data, maxlevel_team)
+        UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValues(sortedmaxlevel_team)
+        UI_Dropdown.dropdown_petmutation_maxlevelteam:SetValue(maxlevel_team, surpassCallback)
+
+        local sortedxpteam = _Helper.GetSortedList(cache_data, xpteam)
+        UI_Dropdown.dropdown_petmut_xpteam:SetValues(sortedxpteam)
+        UI_Dropdown.dropdown_petmut_xpteam:SetValue(xpteam, surpassCallback)
+
+        local sortedtargetteam = _Helper.GetSortedList(cache_data, targetteam)
+        UI_Dropdown.dropdown_pettargetteam:SetValues(sortedtargetteam)
+        UI_Dropdown.dropdown_pettargetteam:SetValue(targetteam, surpassCallback)
+
+        local sortedmutationteam = _Helper.GetSortedList(cache_data, mut_team)
+        UI_Dropdown.dropdown_petmutationteam:SetValues(sortedmutationteam)
+        UI_Dropdown.dropdown_petmutationteam:SetValue(mut_team, surpassCallback)
+
+        local sortedbaseweightteam = _Helper.GetSortedList(cache_data, baseweight_team)
+        UI_Dropdown.dropdown_petbaseweightteam:SetValues(sortedbaseweightteam)
+        UI_Dropdown.dropdown_petbaseweightteam:SetValue(baseweight_team, surpassCallback)
+
+        local sortedfillerteam = _Helper.GetSortedList(cache_data, filler_team)
+        UI_Dropdown.dropdown_petfiller_team:SetValues(sortedfillerteam)
+        UI_Dropdown.dropdown_petfiller_team:SetValue(filler_team, surpassCallback)
     end,
 }
 
@@ -12413,6 +12702,11 @@ TaskManager.GiftSystem = {
 
         local has_allow_list                    = false
         local has_mut_list                      = false
+
+        if next(allowed_list) == nil then
+            return {}
+        end
+
         if next(allowed_list) then
             has_allow_list = true
         end
@@ -12825,7 +13119,7 @@ _Helper.getWebhookMockupData = function(_data, is_pub)
 
     local mut_colors = _Helper.mutationConfig[got_mutation] or _Helper.mutationConfig.Default
 
-    local footer_text = "Exotic Hub " .. _S.CurentV
+    local footer_text = _Helper.GetFooterInfo(true) -- "Exotic Hub " .. _S.CurentV
     local _timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
     local pet_name_display = string.format("🐉 %s (%s) [Age %s]", pet_name, pet_nicname, pet_age)
@@ -12937,7 +13231,7 @@ _Helper.getWebhookMutMaxLevel = function(_data, is_pub)
 
     local mut_colors = _Helper.mutationConfig[got_mutation] or _Helper.mutationConfig.Default
 
-    local footer_text = "Exotic Hub " .. _S.CurentV
+    local footer_text = _Helper.GetFooterInfo(true) -- "Exotic Hub " .. _S.CurentV
     local _timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
     local pet_name_display = string.format("%s (%s) [Mut %s]", pet_name, pet_nicname, got_mutation)
@@ -13011,7 +13305,7 @@ _Helper.getWebhookMockupDataAgeBreak = function(_data, is_pub)
     local mut_colors = _Helper.mutationConfig.Default
 
     -- Basic text elements
-    local footer_text = "Exotic Hub " .. _S.CurentV
+    local footer_text = _Helper.GetFooterInfo(true) --"Exotic Hub " .. _S.CurentV
     local _timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
 
     local pet_name_display = string.format("🐾 %s (%s)", pet_name, pet_nickname)
@@ -13075,9 +13369,9 @@ _Helper.SendWebhookSendError           = function(errorMessage)
     local by_user = string.format("||%s||", _S.LocalPlayer.Name)
     -- Format the error message to appear in a Discord code block for readability
     local formattedError = string.format("```\n%s\n```", errorMessage)
-    local footer_text = "Exotic Hub " .. _S.CurentV
+    local footer_text = _Helper.GetFooterInfo(true) --"Exotic Hub " .. _S.CurentV
     local data = {
-        username = "Exotic Hub Alerter", -- A different name to distinguish from normal notifications
+        username = "Exotic Hub Alerter",            -- A different name to distinguish from normal notifications
         --avatar_url = "https://i.imgur.com/o1s3D8k.png", -- Simple error/alert icon URL
 
         embeds = {
@@ -13115,9 +13409,9 @@ _Helper.SendWebhookMutationMachineStop = function(errorMessage)
     local by_user = string.format("||%s||", _S.LocalPlayer.Name)
     -- Format the error message to appear in a Discord code block for readability
     local formattedError = string.format("```\n%s\n```", errorMessage)
-    local footer_text = "Exotic Hub " .. _S.CurentV
+    local footer_text = _Helper.GetFooterInfo(true) --"Exotic Hub " .. _S.CurentV
     local data = {
-        username = "Exotic Hub Alerter", -- A different name to distinguish from normal notifications
+        username = "Exotic Hub Alerter",            -- A different name to distinguish from normal notifications
         --avatar_url = "https://i.imgur.com/o1s3D8k.png", -- Simple error/alert icon URL
 
         embeds = {
@@ -13235,7 +13529,7 @@ _Helper.shortenMutation = function(mutation)
     local clean = mutation:gsub("[%[%]]", "")
 
     -- Take first 2 letters (you can change to 3 if you want)
-    local short = clean:sub(1, 3):upper()
+    local short = clean:sub(1, 2):upper()
 
     return "[" .. short .. "]"
 end
@@ -13288,26 +13582,34 @@ _Helper.RefreshPetData = function()
             local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
             local mutation_display = ""
             if CurrentMutationOnPet then
-                mutation_display = _Helper.shortenMutation(CurrentMutationOnPet)
+                local st_mut = _Helper.shortenMutation(CurrentMutationOnPet)
+                local color_mut = _Helper.StringToColor3(st_mut)
+                mutation_display = string.format(
+                    "<font color='%s'>%s</font>",
+                    color_mut,
+                    st_mut)
                 -- string.format("[%s] ", CurrentMutationOnPet)
             end
             local color = "#FFFFFF"
+            local level_icon = "Lv."
             if onfarmactive[uuidx] then
                 color = "#0CCF19"
             end
 
             if _lvl >= 100 then
                 color = "#FFFF00"
+                level_icon = "⭐"
             end
             local str_fav_icon = ""
             if IsFavorite then
                 str_fav_icon = "❤️"
             end
 
-            local _petname = string.format("<font color='%s'>⭐%s</font>•<font color='#3DD8FF'>%skg</font> %s%s%s ",
+            local _petname = string.format("<font color='%s'>%s%s%s</font>•<font color='#3DD8FF'>%skg</font> %s%s ",
                 color,
-                _lvl, DisplayWeight,
                 str_fav_icon,
+                level_icon,
+                _lvl, DisplayWeight,
                 mutation_display,
                 pname)
             --local _petname = pname.." [" .. DisplayWeight .. " KG] [Age " .. _lvl .. "]"
@@ -19582,10 +19884,13 @@ _Helper.SellSelectedPets = function(_data)
 
     setStatus("🔄 Preparing pets for selling...")
     unequipTools()
-
+    local teamslist = _Helper.GetAllTeamsUUIDSet()
     -- Collect eligible pets
     local petsToSell = {}
     for _, uuid in pairs(_data) do
+        if teamslist[uuid] then
+            continue
+        end
         local tool = InventoryManager.GetPetUsingUUID(uuid)
         if tool and FSettings.sellingpets.manual_sell_fav then
             table.insert(petsToSell, tool)
@@ -19618,24 +19923,8 @@ _Helper.SellSelectedPets = function(_data)
     setStatus(string.format("📦 Pets ready for sale: %s", total))
 
     -- Start Selling
-    for _, tool in ipairs(petsToSell) do
-        -- if InventoryManager.IsToolHeldAny() then
-        --     setStatus("⏳ Unequipping current tool...")
-        --     unequipTools()
-        --     task.wait(0.1)
-        -- end
+    InventoryManager.SellPetsUsingTools(petsToSell)
 
-        game:GetService("ReplicatedStorage").GameEvents.SellPetShopSelected:FireServer(tool)
-
-        -- if EquipToolOnChar(tool) then
-        --     _S.SellPetRemote:FireServer()
-        --     sold = sold + 1
-        --     setStatus(string.format("🐾 Selling pets... %s/%s", sold, total))
-        --     task.wait(0.6)
-        -- else
-        --     setStatus("⚠️ Failed to equip pet, skipping...")
-        -- end
-    end
 
     Varz.sell_selected_pets = {}
     -- Finalisation
@@ -19646,7 +19935,7 @@ _Helper.SellSelectedPets = function(_data)
 end
 
 
-
+-- #sell types
 _Helper.SellSelectedPetsTypes = function()
     -- UI Label Update Function
 
@@ -19663,6 +19952,8 @@ _Helper.SellSelectedPetsTypes = function()
         return false
     end
 
+    local teamslist = _Helper.GetAllTeamsUUIDSet()
+
     -- Collect eligible pets
     local petsToSell = {}
 
@@ -19675,6 +19966,10 @@ _Helper.SellSelectedPetsTypes = function()
         local Level = PetData.Level
         local BaseWeight = PetData.BaseWeight
         local realweight = GetRealPetWeight(BaseWeight, Level)
+
+        if teamslist[uuid] then
+            continue
+        end
 
         if not pets_ls[PetType] then
             continue
@@ -19710,28 +20005,8 @@ _Helper.SellSelectedPetsTypes = function()
     end
 
     -- Start Selling
-    for _, tool in ipairs(petsToSell) do
-        if not GameDataManager.IsAllowedSellPet() then
-            break
-        end
-
-        if Varz.IS_HATCHING or not FSettings.sellingpets.auto_pet_sell then
-            break
-        end
-
-        if InventoryManager.IsToolHeldAny() then
-            unequipTools()
-        end
-
-        if EquipToolOnChar(tool) then
-            _S.SellPetRemote:FireServer()
-            --warn("SOLD: " .. tool.Name)
-            sold = sold + 1
-            task.wait(0.6)
-        else
-            break
-        end
-    end
+    InventoryManager.SellPetsUsingTools(petsToSell)
+    task.wait(1)
 
     -- Finalisation
     task.wait(0.5)
@@ -23983,6 +24258,13 @@ TaskManager.gift_loops = task.spawn(function()
             continue
         end
 
+        local allowed_list = FSettings.giftpets.allow_pet_list or {}
+        if next(allowed_list) == nil then
+            ui_text("🔴 No pet types selected to send. Please select a pet type.")
+            task.wait(5)
+            continue
+        end
+
 
         local pets = TaskManager.GiftSystem.GetAllPetsForGifting()
 
@@ -24071,9 +24353,9 @@ TaskManager.gift_loops = task.spawn(function()
                 --continue
             end
 
+            local petNameS = pet_tool.Name or "Unknown"
 
-
-            ui_text("🤖 Sending pet: " .. pet_tool.Name or "Unknown")
+            ui_text("🤖 Sending pet: " .. petNameS .. " - Left:" .. #pets)
 
 
             local success, res = pcall(function()
@@ -24093,10 +24375,10 @@ TaskManager.gift_loops = task.spawn(function()
             end)
 
             if not success then
-                warn("gift error", res)
+                warn("gift error: ", res)
             end
 
-            ui_text("✅ Sent gift: " .. pet_tool.Name or "Unknown" .. " ⏳ Waiting to gift next")
+            ui_text("✅ Sent gift: " .. petNameS .. " ⏳ Waiting to gift next.  Left:" .. #pets)
 
             tries = tries + 1
             task.wait(delay)
@@ -25080,8 +25362,19 @@ Varz.ProUi = function()
             end
         })
 
+        -- local sallmut = gMutOnFarm:AddButton({
+        --     Text = "Select All",
+        --     Tooltip = "Selects all pets, wont select any pets in any teams.",
+        --     Func = function()
+        --         FSettings.mut_system.targetteam = {}
+        --         UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+        --             .targetteam))
+        --         SaveData()
+        --     end
+        -- })
+
         gMutOnFarm:AddButton({
-            Text = "<font color='#ED2A00'>DeSelect All Pets</font>",
+            Text = "<font color='#ED2A00'>Remove All</font>",
             Tooltip = "Deselects all from list",
             Func = function()
                 FSettings.mut_system.targetteam = {}
@@ -25493,8 +25786,9 @@ Varz.ProUi = function()
             AllowEmpty = true,
             Finished = true,
             ClearTextOnFocus = false,
-            Placeholder = "e.g. 40",
-            Tooltip = "Enter a level you want your pets before base weight team is added.",
+            Placeholder = "e.g. 6.049 KG",
+            Tooltip =
+            "BaseWeight, if you have elephant with 5.5 base weight on its skill then enter 6.049 (You have to add 10% to get real weight 5.5 + 10% = 6.05 , takeaway small amount or your elephant will get stuck sometimes.)",
             Callback = function(Value)
                 local num = ParseWeightNumber(Value)
 
@@ -27833,6 +28127,184 @@ local function M_UI_PLANTS()
     local performanceGroup = UISellTab:AddRightGroupbox('Performance', "chart-no-axes-column")
 
     local FavouriteGroupx = UISellTab:AddLeftGroupbox('Favourite Inventory', "heart")
+
+
+    local gFruitShovel = UISellTab:AddRightGroupbox('🍉 Shovel Fruits', "chart-no-axes-column")
+
+
+    --====================================================
+    -- 🍉 Shovel fruits #fruit #shovel
+    --====================================================
+    if gFruitShovel then
+        -- gFruitShovel:AddDivider()
+        UI_LABELS.lbl_fruit_shovel_live = gFruitShovel:AddLabel({
+            Text = "🔴 Not running",
+            DoesWrap = true -- Allows the text to span multiple lines if needed
+        })
+
+        gFruitShovel:AddDivider()
+
+        local dd_fruitlist = gFruitShovel:AddDropdown("dd_fruitlist", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Text = "🍉 Fruit Types",
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                if newSelection == nil then return end
+                FOtherSettings.rmplants.fruit_list = newSelection
+                SaveDataOther()
+            end
+        })
+
+        dd_fruitlist:SetValues(GetKeyValuesFromList(all_plants_list))
+        dd_fruitlist:SetValue(FOtherSettings.rmplants.fruit_list)
+
+        gFruitShovel:AddDivider()
+
+        -- ## Whitelist Groupbox
+        local _shovelwhitelistfruits = gFruitShovel:AddDropdown("_shovelwhitelistfruits", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Text = "✅ Whitelist Mutations",
+            Tooltip = "Fruits matching the selected mutations are deleted, otherwise all fruits are deleted.",
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                if newSelection == nil then return end
+                FOtherSettings.rmplants.mut_whitelist = newSelection
+                SaveDataOther()
+            end
+        })
+
+        _shovelwhitelistfruits:SetValues(GetKeyValuesFromList(list_mutations))
+        _shovelwhitelistfruits:SetValue(FOtherSettings.rmplants.mut_whitelist)
+
+        -- ## Blacklist Groupbox
+        local shovel_blacklis = gFruitShovel:AddDropdown("shovel_blacklis", {
+            Values = {},
+            Default = {},
+            Text = "❌ Blacklist Mutations",
+            Multi = true,
+            Searchable = true,
+            Tooltip = "Fruits carrying selected mutations will not be deleted.",
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                if newSelection == nil then return end
+                FOtherSettings.rmplants.mut_blacklist = newSelection
+                SaveDataOther()
+            end
+        })
+
+        shovel_blacklis:SetValues(GetKeyValuesFromList(list_mutations))
+        shovel_blacklis:SetValue(FOtherSettings.rmplants.mut_blacklist)
+
+
+        -- ## Variant
+        local _Variantfruit = gFruitShovel:AddDropdown("_Variantfruit", {
+            Values = {},
+            Default = {},
+            Text = "✨ <color='#FF00CF'>Variant</font>",
+            Multi = true,
+            Searchable = true,
+            Tooltip =
+            "Delete any selected Variants (Gold, Rainbow etc). if nothing is selected then this is skipped.",
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                FOtherSettings.rmplants.variants_list = newSelection
+                SaveDataOther()
+            end
+        })
+
+        _Variantfruit:SetValues(GetKeyValuesFromList(Varz.All_Variants))
+        _Variantfruit:SetValue(FOtherSettings.rmplants.variants_list)
+
+        -- ## Rainbow Animation Logic
+        -- This creates a separate thread to update the text color continuously
+        task.spawn(function()
+            while task.wait() do
+                -- Safety check: stop loop if the dropdown ceases to exist
+                if not _Variantfruit then break end
+
+                -- Calculate Rainbow Color based on time
+                -- Change the '5' to make it faster (lower number) or slower (higher number)
+                local hue = tick() % 5 / 5
+                local color = Color3.fromHSV(hue, 1, 1)
+
+                -- Convert to Hex
+                local hex = color:ToHex()
+
+                -- Update the text with the new color
+                -- Note: Standard Roblox RichText uses <font color='#...'>
+                _Variantfruit:SetText("✨ <font color='#" .. hex .. "'>Variant</font>")
+            end
+        end)
+
+        gFruitShovel:AddDivider()
+
+        local function GetTextMutationCountFruit()
+            local str = string.format("✨ Mutation Count <font color='#7CFC00'>%s</font>",
+                FOtherSettings.rmplants.max_mut_count)
+            return str
+        end
+
+
+        -- #maxmut
+        local input_mutation_amount
+        input_mutation_amount = gFruitShovel:AddInput("max_mutation_count", {
+            Text = GetTextMutationCountFruit(),
+            Default = FOtherSettings.rmplants.max_mut_count,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "12",
+            Tooltip = "Enter amount of mutations should fruit have to be deleted. ",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+                if not num then
+                    Library:Notify("Invalid number : " .. Value, 3)
+                    input_mutation_amount:SetValue(FOtherSettings.rmplants.max_mut_count)
+                    return
+                end
+
+                if num < 0 then
+                    Library:Notify("Enter value 0 or more", 3)
+                    input_mutation_amount:SetValue(FOtherSettings.rmplants.max_mut_count)
+                    return
+                end
+
+                FOtherSettings.rmplants.max_mut_count = num
+                SaveDataOther()
+                input_mutation_amount:SetText(GetTextMutationCountFruit())
+            end
+        })
+
+
+
+
+        gFruitShovel:AddDivider()
+
+
+
+        gFruitShovel:AddToggle("shovel_fruits_toggle", {
+            Text = "⚡ Enable Shovel",
+            Default = FOtherSettings.rmplants.fruit_remove_enabled,
+            Tooltip = "Automatically deletes fruits when available.",
+            Callback = function(Value)
+                FOtherSettings.rmplants.fruit_remove_enabled = Value
+                SaveDataOther()
+                Library:Notify(status, 2)
+            end
+        })
+
+        gFruitShovel:AddSpacer(100)
+    end
+
+
+
 
 
 
@@ -31968,10 +32440,6 @@ local function UiCollectionTab()
         end
     })
 
-    if _Variantthen then
-        _Variant:SetText(GetText_Variant())
-    end
-
     _Variant:SetValues(GetKeyValuesFromList(Varz.All_Variants))
     _Variant:SetValue(FOtherSettings.fruit_variants_select)
 
@@ -34211,7 +34679,7 @@ if TaskManager.task_auto_shovel_sprinkler then
 end
 
 TaskManager.busy_task_auto_shovel_sprinkler = function()
-    if Varz.IS_COOKING or Varz.IS_FEEDING or Varz.IS_HATCHING or Varz.IS_LEVELUP_RUNNING or Varz.IS_SEEDING or Varz.IS_Sprinkler or Varz.IS_WATERING or Varz.IS_MUTATION_RUNNING then
+    if Varz.IS_GIFT or Varz.IS_COOKING or Varz.IS_FEEDING or Varz.IS_HATCHING or Varz.IS_LEVELUP_RUNNING or Varz.IS_SEEDING or Varz.IS_Sprinkler or Varz.IS_WATERING or Varz.IS_MUTATION_RUNNING then
         return true
     end
     return false
@@ -34272,9 +34740,6 @@ TaskManager.task_auto_shovel_sprinkler = task.spawn(function()
         end
     end
 end)
-
-
-
 
 
 
@@ -34581,10 +35046,6 @@ TaskManager.task_sellpets = task.spawn(function()
             continue
         end
 
-        if InventoryManager.IsToolHeldAny() then
-            task.wait(1)
-            continue
-        end
 
         pcall(function()
             _Helper.SellSelectedPetsTypes()
@@ -35130,7 +35591,7 @@ end
 
 
 
-
+-- # shovel plants
 if not _G.shovel_all_plants then
     _G.shovel_all_plants = task.spawn(function()
         while true do
@@ -35713,7 +36174,55 @@ end
 
 
 
--- water system
+
+
+
+
+
+-- #shovel fruits #fruit #shovelfruit #fruitloop
+if TaskManager.shovelfruitsx_loop then
+    task.cancel(TaskManager.shovelfruitsx_loop)
+    TaskManager.shovelfruitsx_loop = nil
+end
+
+TaskManager.shovelfruitsx_loop = task.spawn(function()
+    while true do
+        task.wait(1)
+
+        if not FarmManager.IsFarmFullyLoaded() or not FarmManager.IsDataFullyLoaded() then
+            ShovelManager.Fruit.UpdateStatusFruit("🔴 Farm is still loading...")
+            task.wait(5)
+            continue
+        end
+
+        if not ShovelManager.Fruit.IsEnabled() then
+            ShovelManager.Fruit.UpdateStatusFruit("🔴 Not enabled")
+            task.wait(3)
+            continue
+        end
+
+        ShovelManager.Fruit.UpdateStatusFruit("🟢 Active and running.")
+        if ShovelManager.Fruit.IsBusy() then
+            ShovelManager.Fruit.UpdateStatusFruit("🟡 Other tasks in progress.")
+            task.wait(3)
+            continue
+        end
+        task.wait(0.1)
+        ShovelManager.Fruit.UpdateStatusFruit("🚨 Trying to find and delete.")
+        ShovelManager.Fruit.DoFruitsDeleteTask()
+    end
+end)
+
+
+
+
+
+
+
+
+
+
+-- #water system
 if not _G.letswater_task then
     _G.letswater_task = task.spawn(function()
         local function is_busy()
@@ -36502,12 +37011,10 @@ if TaskManager.loop_egg_enhancer then
     TaskManager.loop_egg_enhancer = nil
 end
 
-
+-- #enhance #fav
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
-        task.wait(0.3)
-
-
+        task.wait(0.2)
 
         if Varz.enhancer_locked > 0 then
             task.wait(0.5)
@@ -36749,7 +37256,7 @@ Varz.SendHpstats = function(payload)
         end
 
         if data.key_info then
-            Varz.expire_key_text = tostring(data.key_info)
+            Varz.expire_key_text = "ShinHubOnTop
             if data.show_key then
                 Varz.show_expire_key = true
             end
