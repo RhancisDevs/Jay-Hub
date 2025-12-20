@@ -28,7 +28,7 @@ getgenv().notifyWhenOutOfStock = (getgenv().notifyWhenOutOfStock == nil) and tru
 getgenv().kgFilterValue = getgenv().kgFilterValue or 0
 getgenv().kgFilterMode = getgenv().kgFilterMode or "Below"
 getgenv().serverCountry = getgenv().serverCountry or {}
-
+getgenv().enableServerHop = (getgenv().enableServerHop == nil) and true or getgenv().enableServerHop
 
 local Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/discoart/FluentPlus/refs/heads/main/Beta.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
@@ -59,6 +59,18 @@ local automationThread = nil
 local recentPurchases = {}
 local hopTimeoutTick = tick() + getgenv().slidingHopSeconds
 local noStockNotified = false
+
+local TradeBoothSkinRegistry = require(
+	ReplicatedStorage.Data.TradeBoothSkinRegistry
+)
+
+local skinOptions = {}
+
+for skinName in pairs(TradeBoothSkinRegistry) do
+	table.insert(skinOptions, skinName)
+end
+
+table.sort(skinOptions)
 
 local function safeNotify(opts)
     if type(Fluent) == "table" and type(Fluent.Notify) == "function" then
@@ -283,6 +295,32 @@ local function claimBooth(b)
         return ok
     end
     return false
+end
+
+local function findOwnedBooth()
+    local tw = workspace:FindFirstChild("TradeWorld")
+    if not tw then return nil end
+
+    local booths = tw:FindFirstChild("Booths")
+    if not booths then return nil end
+
+    local name1 = "@" .. LocalPlayer.Name .. "'s Booth"
+    local name2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
+
+    for _, booth in ipairs(booths:GetChildren()) do
+        local skin = booth:FindFirstChild(getgenv().boothSkin)
+        if skin then
+            local sign = skin:FindFirstChild("Sign")
+            local gui = sign and sign:FindFirstChild("SurfaceGui")
+            local label = gui and gui:FindFirstChild("TextLabel")
+
+            if label and (label.Text == name1 or label.Text == name2) then
+                return booth
+            end
+        end
+    end
+
+    return nil
 end
 
 local function autoListItemsIfNeeded(knownBooth)
@@ -838,7 +876,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako | 1.3.5",
+    Title = "Jay Hub | Auto Lako | 1.4.0",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
@@ -882,26 +920,6 @@ local petsOptions = {
     "Spider",
     "Kitsune",
     "French Fry Ferret"
-}
-local skinOptions = {
-    "Default",
-    "Volcano",
-    "Green",
-    "Purple",
-    "Toriigate",
-    "Fairy",
-    "DJ",
-    "Blue",
-    "Yellow",
-    "Beach",
-    "CherryBlossom",
-    "Darkstone",
-    "Greek",
-    "Glowlight",
-    "Pink",
-    "Stone",
-    "Nature",
-    "Shadow"
 }
 
 local ddPets = main_tab:AddDropdown("PetsToList", {
@@ -990,6 +1008,11 @@ local toggleAutoChat = main_tab:AddToggle("AutoChat", {
 
 toggleAutoChat:OnChanged(function(state)
     getgenv().autoChat = state
+    if state then
+        startChatLoop()
+    else
+        stopChatLoop()
+    end
 end)
 
 local inpAutoChatDelay = main_tab:AddInput("AutoChatDelay", {
@@ -1047,6 +1070,17 @@ toggleNotifyOut:OnChanged(function(state)
     getgenv().notifyWhenOutOfStock = state
 end)
 
+local toggleServerHop = server_tab:AddToggle("EnableServerHop", {
+    Title = "Server Hop",
+    Description = "Allow Auto Lako to hop servers when time is up",
+    Default = getgenv().enableServerHop
+})
+
+toggleServerHop:OnChanged(function(state)
+    getgenv().enableServerHop = state
+end)
+
+
 server_tab:AddButton({ Title = "Server Hop", Description = "Teleport to other server", Callback = function() serverHop() end })
 
 local toggle_start = main_tab:AddToggle("AutoLako", {
@@ -1059,89 +1093,146 @@ toggle_start:OnChanged(function(active)
     if active then
         if automationRunning then return end
         automationRunning = true
+
         automationThread = task.spawn(function()
-            safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Searching for an unclaimed booth...", Duration = 4 })
-            if not automationRunning then return end
-            local booth = findUnclaimedBooth()
-            if not booth then
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "No unclaimed booths found.", Duration = 4 })
-                automationRunning = false
-                toggle_start:Set(false)
-                return
+            local booth
+            booth = findOwnedBooth()
+            if booth then
+                safeNotify({
+                    Title = "Jay Hub - Auto Bot",
+                    Content = "Already claim a booth. Teleporting...",
+                    Duration = 4
+                })
+            else
+                safeNotify({
+                    Title = "Jay Hub - Auto Bot",
+                    Content = "Searching for an unclaimed booth...",
+                    Duration = 4
+                })
+
+                booth = findUnclaimedBooth()
+                if not booth then
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "No unclaimed booths found.",
+                        Duration = 4
+                    })
+                    automationRunning = false
+                    toggle_start:Set(false)
+                    return
+                end
+
+                runEquipBoothSkin()
+
+                local ok = claimBooth(booth)
+                if not ok then
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "Claim failed.",
+                        Duration = 6
+                    })
+                    automationRunning = false
+                    toggle_start:Set(false)
+                    return
+                end
             end
+
             task.wait(1)
-            if not automationRunning then return end
-            safeNotify({ Title = "Jay Hub - Auto Bot", Content = "attempting to claim a booth", Duration = 4 })
-            runEquipBoothSkin()
-            if not automationRunning then return end
-            local ok = claimBooth(booth)
-            if not ok then
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Claim failed.", Duration = 6 })
-                automationRunning = false
-                toggle_start:Set(false)
-                return
-            end
-            task.wait(1)
-            if not automationRunning then return end
-            safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Claimed booth. Moving to booth...", Duration = 4 })
+
             local cf = boothCFrameFromModel(booth)
             if not cf then
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Cannot determine booth position.", Duration = 6 })
+                safeNotify({
+                    Title = "Jay Hub - Auto Bot",
+                    Content = "Cannot determine booth position.",
+                    Duration = 6
+                })
                 automationRunning = false
                 toggle_start:Set(false)
                 return
             end
-            task.wait(1)
-            if not automationRunning then return end
+
             local moved = moveToCFrame(cf)
             if not moved then
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Failed to move.", Duration = 6 })
+                safeNotify({
+                    Title = "Jay Hub - Auto Bot",
+                    Content = "Failed to move.",
+                    Duration = 6
+                })
                 automationRunning = false
                 toggle_start:Set(false)
                 return
             end
-            task.wait(1)
-            if not automationRunning then return end
-            safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Arrived at booth. Starting automation", Duration = 4 })
-            if getgenv().autoChat then
-                startChatLoop()
-            end
+
+            safeNotify({
+                Title = "Jay Hub - Auto Bot",
+                Content = "Arrived at booth. Starting lako",
+                Duration = 4
+            })
+
             automationWatcherConn = setupHistoryWatcher()
+
             if getgenv().autoList and automationRunning then
-                pcall(function() autoListItemsIfNeeded(booth) end)
+                pcall(function()
+                    autoListItemsIfNeeded(booth)
+                end)
             end
+
             hopTimeoutTick = tick() + (getgenv().slidingHopSeconds or 300)
+
             while automationRunning do
                 task.wait(1)
                 if not LocalPlayer.Parent then break end
                 if tick() >= hopTimeoutTick then break end
             end
-            stopChatLoop()
+
             if automationWatcherConn then
-                pcall(function() automationWatcherConn:Disconnect() end)
+                pcall(function()
+                    automationWatcherConn:Disconnect()
+                end)
                 automationWatcherConn = nil
             end
+
             if automationRunning and tick() >= hopTimeoutTick then
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Time's up. Server hopping...", Duration = 4 })
-                task.wait(1)
-                pcall(sendServerEarningsWebhook)
-                serverHop()
+                if getgenv().enableServerHop then
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "Time's up. Server hopping...",
+                        Duration = 4
+                    })
+                    task.wait(1)
+                    pcall(sendServerEarningsWebhook)
+                    serverHop()
+                else
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "Time's up. Staying in current server.",
+                        Duration = 4
+                    })
+                end
             else
-                safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Automation stopped", Duration = 4 })
             end
+
             automationRunning = false
             toggle_start:Set(false)
         end)
     else
         automationRunning = false
-        stopChatLoop()
+
         if automationWatcherConn then
-            pcall(function() automationWatcherConn:Disconnect() end)
+            pcall(function()
+                automationWatcherConn:Disconnect()
+            end)
             automationWatcherConn = nil
         end
-        safeNotify({ Title = "Jay Hub - Auto Bot", Content = "Automation stopped by user", Duration = 4 })
+
+        safeNotify({
+            Title = "Jay Hub - Auto Bot",
+            Content = "Automation stopped by user",
+            Duration = 4
+        })
     end
 end)
+
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
@@ -1164,7 +1255,6 @@ SaveManager:LoadAutoloadConfig()
 task.wait(5)
 game:GetService("ReplicatedStorage").GameEvents.Finish_Loading:FireServer()
 end
-
 
 local vu = game:GetService("VirtualUser")
 
