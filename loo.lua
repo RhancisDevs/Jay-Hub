@@ -115,7 +115,7 @@ end
 
 updateFruits()
 
---[[ RunService.RenderStepped:Connect(function()
+RunService.RenderStepped:Connect(function()
     if not getgenv().eggEnhance then
         return
     end
@@ -127,9 +127,9 @@ updateFruits()
             favoriteEvent:FireServer(tool)
         end
     end
-end) ]]--
+end)
 
-local interval = 0.05
+--[[local interval = 0.05
 local acc = 0
 
 RunService.Heartbeat:Connect(function(dt)
@@ -150,7 +150,7 @@ RunService.Heartbeat:Connect(function(dt)
             favoriteEvent:FireServer(tool)
         end
     end
-end)
+end)]]--
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
