@@ -115,7 +115,7 @@ end
 
 updateFruits()
 
-RunService.RenderStepped:Connect(function()
+--[[ RunService.RenderStepped:Connect(function()
     if not getgenv().eggEnhance then
         return
     end
@@ -127,8 +127,30 @@ RunService.RenderStepped:Connect(function()
             favoriteEvent:FireServer(tool)
         end
     end
-end)
+end) ]]--
 
+local interval = 0.05
+local acc = 0
+
+RunService.Heartbeat:Connect(function(dt)
+    if not getgenv().eggEnhance then
+        return
+    end
+
+    acc += dt
+    if acc < interval then
+        return
+    end
+    acc = 0
+
+    updateFruits()
+
+    for _, tool in ipairs(fruits) do
+        if tool and tool.Parent == Backpack then
+            favoriteEvent:FireServer(tool)
+        end
+    end
+end)
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
