@@ -115,8 +115,9 @@ end
 
 updateFruits()
 
-local delayTime = 0.2
+local delayTime = 0.05
 local elapsed = 0
+local currentIndex = 1
 
 RunService.Heartbeat:Connect(function(dt)
     if not getgenv().eggEnhance then
@@ -131,10 +132,21 @@ RunService.Heartbeat:Connect(function(dt)
 
     updateFruits()
 
-    for _, tool in ipairs(fruits) do
-        if tool and tool.Parent == Backpack then
-            favoriteEvent:FireServer(tool)
-        end
+    if #fruits == 0 then
+        currentIndex = 1
+        return
+    end
+
+    if currentIndex > #fruits then
+        currentIndex = 1
+        return
+    end
+
+    local tool = fruits[currentIndex]
+    currentIndex += 1
+
+    if tool and tool.Parent == Backpack then
+        favoriteEvent:FireServer(tool)
     end
 end)
 
