@@ -1,6 +1,14 @@
 -- Wait for the game to be fully loaded
---if not game:IsLoaded() then game.Loaded:Wait() end;
-task.wait(3)
+if not game:IsLoaded() then game.Loaded:Wait() end;
+task.wait(1)
+
+if _G.is_running_gag then
+    warn("Already running x")
+    return
+end
+
+_G.is_running_gag = true
+
 print("exo start > ")
 
 
@@ -135,8 +143,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/shinhub"
-_S.invite_link_short = "discord.gg/shinhub"
+_S.invite_link_url = "https://discord.gg/komihub"
+_S.invite_link_short = "discord.gg/komihub"
 
 
 -- [SETUP UI]
@@ -155,14 +163,14 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.31.7"
+_S.CurentV = "v1.32.0"
 
 local Varz = {}
 Varz.dev_tools = true
 Varz.is_pro = true
 Varz.mark_save_disabled = false
 -- #pro
-
+_G.exoprov = false
 if isfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d") then
     local data = readfile("780ad941-1694-4f37-8e81-2fd6cde9785b.d")
     if data == "true" then
@@ -182,6 +190,7 @@ Varz.allowpro = {
     ["TurboSpade67"] = true,
 }
 
+-- #trade
 Varz.AllTradeWorld = function()
     local wlist = {
         ["BlazeTopUpPet5"] = true
@@ -189,11 +198,15 @@ Varz.AllTradeWorld = function()
     if Varz.allowpro[_S.LocalPlayer.Name] or wlist[_S.LocalPlayer.Name] then
         return true
     end
-    return false
+
+    return true -- allow all access
 end
 
 if Varz.allowpro[_S.LocalPlayer.Name] then
     Varz.is_pro = true -- remove live
+end
+if Varz.is_pro then
+    _G.exoprov = true
 end
 
 
@@ -209,6 +222,7 @@ Varz.HATCH_STATES = {
 
 Varz.TEXT_TRADE_WORLD = ""
 Varz.TEXT_HATCH_SYSTEM = ""
+Varz.TEXT_ENHANCE_PRO = ""
 Varz.TEXT_AGEBREAK = ""
 Varz.TEXT_CRAFT_TEAMS = ""
 Varz.TEXT_TEAM_SYSTEM = ""
@@ -222,7 +236,8 @@ Varz.seen_pets = {}
 Varz.is_hatch_stage_koi = false
 Varz.hatch_state = Varz.HATCH_STATES.NORMAL
 Varz.show_expire_key = false
-Varz.expire_key_text = "shinhubontop!!"
+Varz.expire_key_text = ""
+Varz.was_enhancerpro_success = false
 
 _S.LocalPlayer.CameraMaxZoomDistance = 350
 
@@ -271,6 +286,7 @@ local UI_LABELS = {
     lbl_selected_team4_count = nil,
     lbl_reclaimer_stats = nil,
     lbl_smithman_status = nil,
+    lbl_enhancerpro1 = nil,
 
     lbl_tradeevent_status = nil,
 
@@ -412,6 +428,9 @@ local FOtherSettings = {
     mut_pet_inside_mutation                    = "",
     mut_was_running                            = false,
     max_mutation_count                         = 0,
+    mutation_hatch_petfilter                   = {},
+    mutation_hatch_mutlist                     = {},
+    mutation_hatch_pet_enabled                 = false,
 
     -- Chubby Chipmunk
     chubby_chipmunk_amount_collected           = 0,
@@ -2365,8 +2384,23 @@ if tostring(game.PlaceId) == "129954712878723" then
     -- We are in trading world. load different script
     if Varz.GetCheckIfPro() and Varz.AllTradeWorld() then
         print("Sending to trade world.")
-        loadstring(game:HttpGet("https://exotichub.app/sc_files/test/gagtrade.lua"))()
+        local is_testers = false
+        if Varz.allowpro[_S.LocalPlayer.Name] then
+            is_testers = true
+        end
+        if not is_testers then
+            --
+            loadstring(game:HttpGet("https://exotichub.app/6ba7b811-9dad-11d1-80b4-00c04fd430c8.lua"))()
+            return
+        else
+            loadstring(game:HttpGet("https://exotichub.app/sc_files/test/gagtrade.lua"))()
+            return
+        end
+
         task.wait(1)
+        return
+    else
+        warn("Not allowed to access.")
         return
     end
 end
@@ -2848,6 +2882,15 @@ local UPDATE_LABELS_FUNC = {
         if UI_LABELS.lbl_reclaimer_stats then
             UI_LABELS.lbl_reclaimer_stats:SetText(_txt)
         end
+    end,
+
+    UpdateEnhancerPro = function(_txt)
+        -- #enhance
+        if UI_LABELS.lbl_enhancerpro1 then
+            UI_LABELS.lbl_enhancerpro1:SetText(_txt)
+        end
+
+        Varz.TEXT_ENHANCE_PRO = _txt
     end
 }
 
@@ -6348,6 +6391,7 @@ MonsterBoostManager.ApplyBoostSelectedWithPetNames = function(_boostlist, petLis
         return false
     end
 
+
     for key, value in pairs(_boostlist) do
         if value then
             -- find and hold this tool.
@@ -6369,7 +6413,7 @@ MonsterBoostManager.ApplyBoostSelectedWithPetNames = function(_boostlist, petLis
         end
     end
     task.wait(0.1)
-    unequipTools()
+    --unequipTools()
     return true
 end
 
@@ -8758,7 +8802,7 @@ ShovelManager.Fruit = {
     end,
 
     IsBusy = function()
-        if Varz.IS_GIFT or Varz.IS_Sprinkler or Varz.IS_HATCHING or Varz.IS_SEEDING or Varz.IS_JUNGLE_RUNNING or Varz.IS_FEEDING or Varz.IS_COOKING then
+        if Varz.IS_GIFT or Varz.IS_HATCHING then
             return true
         end
         return false
@@ -14941,11 +14985,17 @@ FallEventManager.SubmitFruits = function()
     task.wait(0.4)
     pcall(function()
         task.spawn(function()
-            _S.GameEvents.ChristmasEvent.ChristmasGiftV2_SubmitAll:FireServer(_S.LocalPlayer)
+            _S.GameEvents.ChristmasEvent.ChristmasTree_SubmitAll:FireServer(_S.LocalPlayer)
         end)
     end)
 end
 
+
+FallEventManager.ClaimRewardsTrack = function()
+    pcall(function()
+        game:GetService("ReplicatedStorage").GameEvents.ChristmasEvent.ChristmasTree_ClaimRewardTrack:FireServer()
+    end)
+end
 
 
 
@@ -15038,7 +15088,7 @@ FallEventManager.EventFolderExists = function()
         --  local model = FallEventManager.findInWorkspaceOrInteraction("SafariEvent", "Folder")
         local model = nil
 
-        local modelx = FallEventManager.findInWorkspaceMulti("NewChristmasPlatform", "Model")
+        local modelx = FallEventManager.findInWorkspaceMulti("LumberjackPlatform", "Model")
         for _, mod in ipairs(modelx) do
             -- local progressBar = mod:FindFirstChild("ProgressBar", true)
             -- if progressBar then
@@ -15057,54 +15107,54 @@ FallEventManager.EventFolderExists = function()
     return nil
 end
 
-FallEventManager.GetProgressPercentx = function()
-    -- no progress.
-    if true then return nil end
+-- FallEventManager.GetProgressPercentx = function()
+--     -- no progress.
+--     if true then return nil end
 
-    local success, percent = pcall(function()
-        -- local label = _S.Workspace.Interaction.UpdateItems.WitchesBrewEvent.WitchesBrewCauldron.CauldronProgressUI
-        local ev = FallEventManager.EventFolderExists() or nil
-        if not ev then
-            return nil
-        end
+--     local success, percent = pcall(function()
+--         -- local label = _S.Workspace.Interaction.UpdateItems.WitchesBrewEvent.WitchesBrewCauldron.CauldronProgressUI
+--         local ev = FallEventManager.EventFolderExists() or nil
+--         if not ev then
+--             return nil
+--         end
 
-        -- workspace.Interaction.UpdateItems.SafariEvent["Safari platform"].Platform.SafariRewardSign:GetChildren()[3]
-        -- .BillboardGui.RewardProgress
+--         -- workspace.Interaction.UpdateItems.SafariEvent["Safari platform"].Platform.SafariRewardSign:GetChildren()[3]
+--         -- .BillboardGui.RewardProgress
 
-        -- // progress
-        local progressBar = mod:FindFirstChild("ProgressBar", true)
-        local label = progressBar.Frame.ProgressBG.TextLabel
+--         -- // progress
+--         local progressBar = mod:FindFirstChild("ProgressBar", true)
+--         local label = progressBar.Frame.ProgressBG.TextLabel
 
 
-        --local label = ev.CauldronProgressUI.ProgressBillboard.Progress
-        if not label then return nil end
+--         --local label = ev.CauldronProgressUI.ProgressBillboard.Progress
+--         if not label then return nil end
 
-        local text = (label.ContentText or ""):gsub(",", "."):match("^%s*(.-)%s*$")
+--         local text = (label.ContentText or ""):gsub(",", "."):match("^%s*(.-)%s*$")
 
-        -- Match explicit percentage only (e.g. "1%", "12.5%", "33.56%")
-        local value_str = text:match("([%d%.]+)%s*%%")
-        if not value_str then
-            return nil
-        end
+--         -- Match explicit percentage only (e.g. "1%", "12.5%", "33.56%")
+--         local value_str = text:match("([%d%.]+)%s*%%")
+--         if not value_str then
+--             return nil
+--         end
 
-        local value = tonumber(value_str)
-        if not value then
-            return nil
-        end
+--         local value = tonumber(value_str)
+--         if not value then
+--             return nil
+--         end
 
-        -- clamp range 0–100
-        if value < 0 then value = 0 end
-        if value > 100 then value = 100 end
+--         -- clamp range 0–100
+--         if value < 0 then value = 0 end
+--         if value > 100 then value = 100 end
 
-        return value
-    end)
+--         return value
+--     end)
 
-    if success and percent then
-        return percent
-    else
-        return nil
-    end
-end
+--     if success and percent then
+--         return percent
+--     else
+--         return nil
+--     end
+-- end
 
 FallEventManager.GetProgressPercent = function()
     local success, result = pcall(function()
@@ -15113,8 +15163,9 @@ FallEventManager.GetProgressPercent = function()
             return nil
         end
 
-        local progressBar = ev:FindFirstChild("ProgressBar", true)
-        local label = progressBar.Frame.ProgressBG.TextLabel
+        local water       = ev:FindFirstChild("Wonder Water", true)
+        local progressBar = water:FindFirstChild("ProgressBG", true)
+        local label       = progressBar.TextLabel
         -- local label = ev.Part.ProgressBar.Frame.ProgressBG.TextLabel
         if not label then return nil end
 
@@ -15148,6 +15199,7 @@ FallEventManager.GetCooldown = function()
         end
         --workspace.Interaction.UpdateItems.NewChristmasPlatform.Part.GiftTimer.Frame.Title.Timer
         local GiftTimer = ev:FindFirstChild("GiftTimer", true)
+        if not GiftTimer then return nil end
         local labelg = GiftTimer.Frame.Title.Timer
         if not labelg then
             return nil
@@ -19441,6 +19493,26 @@ _Helper.FavoritePetsNewFaster = function(_keypair_array)
             continue
         end
 
+
+        local MutationType = PetData.MutationType or ""
+
+        local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+        local has_mut = false
+        -- skip non-hatched pets
+        if CurrentMutationOnPet then
+            has_mut = true
+        end
+
+        if FSettings.mutation_hatch_pet_enabled and has_mut then
+            if FSettings.mutation_hatch_petfilter[PetType] then
+                if FSettings.mutation_hatch_mutlist[CurrentMutationOnPet] then
+                    -- has it. keep it
+                    table.insert(petsToFav, tool)
+                    continue
+                end
+            end
+        end
+
         -- check if user is hold any tool
         if InventoryManager.IsToolHeldAny() then
             unequipTools()
@@ -19778,6 +19850,25 @@ _Helper.GetPetsToSellForHatching = function()
         if IsFavorite then
             continue
         end
+
+        local MutationType = PetData.MutationType or ""
+
+        local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+        local has_mut = false
+        -- skip non-hatched pets
+        if CurrentMutationOnPet then
+            has_mut = true
+        end
+
+        if FSettings.mutation_hatch_pet_enabled and has_mut then
+            if FSettings.mutation_hatch_petfilter[PetType] then
+                if FSettings.mutation_hatch_mutlist[CurrentMutationOnPet] then
+                    -- has it. keep it
+                    continue
+                end
+            end
+        end
+
 
         -- if FSettings.is_sell_only_hatch_pet then
         --     if not hatched_pets_uuids[uuid] then
@@ -21657,7 +21748,7 @@ Varz.HowMuchGain = function()
         t = t + value
     end
 
-    print("Gain: " .. tostring(t))
+    --print("Gain: " .. tostring(t))
 
     if t >= 9 then
         return true
@@ -21669,18 +21760,29 @@ end
 task.spawn(function()
     while true do
         task.wait(3)
+        local ui_text = UPDATE_LABELS_FUNC.UpdateEnhancerPro
         if not FSettings.nice_fruit then
-            task.wait(12)
+            ui_text("🔴 EnhancePro not running.")
+            task.wait(5)
+            continue
+        end
+
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            ui_text("🟡 Enhance Pro: Data is loading.")
+            task.wait(1)
             continue
         end
 
         -- _Helper.JsonPrint(Varz.nice_fruit_gains)
 
+        ui_text("⚡ Enhance Pro is active and finding...")
+
         local total_fruits = InventoryManager.GetFruitCount()
         if total_fruits <= 0 then
             local am = 1
             _FruitCollectorMachine.CollectFruitsRandom(am)
-            task.wait(5)
+            task.wait(1)
             continue
         end
 
@@ -21695,8 +21797,9 @@ task.spawn(function()
             -- new
             if #Varz.nice_fruit_gains >= 3 then
                 if Varz.HowMuchGain() then
-                    print("************** GOOD FOUND: ")
+                    -- print("************** GOOD FOUND: ")
                     FSettings.nice_fruit = false
+                    Varz.was_enhancerpro_success = true
                     SaveData()
                     continue
                 else
@@ -21705,7 +21808,7 @@ task.spawn(function()
                     task.wait(3)
                     local fruit = InventoryManager.GetFruitRandomOrHeld()
                     _Helper.FavItemCustom(fruit, false)
-                    print("Bad Gains delete fruit")
+                    -- print("Bad Gains delete fruit")
                     Varz.SellFruitsToVendor()
                     task.wait()
                 end
@@ -21787,7 +21890,7 @@ local function SessionLoop()
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🔴 Waiting for farm data to load.")
-            task.wait(10 + _Helper.GetSafePing())
+            task.wait(5 + _Helper.GetSafePing())
             continue
         end
 
@@ -24629,8 +24732,194 @@ Varz.ProUi = function()
     local gTradeWorld = UIProTab:AddRightGroupbox("Trade World",
         "baggage-claim")
 
+
+    local gEnhancepro = UIProTab:AddLeftGroupbox("<b><font color='#FF0099'>🔥 Enhancer Pro</font></b>",
+        "book-search")
+
     -- ===============================================
-    --- Trade Wordl 🔥 #trade #tradeui
+    --- Enhance options 🔥 #enhance
+    -- ===============================================
+
+    if gEnhancepro then
+        if Varz.GetCheckIfPro() then
+            gEnhancepro:AddLabel({
+                Text = "<b>💡 <font color='#8EEA8E'>Enhancer</font></b>\n" ..
+                    "<font color='#FFD65A'>Helps you recover from bad RNG.</font> ",
+                DoesWrap = true
+            })
+
+
+            -- // 1. Helper Functions for the Animation //
+            local function toHex(color)
+                return string.format("#%02X%02X%02X", color.R * 255, color.G * 255, color.B * 255)
+            end
+
+            local txt_enhance = gEnhancepro:AddToggle("genhancertoggle", {
+                Text = "🥚 <font color='#6ECBFF'>Enhance Egg Returns</font>",
+                Default = FSettings.fav_fruit_enhancer,
+                Tooltip = "May improve egg drops from hatching.",
+                Callback = function(Value)
+                    FSettings.fav_fruit_enhancer = Value
+                    SaveData()
+                end
+            })
+
+
+            -- // 3. Run the Rainbow Loop //
+            task.spawn(function()
+                while task.wait(0.03) do -- Fast update for smoothness (30fps)
+                    if txt_enhance then
+                        -- tick() is time, * 0.5 is speed (higher = faster), % 1 loops it 0-1
+                        local hue = tick() * 0.5 % 1
+                        local rainbowColor = Color3.fromHSV(hue, 1, 1) -- (Hue, Saturation, Value)
+                        local hex = toHex(rainbowColor)
+
+                        -- Construct the Rich Text string
+                        local newText = string.format("🥚 <font color='%s'><b>Enhance Egg Returns</b></font>", hex)
+
+                        -- Update the UI
+                        if txt_enhance.SetText then
+                            txt_enhance:SetText(newText)
+                        end
+                    else
+                        break -- Stop if toggle is destroyed
+                    end
+                end
+            end)
+
+
+            gEnhancepro:AddLabel({
+                Text = "<b>💡 <font color='#8EEA8E'>Enhancer Pro</font></b>\n" ..
+                    "<font color='#FFD65A'>Click start to start the system</font> " ..
+                    "<font color='#FF6B6B'>Enhancer must be enabled for <font color='#FF0099'>Enhancer Pro</font> to work</font>",
+                DoesWrap = true
+            })
+
+            UI_LABELS.lbl_enhancerpro1 = gEnhancepro:AddLabel({
+                Text = "Status: ",
+                DoesWrap = true
+            })
+
+
+            local startenhancerpro = gEnhancepro:AddButton({
+                Text = "🟢 Start E-PRO",
+                Tooltip = "Starts the enhancer pro.",
+                Func = function()
+                    if FSettings.nice_fruit then
+                        Library:Notify("🔄 Enhancer is already running.", 5)
+                        return
+                    end
+
+                    if FOtherSettings.is_fall_event_running then
+                        Library:Notify("❌ Unable to start, Event is running. Please disable event.", 5)
+                        return
+                    end
+
+                    local fcount = InventoryManager.GetFruitCount()
+                    if fcount > 0 then
+                        Library:Notify("⚠️ Unable to start enhancer. Please remove all fruits from your backpack! ⚠️", 5)
+                        return
+                    end
+
+                    if FSettings.rng_use_system then
+                        Library:Notify("⚠️ Unable to start enhancer. Please disable 🛡️ RNG Protection ⚠️", 5)
+                        return
+                    end
+
+                    if FSettings.rng_egg_lowers_up then
+                        Library:Notify("⚠️ Unable to start enhancer. Please disable ♻️ Egg Adjustment ⚠️", 5)
+                        return
+                    end
+
+                    if not FSettings.is_running then
+                        Library:Notify(
+                            "⚠️ Unable to start enhancer. Hatching system is not running. Please start the hatching system before you enable. ⚠️",
+                            5)
+                        return
+                    end
+
+                    FSettings.nice_fruit = true
+                    SaveData()
+                    Library:Notify(
+                        "✅ Enhancer has started. ",
+                        5)
+                end,
+            })
+
+
+            local stopenhancerpro = gEnhancepro:AddButton({
+                Text = "🔴 Stop E-PRO",
+                Tooltip = "Stops the enhancer pro.",
+                Func = function()
+                    if not FSettings.nice_fruit then
+                        Library:Notify("⚠️ Already stopped.", 5)
+                    end
+                    FSettings.nice_fruit = false
+                    SaveData()
+                    Library:Notify(
+                        "❌ Enhancer has stopped. ",
+                        5)
+                end,
+            })
+
+
+
+
+            gExperiments:AddLabel({
+                Text = "-------------------------------",
+                DoesWrap = true
+            })
+            gExperiments:AddLabel({
+                Text =
+                "♻️ If RNG is bad it will try to reconnect if you have rejoin enabled. \n Lowers egg count to place if bad rng is detect. \nWill increase as RNG improves.",
+                DoesWrap = true
+            })
+            -- #rng
+            gExperiments:AddToggle("gExperimentsrngtoggle", {
+                Text = "🛡️ <font color='#6ECBFF'>RNG Protection</font>",
+                Default = FSettings.rng_use_system,
+                Tooltip = "Activates the rng watcher system.",
+                Callback = function(Value)
+                    FSettings.rng_use_system = Value
+                    SaveData()
+                end
+            })
+
+            gExperiments:AddToggle("gExperimentsrngtoggleautoeead", {
+                Text = "♻️ <font color='#00FFF2'>Egg Adjustment</font>",
+                Default = FSettings.rng_egg_lowers_up,
+                Tooltip = "If enabled system can increase or decrease eggs.",
+                Callback = function(Value)
+                    FSettings.rng_egg_lowers_up = Value
+                    SaveData()
+                end
+            })
+
+            gExperiments:AddToggle("gExperimentsrngtoggleauto", {
+                Text = "🔄 <font color='#F52765'>RNG Auto Re-Join</font>",
+                Default = FSettings.rng_auto_rejoin,
+                Tooltip = "If bad rng is detected, auto rejoin will take place.",
+                Callback = function(Value)
+                    FSettings.rng_auto_rejoin = Value
+                    SaveData()
+                end
+            })
+        else
+            -- Not Pro
+            gExperiments:AddLabel({
+                Text = Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        end
+    end
+
+
+
+
+
+
+    -- ===============================================
+    --- Trade World 🔥 #trade #tradeui
     -- ===============================================
 
 
@@ -24642,9 +24931,7 @@ Varz.ProUi = function()
         })
 
 
-
-
-        if Varz.AllTradeWorld() then
+        if Varz.GetCheckIfPro() then
             local toggleTradeWorld = gTradeWorld:AddToggle("toggleTradeWorld", {
                 Text =
                 "<b>💰 Trading Mode</b>",
@@ -24657,15 +24944,13 @@ Varz.ProUi = function()
                 end
             })
         else
+            -- Not Pro
             gTradeWorld:AddLabel({
-                Text =
-                "<font color='#FF2D00'>🔴 Coming soon!!</font>",
+                Text = Varz.GetProMessage(),
                 DoesWrap = true
             })
         end
     end
-
-
 
 
 
@@ -24674,9 +24959,36 @@ Varz.ProUi = function()
     -- ===============================================
 
     if gTargetEnhance then
+        local max_en_targets = 3
+
+        local isTargetAllowed = function(uuid)
+            if not uuid then
+                return true -- if no uuid, allow by default
+            end
+
+            local teams = {
+                FSettings.team1,
+                FSettings.team2,
+                FSettings.team3,
+                FSettings.team4,
+            }
+
+            for _, team in ipairs(teams) do
+                if type(team) == "table" then
+                    for _, teamUuid in ipairs(team) do
+                        if teamUuid == uuid then
+                            return false -- found in a team → not allowed
+                        end
+                    end
+                end
+            end
+
+            return true -- not found in any team → allowed
+        end
+
         local GetText_EnhanceTargets = function()
             local current_selected = #FSettings.team_enhance_targets
-            local max_allowed = 1
+            local max_allowed = max_en_targets
 
             local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
 
@@ -24695,7 +25007,7 @@ Varz.ProUi = function()
         end
 
 
-        --- =========== Team Enhance targets
+        --- =========== Team Enhance targets #enhance
         UI_Dropdown.dd_enhance_targets = gTargetEnhance:AddDropdown("dd_enhance_targets", {
             Values = {},
             Default = {},
@@ -24709,18 +25021,28 @@ Varz.ProUi = function()
                     return
                 end
                 local tmp_tbl = {}
-
+                local allow = true
                 for Value, Selected in pairs(Values) do
                     if Selected then
                         local _uuid = extractUUIDFromString(Value)
+                        if not isTargetAllowed(_uuid) then
+                            allow = false
+                        end
 
                         table.insert(tmp_tbl, _uuid)
                     end
                     -- loop ends
                 end
 
+                if not allow then
+                    Library:Notify("This pet is already in one of your teams.", 2)
+                    UI_Dropdown.dd_enhance_targets:SetValue(ConvertUUIDToPetNamesPairs(FSettings
+                        .team_enhance_targets))
+                    return
+                end
 
-                local max_allowed = 1
+
+                local max_allowed = max_en_targets
                 local count_vals = #tmp_tbl
                 if count_vals > max_allowed then
                     UI_Dropdown.dd_enhance_targets:SetValue(ConvertUUIDToPetNamesPairs(FSettings
@@ -24852,105 +25174,6 @@ Varz.ProUi = function()
                     "<font color='#FF6B6B'>They may work… or may not!</font>",
                 DoesWrap = true
             })
-
-
-            -- // 1. Helper Functions for the Animation //
-            local function toHex(color)
-                return string.format("#%02X%02X%02X", color.R * 255, color.G * 255, color.B * 255)
-            end
-
-            local txt_enhance = gExperiments:AddToggle("gExperimentstoggle", {
-                Text = "🥚 <font color='#6ECBFF'>Enhance Egg Returns</font>",
-                Default = FSettings.fav_fruit_enhancer,
-                Tooltip = "May improve egg drops from hatching.",
-                Callback = function(Value)
-                    FSettings.fav_fruit_enhancer = Value
-                    SaveData()
-                end
-            })
-
-
-            -- // 3. Run the Rainbow Loop //
-            task.spawn(function()
-                while task.wait(0.03) do -- Fast update for smoothness (30fps)
-                    if txt_enhance then
-                        -- tick() is time, * 0.5 is speed (higher = faster), % 1 loops it 0-1
-                        local hue = tick() * 0.5 % 1
-                        local rainbowColor = Color3.fromHSV(hue, 1, 1) -- (Hue, Saturation, Value)
-                        local hex = toHex(rainbowColor)
-
-                        -- Construct the Rich Text string
-                        local newText = string.format("🥚 <font color='%s'><b>Enhance Egg Returns</b></font>", hex)
-
-                        -- Update the UI
-                        if txt_enhance.SetText then
-                            txt_enhance:SetText(newText)
-                        end
-                    else
-                        break -- Stop if toggle is destroyed
-                    end
-                end
-            end)
-
-            -- gExperiments:AddToggle("gExperimentstogglesell", {
-            --     Text = "🧰 <font color='#6ECBFF'>Allow Backpack Sell.</font>",
-            --     Default = FSettings.fav_fruit_enhance_sell,
-            --     Tooltip = "Allows the enhancer to delete some fruits. does not sell fav fruits.",
-            --     Callback = function(Value)
-            --         FSettings.fav_fruit_enhance_sell = Value
-            --         SaveData()
-            --     end
-            -- })
-
-            gExperiments:AddLabel({
-                Text = "-------------------------------",
-                DoesWrap = true
-            })
-            gExperiments:AddLabel({
-                Text =
-                "♻️ If RNG is bad it will try to reconnect if you have rejoin enabled. \n Lowers egg count to place if bad rng is detect. \nWill increase as RNG improves.",
-                DoesWrap = true
-            })
-            -- #rng
-            gExperiments:AddToggle("gExperimentsrngtoggle", {
-                Text = "🛡️ <font color='#6ECBFF'>RNG Protection</font>",
-                Default = FSettings.rng_use_system,
-                Tooltip = "Activates the rng watcher system.",
-                Callback = function(Value)
-                    FSettings.rng_use_system = Value
-                    SaveData()
-                end
-            })
-
-            gExperiments:AddToggle("gExperimentsrngtoggleautoeead", {
-                Text = "♻️ <font color='#00FFF2'>Egg Adjustment</font>",
-                Default = FSettings.rng_egg_lowers_up,
-                Tooltip = "If enabled system can increase or decrease eggs.",
-                Callback = function(Value)
-                    FSettings.rng_egg_lowers_up = Value
-                    SaveData()
-                end
-            })
-
-            gExperiments:AddToggle("gExperimentsrngtoggleauto", {
-                Text = "🔄 <font color='#F52765'>RNG Auto Re-Join</font>",
-                Default = FSettings.rng_auto_rejoin,
-                Tooltip = "If bad rng is detected, auto rejoin will take place.",
-                Callback = function(Value)
-                    FSettings.rng_auto_rejoin = Value
-                    SaveData()
-                end
-            })
-
-
-
-            gExperiments:AddLabel({
-                Text = "--------------------------",
-                DoesWrap = false
-            })
-
-
-
 
 
             gExperiments:AddLabel({
@@ -26505,8 +26728,87 @@ Varz.PetTeamsUi = function()
 
     -- local gActivePets = TeamsTab:AddLeftGroupbox("♻️ Active Pets", "redo-2")
 
+    local gMutationOverRides = TeamsTab:AddLeftGroupbox("🧬 Pet <font color='#FF0084'>Mutations</font>", "boxes")
+
 
     -- #hatchui
+
+
+
+
+    -- Pet Mutations Override #mutation
+
+    if gMutationOverRides then
+        gMutationOverRides:AddLabel({
+            Text =
+            "⚠️ Select mutations to keep on pets that are hatched.",
+            DoesWrap = true
+        })
+
+        local dpMutationPetFilter = gMutationOverRides:AddDropdown("dpMutationPetFilter", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🦖 Pet Type",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.mutation_hatch_petfilter = Values
+                SaveData()
+            end
+        })
+
+        dpMutationPetFilter:SetValues(Varz.all_pets_names_list)
+        dpMutationPetFilter:SetValue(FSettings.mutation_hatch_petfilter)
+
+
+        ----============================ Mutations
+        gMutationOverRides:AddDivider()
+        gMutationOverRides:AddLabel({
+            Text = "<font color='#00BFFF'><b>ℹ️ Select mutations you want to keep.</b></font>",
+            DoesWrap = true
+        })
+        local dropdown_mutations_listx
+        dropdown_mutations_listx = gMutationOverRides:AddDropdown("dropdown_mutations_listx", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🧬 Mutations",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.mutation_hatch_mutlist = Values
+                SaveData()
+            end
+        })
+        -- setup values
+        dropdown_mutations_listx:SetValues(GetKeyMutListUsingDir(MutationMachineManager.AllMutationsList))
+        dropdown_mutations_listx:SetValue(FSettings.mutation_hatch_mutlist)
+
+
+
+        gMutationOverRides:AddDivider()
+        gMutationOverRides:AddToggle("togglepetdelay", {
+            Text = "🤖 Enable Mutation",
+            Default = FSettings.mutation_hatch_pet_enabled,
+            Tooltip = "When enabled, Selected pets will not be sold if they have the mutation on them.",
+            Callback = function(Value)
+                FSettings.mutation_hatch_pet_enabled = Value
+                SaveData()
+            end
+        })
+
+
+        gMutationOverRides:AddSpacer(200)
+    end
+
+    -- Pet Mutations Override
 
 
     --======================================
@@ -33324,16 +33626,6 @@ function SettingsUi()
         devtoolsGroup:AddDivider()
         devtoolsGroup:AddDivider()
         devtoolsGroup:AddDivider()
-
-        devtoolsGroup:AddToggle("toggless_", {
-            Text = "Toggle keep off",
-            Default = FSettings.nice_fruit,
-            Tooltip = "toggle test",
-            Callback = function(Value)
-                FSettings.nice_fruit = Value
-                SaveData()
-            end
-        })
     end
 
 
@@ -33801,6 +34093,7 @@ if not _G.FallEventLoop then
             end
 
             FallEventManager.SubmitFruits()
+            FallEventManager.ClaimRewardsTrack()
 
 
             if FallEventManager.GetCooldown() then
@@ -35230,7 +35523,7 @@ if not _G.monsterlevels_task then
                 -- #level
                 MonsterManager.LevelSystem.UpdateUiTextStats("⚡ Applying boosts...")
                 if not EquipToolOnChar(_tool) then
-                    MonsterManager.LevelSystem.UpdateUiTextStats("🔴 Unable to equip tool.")
+                    MonsterManager.LevelSystem.UpdateUiTextStats("?? Unable to equip tool.")
                     task.wait(1)
                     break
                 end
@@ -36579,14 +36872,18 @@ if not _G.service_ui_labelupdates then
                 table.insert(tbl_stats, txtsel)
             end
 
+
+
             if FSettings.is_running then
                 local _key = "hatchtimer"
                 local timer_st = _Helper.GetTimerFormatted(_key)
                 local txtsel = string.format("  %s\n%s", Varz.TEXT_HATCH_SYSTEM, timer_st)
                 table.insert(tbl_stats, txtsel)
 
+
+
                 if FSettings.is_test then
-                    local txt_test = "\n<font color='#FF5555'>❌ [Test Mode] Disable to hatch! Home > Test Mode ❌</font>"
+                    local txt_test = "<font color='#FF5555'>❌ [Test Mode] Disable to hatch! Home > Test Mode ❌</font>"
                     table.insert(tbl_stats, txt_test)
                 end
             end
@@ -36617,6 +36914,19 @@ if not _G.service_ui_labelupdates then
                 local txtsel =
                 "🔥 <stroke color='#000000' thickness='1'><font color='#07E600'>Possibly Stable RNG Detected.</font></stroke>"
                 table.insert(tbl_stats, txtsel)
+            end
+
+            if Varz.was_enhancerpro_success then
+                local txtselx =
+                "<stroke color='#FFFFFF' thickness='2'><font color='#FF4444'>✅ [Enhance Pro Success] Do not run enhancer pro again unless you see bad returns.</font></stroke>"
+                table.insert(tbl_stats, txtselx)
+            end
+
+            if FSettings.nice_fruit then
+                local str1 = string.format(
+                    "🔥 <stroke color='#000000' thickness='1'><font color='#FB00FF'>%s</font></stroke>",
+                    Varz.TEXT_ENHANCE_PRO)
+                table.insert(tbl_stats, str1)
             end
 
 
@@ -37252,7 +37562,7 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         _Helper.JsonPrint(data)
         if data.invalidp then
-            -- print("Invalid data detected")
+            print("Invalid data detected")
         end
 
         if data.key_info then
