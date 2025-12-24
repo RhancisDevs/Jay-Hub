@@ -143,8 +143,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/komihub"
-_S.invite_link_short = "discord.gg/komihub"
+_S.invite_link_url = "https://discord.gg/shinhub"
+_S.invite_link_short = "discord.gg/shinhub"
 
 
 -- [SETUP UI]
@@ -163,7 +163,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.32.0"
+_S.CurentV = "v1.32.3"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -218,6 +218,8 @@ end
 Varz.HATCH_STATES = {
     NORMAL = "NORMAL",
     EGG_PHASE = "EGG_PHASE",
+    EGG_PLACE_PHASE = "egg_place",
+    EGG_HATCH_PHASE = "egg_hatchphase"
 }
 
 Varz.TEXT_TRADE_WORLD = ""
@@ -8852,8 +8854,8 @@ ShovelManager.Fruit = {
 
                 for index, value in ipairs(found_fruits) do
                     if not ShovelManager.Fruit.IsEnabled() then break end
-                    if ShovelManager.Fruit.IsBusy() then break end
-                    if current_del >= 3 then
+                    --if ShovelManager.Fruit.IsBusy() then break end
+                    if current_del >= 30 then
                         break
                     end
                     local ProximityPrompt = value:FindFirstChild("ProximityPrompt", true)
@@ -19170,6 +19172,8 @@ _Helper.PlaceEggsForHatching = function()
         return true
     end
 
+    Varz.hatch_state = Varz.HATCH_STATES.EGG_PLACE_PHASE
+
     UPDATE_LABELS_FUNC.UpdateSetLblStats("🥚 Trying to place new eggs.")
 
     -- CONFIGURATION: Select your shape here ("circle", "square", "heart", "random")
@@ -19297,6 +19301,8 @@ local function placeMissingEggs(myFarm)
         warn("Objects_Physical not found {}")
         return
     end
+
+    Varz.hatch_state = Varz.HATCH_STATES.EGG_PLACE_PHASE
 
     local center = myFarm.Center_Point.Position
 
@@ -20661,8 +20667,14 @@ local function HatchAllEggsAvailable(hatch_all)
 
     Varz.has_koi_repaint = false
 
+
+
     -- New, more reliable hatching logic
     if count_ready_eggs > 0 then
+        Varz.hatch_state = Varz.HATCH_STATES.EGG_HATCH_PHASE
+        if FSettings.fav_fruit_enhancer then
+            task.wait(0.5)
+        end
         for _, eggModel in ipairs(ready_to_hatch_eggs) do
             local eggName = eggModel:GetAttribute("EggName") or "Unknown Egg"
             local uuid = eggModel:GetAttribute("OBJECT_UUID")
@@ -20734,6 +20746,7 @@ local function HatchAllEggsAvailable(hatch_all)
         -- Sends to webhook
         canSendReport = true
 
+
         -- Check if all eggs are actually hatched.
         local timeo = time()
         -- we must wait until all pets are hatch, meaning
@@ -20741,7 +20754,7 @@ local function HatchAllEggsAvailable(hatch_all)
             task.wait(0.3)
             if time() - timeo > 2 then -- 5 seconds max
                 warn("Timeout: Some eggs were not hatched.")
-                return false
+                break
             end
 
             if Varz.has_koi_repaint then
@@ -20749,8 +20762,11 @@ local function HatchAllEggsAvailable(hatch_all)
             end
         end
 
+
         --print("Hatching process complete. Sent requests for " .. count_ready_eggs .. " egg(s).")
     end
+
+
     --  hatch function ends
 end
 
@@ -21742,6 +21758,7 @@ end
 
 Varz.nice_fruit_gains = {}
 
+-- #enhance
 Varz.HowMuchGain = function()
     local t = 0
     for _, value in ipairs(Varz.nice_fruit_gains) do
@@ -21750,7 +21767,7 @@ Varz.HowMuchGain = function()
 
     --print("Gain: " .. tostring(t))
 
-    if t >= 9 then
+    if t >= 5 then
         return true
     end
 
@@ -22298,6 +22315,7 @@ local function SessionLoop()
         end)
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🟢 Hatching Complete.")
+
         --task.wait(4)
         -- #fast
         if _Helper.GetFastHatchMode() then
@@ -22384,6 +22402,7 @@ local function SessionLoop()
                 end)
 
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Hatching Big Pets Complete.")
+
 
                 -- #fast
                 if _Helper.GetFastHatchMode() then
@@ -22594,7 +22613,7 @@ local function SessionLoop()
 
             if not _Helper.HatchModeFastSell() then
                 if not failed_pet_detection then
-                    SellAllPetsUnFavorite()
+                    --  SellAllPetsUnFavorite()
                 else
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Unable to sell pets. Data issue detected. Skipping...")
                 end
@@ -22616,6 +22635,10 @@ local function SessionLoop()
                     _Helper.FavoritePetsNewFaster(Varz.hatched_pets)
                 end
                 local petsforsale = _Helper.GetPetsToSellForHatching()
+                Varz.hatch_state = Varz.HATCH_STATES.EGG_HATCH_PHASE
+                if FSettings.fav_fruit_enhancer then
+                    task.wait(0.3)
+                end
                 InventoryManager.SellPetsUsingTools(petsforsale)
                 task.wait(0.1 + _Helper.GetSafePing())
             end
@@ -22689,7 +22712,6 @@ local function SessionLoop()
         --_Helper.JsonPrint(final_hatch_result)
         Varz.IS_HATCHING = false
 
-
         --========== Create webhook data
         local wb_data = {
             pets = final_hatch_result,
@@ -22738,6 +22760,8 @@ local function SessionLoop()
         else
             task.wait(1.5 + _Helper.GetSafePing())
         end
+
+
 
 
         Varz.found_pet_data = {}
@@ -35523,7 +35547,7 @@ if not _G.monsterlevels_task then
                 -- #level
                 MonsterManager.LevelSystem.UpdateUiTextStats("⚡ Applying boosts...")
                 if not EquipToolOnChar(_tool) then
-                    MonsterManager.LevelSystem.UpdateUiTextStats("?? Unable to equip tool.")
+                    MonsterManager.LevelSystem.UpdateUiTextStats("🔴 Unable to equip tool.")
                     task.wait(1)
                     break
                 end
@@ -37270,9 +37294,8 @@ Varz.GetFruitToFavAbuse = function()
 end
 
 
+-- #enhnace
 Varz.GetFruitToFavAbuseNew = function()
-    -- Helper to safely get UUID
-
     local ls = {}
     local max_fruits = 2 -- Amount to test at once
 
@@ -37324,13 +37347,13 @@ end
 -- #enhance #fav
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(0.35)
 
-        if Varz.enhancer_locked > 0 then
-            task.wait(0.5)
-            Varz.enhancer_locked = Varz.enhancer_locked - 1
-            continue
-        end
+        -- if Varz.enhancer_locked > 0 then
+        --     task.wait(0.5)
+        --     Varz.enhancer_locked = Varz.enhancer_locked - 1
+        --     continue
+        -- end
 
 
         if not FSettings.fav_fruit_enhancer or not FSettings.is_running then
@@ -37349,18 +37372,39 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             end)
         end
 
+        if Varz.hatch_state == Varz.HATCH_STATES.EGG_PLACE_PHASE then
+            pcall(function()
+                -- MakeFruitsFav(Varz.GetPetEnhanceTargets())
+            end)
+        end
+
+
+        -- if Varz.hatch_state == Varz.HATCH_STATES.EGG_HATCH_PHASE then
+        --     -- Main Logic
+        --     local succes, fail = pcall(function()
+        --         local ls = Varz.GetFruitToFavAbuseNew()
+
+        --         if ls and #ls > 0 then
+        --             MakeFruitsFav(ls)
+        --             --task.wait(0.1) -- Optional: slight delay to ensure server registers fav
+        --             --MakeFruitsFav(ls)
+        --         end
+        --     end)
+
+        --     if not succes then
+        --         warn("er: ", fail)
+        --     end
+        -- end
+
         if Varz.lock_enhance == true then
             task.wait(0.2)
             continue
         end
 
-        -- Main Logic
+        -- -- Main Logic
         local succes, fail = pcall(function()
             local ls = Varz.GetFruitToFavAbuseNew()
 
-            -- Only favorite if we have a list and we haven't locked in the "Old Test" yet
-            -- If we are using "Old Test", we generally assume they are already ready,
-            -- but favoriting them ensures they are selected.
             if ls and #ls > 0 then
                 MakeFruitsFav(ls)
                 --task.wait(0.1) -- Optional: slight delay to ensure server registers fav
