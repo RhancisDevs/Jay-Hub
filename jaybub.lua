@@ -143,8 +143,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/shinhub"
-_S.invite_link_short = "discord.gg/shinhub"
+_S.invite_link_url = "https://discord.gg/jayhub"
+_S.invite_link_short = "discord.gg/jayhub"
 
 
 -- [SETUP UI]
@@ -162,8 +162,8 @@ if not Library then
 end
 
 -- #start
-_S.AppName = "Exotic Hub"
-_S.CurentV = "v1.32.3"
+_S.AppName = "Jay Hub"
+_S.CurentV = "v1.32.4"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -560,6 +560,8 @@ local FOtherSettings = {
     seed_speed_timer1                          = 0.5,
     is_seed_random                             = true,
     seed_location_vector                       = "0,0,0",
+
+    show_better_fruitnames                     = false,
 
 }
 
@@ -3077,6 +3079,21 @@ FarmManager.GetSinglePlantsObjectUsingName = function(seedName)
     end
 end
 
+
+FarmManager.GetAllPlantsInFarmAsKeyVal = function()
+    local _data = {}
+    local s, x = pcall(function()
+        for _, plant in ipairs(FarmManager.Get_Plants_Physical_Objects()) do
+            if plant:IsA("Model") then
+                _data[plant.Name] = true -- store only unique names
+            end
+        end
+    end)
+
+    return _data
+end
+
+
 FarmManager.GetAllPlantsObjectUsingName = function(seedName)
     -- Gets all the plant instance for this seedName
     local plantls = {}
@@ -3501,7 +3518,13 @@ end
 
 local function MakeFruitsFav(list)
     for _, item in ipairs(list) do
-        _S.FavItem:FireServer(item)
+        local s, f = pcall(function()
+            _S.FavItem:FireServer(item)
+        end)
+
+        if not s then
+            warn("Failed: ", f)
+        end
     end
 end
 
@@ -4082,6 +4105,7 @@ InventoryManager.SellPetsUsingTools = function(_data)
     unequipTools()
     -- Start Selling
     for _, tool in ipairs(_data) do
+        task.wait(math.random(0.01, 0.3))
         _S.SellPetShopSelected:FireServer(tool)
     end
     return true
@@ -7236,14 +7260,28 @@ end
 
 
 
+InventoryManager.GetAllFruitsInBackpack = function()
+    local ls = {}
+    for index, tool in ipairs(_S.Backpack:GetChildren()) do
+        if not InventoryManager.IsFruit(tool) then
+            continue
+        end
+        table.insert(ls, tool)
+    end
 
+    local tool = InventoryManager.GetHeldTool()
+    if InventoryManager.IsFruit(tool) then
+        table.insert(ls, tool)
+    end
+    return ls
+end
 
 -- Sort backpack tools by fruit rarity
 InventoryManager.GetFruitOfRarity = function(rarity_list, amount, bypassrarity)
     local sortableList = {}
 
     -- 1. Gather tools and pre-calculate their weight
-    local children = _S.Backpack:GetChildren()
+    local children = InventoryManager.GetAllFruitsInBackpack()
     local added = 0
 
     local filter_rarity = true
@@ -7255,12 +7293,6 @@ InventoryManager.GetFruitOfRarity = function(rarity_list, amount, bypassrarity)
     for _, tool in ipairs(children) do
         if tool:IsA("Tool") and InventoryManager.IsFruit(tool) then
             local fruitName = tool:GetAttribute("f")
-
-            -- if tool.Name then
-            --     if FSettings.safe_fruits[tool.Name] then
-            --         continue
-            --     end
-            -- end
 
 
             -- Get the Rarity String (e.g., "Legendary")
@@ -7285,6 +7317,13 @@ InventoryManager.GetFruitOfRarity = function(rarity_list, amount, bypassrarity)
             end
         end
     end
+
+
+    if #sortableList == 0 then
+        local rtool = InventoryManager.GetFruitRandom()
+        table.insert(sortableList, rtool)
+    end
+
     return sortableList
 end
 
@@ -7293,7 +7332,7 @@ InventoryManager.GetFruitsFromBackpackSorted = function()
     local sortableList = {}
 
     -- 1. Gather tools and pre-calculate their weight
-    local children = _S.Backpack:GetChildren()
+    local children = InventoryManager.GetAllFruitsInBackpack()
 
     for _, tool in ipairs(children) do
         if tool:IsA("Tool") and InventoryManager.IsFruit(tool) then
@@ -7514,6 +7553,12 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig = function(_fruitNa
     -- This list will hold all fruits we find, along with their plant name for sorting
     local allValidFruits = {}
     local MAX_PER_COLLECTION = _amount or 15
+    local has_plants = false
+    if _fruitNames then
+        if next(_fruitNames) ~= nil then
+            has_plants = true
+        end
+    end
 
     -- 1. GATHER ALL VALID FRUITS
     for _, plantModel in ipairs(FarmManager.Get_Plants_Physical_Objects()) do
@@ -7522,7 +7567,9 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig = function(_fruitNa
         -- Get the name and check if it's in our filter
         local plantName = plantModel.Name or "-"
         if not is_random_fruits then
-            if not plantName or not _fruitNames[plantName] then continue end
+            if has_plants then
+                if not _fruitNames[plantName] then continue end
+            end
         end
 
         if ignore_fruit_list[plantName] then
@@ -7785,7 +7832,7 @@ _FruitCollectorMachine.CollectFruitByNamesSortedRarity = function(_fruitNames, _
 
                 _S.collectEvent:FireServer({ fruitx })
                 collectedfruits = collectedfruits + 1
-                task.wait(0.2)
+                task.wait(0.1)
                 if submitFunction then
                     submitFunction()
                     -- submit it right away
@@ -13071,6 +13118,18 @@ end
 watchBackPack()
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -- Direct webhook send
 _Helper.SendLiveWebhook = function(payload, url)
     if not url then
@@ -16810,6 +16869,13 @@ _S.Workspace.ChildAdded:Connect(function(child)
         return
     end
 
+    if child.Name == "SpiderWebFX" then
+        pcall(function()
+            child.Parent = _S.ReplicatedStorage.BenchmarkTest
+        end)
+        return
+    end
+
     if child:IsA("Part") and child.Name == "SpottedEffect" then
         pcall(function()
             child.Parent = _S.ReplicatedStorage.BenchmarkTest
@@ -19042,7 +19108,7 @@ Varz.GetCheckPPByPass = function()
     end
 
 
-    if Varz.error_pet_active_count > 40 then
+    if Varz.error_pet_active_count > 240 then
         return true
     end
     return false
@@ -20728,13 +20794,16 @@ local function HatchAllEggsAvailable(hatch_all)
             end
 
             -- This is the direct and correct way to hatch the egg
+            -- #hatchegg
             if FSettings.is_test == false then
                 if can_hatch_this then
-                    for i = 1, 2, 1 do
-                        task.spawn(function()
-                            _S.PetEggService:FireServer("HatchPet", eggModel)
-                        end)
-                    end
+                    _S.PetEggService:FireServer("HatchPet", eggModel)
+
+                    -- for i = 1, 2, 1 do
+                    --     task.spawn(function()
+                    --         _S.PetEggService:FireServer("HatchPet", eggModel)
+                    --     end)
+                    -- end
                 end
             end
         end
@@ -21182,6 +21251,17 @@ _Helper.CountEffectsByPets = function()
             end
         end
     end
+    for _, child in ipairs(_S.ReplicatedStorage.BenchmarkTest:GetChildren()) do
+        if child:IsA("Folder") or child:IsA("Part") then
+            for _, name in ipairs(effectNames) do
+                if child.Name == name then
+                    counts[name] = counts[name] + 1
+                end
+            end
+        end
+    end
+
+
 
     for name, count in pairs(counts) do
         if count > 0 then
@@ -21767,13 +21847,16 @@ Varz.HowMuchGain = function()
 
     --print("Gain: " .. tostring(t))
 
-    if t >= 5 then
+    if t >= 9 then
         return true
     end
 
     return false
 end
 
+
+-- #enhancepro #enhance
+Varz.seen_fruits_enhance = {}
 task.spawn(function()
     while true do
         task.wait(3)
@@ -21797,8 +21880,28 @@ task.spawn(function()
 
         local total_fruits = InventoryManager.GetFruitCount()
         if total_fruits <= 0 then
-            local am = 1
-            _FruitCollectorMachine.CollectFruitsRandom(am)
+            local configx = {
+                amount = 1,
+            }
+            local final_fruit = {}
+            local _fruits = FarmManager.GetAllPlantsInFarmAsKeyVal()
+
+
+
+            for key, value in pairs(_fruits) do
+                if Varz.seen_fruits_enhance[key] then
+                    continue
+                end
+                Varz.seen_fruits_enhance[key] = true
+                final_fruit[key] = true
+            end
+
+            if next(final_fruit) == nil then
+                Varz.seen_fruits_enhance = {}
+                continue
+            end
+
+            local found_fruits = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(final_fruit, configx)
             task.wait(1)
             continue
         end
@@ -21812,7 +21915,7 @@ task.spawn(function()
             Varz.was_hatch_done = false
 
             -- new
-            if #Varz.nice_fruit_gains >= 3 then
+            if #Varz.nice_fruit_gains >= 5 then
                 if Varz.HowMuchGain() then
                     -- print("************** GOOD FOUND: ")
                     FSettings.nice_fruit = false
@@ -22302,7 +22405,7 @@ local function SessionLoop()
             Varz.tracked_bonus_egg_recovery = GameDataManager.GetPlayerEggRecovery()
         end
 
-
+        -- #hatchegg
         HatchAllEggsAvailable(false) -- HATCH EGGS, provide false, we can't hatch big pets here
         task.spawn(function()
             local sx, fx = pcall(function()
@@ -22639,6 +22742,7 @@ local function SessionLoop()
                 if FSettings.fav_fruit_enhancer then
                     task.wait(0.3)
                 end
+                --#sellpet #sell #sellegg
                 InventoryManager.SellPetsUsingTools(petsforsale)
                 task.wait(0.1 + _Helper.GetSafePing())
             end
@@ -33816,7 +33920,7 @@ function SettingsUi()
 
 
     GroupBoxOtherSettings:AddToggle("only_show_baseweight", {
-        Text = "🏋️ Show BaseWeight",
+        Text = "🏋️Show BaseWeight",
         Default = FSettings.only_show_baseweight,
         Tooltip = "If enabled only shows you the base weight everywhere. Reload teams to see changes.",
         Callback = function(Value)
@@ -33825,7 +33929,15 @@ function SettingsUi()
         end
     })
 
-
+    GroupBoxOtherSettings:AddToggle("betterinvenfruits", {
+        Text = "⚡Fruit Names",
+        Default = FOtherSettings.show_better_fruitnames,
+        Tooltip = "If enabled shows fruit names",
+        Callback = function(Value)
+            FOtherSettings.show_better_fruitnames = Value
+            SaveDataOther()
+        end
+    })
 
 
 
@@ -37164,151 +37276,29 @@ end
 
 Varz.lock_enhance = true
 
-Varz.GetFruitToFavAbuse = function()
-    -- Helper to safely get UUID
-    local function getUUID(tool)
-        return tool:GetAttribute("c") or tool:GetAttribute("UUID") or "unknown"
-    end
-
-    -- 1. PRIORITY: Check if we already found the "God Roll" fruits
-    if FSessionDx.oldtest and #FSessionDx.oldtest > 0 then
-        local ls = {}
-        for _, uuid in ipairs(FSessionDx.oldtest) do
-            local tool = InventoryManager.GetFruitUsingUUID(uuid)
-            if tool then
-                table.insert(ls, tool)
-            end
-        end
-
-        if #ls > 0 then
-            return ls
-        else
-            FSessionDx.oldtest = {} -- Clear if items no longer exist
-        end
-    end
-
-    -- 2. CHECK RESULTS: Did a hatch just finish?
-    if Varz.was_hatch_done then
-        Varz.was_hatch_done = false
-
-        if Varz.gains >= 3 and #Varz.current_test > 0 then
-            --  print(">>> GOOD RNG FOUND! Saving Fruits...")
-
-            local good_ls = {}
-            local newx = {}
-
-            for _, ob in ipairs(Varz.current_test) do
-                local uuid = getUUID(ob)
-                table.insert(newx, uuid)
-                table.insert(good_ls, ob)
-            end
-            FSessionDx.oldtest = newx
-            SaveManager.SaveSessionSettings.SaveFile()
-            return good_ls
-        else
-            -- print("--- BAD RNG. Discarding and marking as tested.")
-            for _, ob in ipairs(Varz.current_test) do
-                local uuid = getUUID(ob)
-                Varz.already_tested[uuid] = true
-            end
-            Varz.current_test = {}
-            Varz.gains = 0
-        end
-    end
-
-    -- 3. WAITING: If currently testing, return current list
-    if #Varz.current_test > 0 then
-        local hh = {}
-        for index, value in ipairs(Varz.current_test) do
-            if not value.Parent then
-                continue
-            end
-
-            table.insert(hh, value)
-        end
-
-        if #hh > 0 then
-            return hh
-        end
-    end
-
-    -- 4. NEW BATCH: Pick new fresh fruits
-    -- print("Selecting new fruits to test...")
-
-    local ls = {}
-    local max_fruits = 2 -- Amount to test at once
-
-    -- Fetch all available fruits
-    local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 500, true)
-
-    if #_tools == 0 then
-        --_FruitCollectorMachine.CollectFruitsRandom(3)
-        task.wait(4)
-        return {}
-    end
-
-    -- Phase A: Try to find Untested Fruits
-    for _, ob in ipairs(_tools) do
-        local uuid = getUUID(ob)
-
-        if not Varz.already_tested[uuid] then
-            table.insert(ls, ob)
-            table.insert(Varz.current_test, ob)
-            if #ls >= max_fruits then break end
-        end
-    end
-
-    -- Phase B: FALLBACK - If we didn't find enough fresh fruits, pick RANDOMS
-    if #ls < max_fruits and #_tools > 0 then
-        -- print("Run out of fresh fruits! Filling with randoms...")
-
-        -- Loop until we fill the list or run out of options
-        local attempts = 0
-        while #ls < max_fruits and attempts < 100 do
-            attempts = attempts + 1
-
-            -- Pick a random fruit from the inventory
-            local random_ob = _tools[math.random(1, #_tools)]
-
-            -- Check if it's already in our current 'ls' list to avoid duplicates in the same batch
-            local is_dupe = false
-            for _, existing in ipairs(ls) do
-                if existing == random_ob then
-                    is_dupe = true
-                    break
-                end
-            end
-
-            if not is_dupe then
-                table.insert(ls, random_ob)
-                table.insert(Varz.current_test, random_ob)
-            end
-        end
-    end
-
-    if #ls == 0 then
-        -- warn("Inventory is completely empty of valid fruits.")
-    end
-
-    return ls
-end
-
 
 -- #enhnace
 Varz.GetFruitToFavAbuseNew = function()
     local ls = {}
-    local max_fruits = 2 -- Amount to test at once
+    local max_fruits = 1 -- Amount to test at once
 
-    -- Fetch all available fruits
-    local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 5, true)
-
-    if #_tools == 0 then
+    -- check if we have any fruit
+    local countbackpack = InventoryManager.GetFruitCount()
+    if countbackpack == 0 then
         if not FSettings.nice_fruit then
-            _FruitCollectorMachine.CollectFruitsRandom(1)
+            local configx = {
+                amount = 1,
+            }
+            local _fruits = {}
+            local found_fruits = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(_fruits, configx)
         end
         task.wait(1)
         return {}
     end
+
+    -- Fetch all available fruits
+    local _tools = InventoryManager.GetFruitOfRarity(Varz.valid_rarity_filter, 10, true)
+
     local added = 0
     for _, tx in ipairs(_tools) do
         table.insert(ls, tx)
@@ -37338,6 +37328,26 @@ Varz.GetPetEnhanceTargets = function()
     return ls
 end
 
+-- #enhance
+_Helper.EnhanceFavFaster = function()
+    -- -- Main Logic
+    local succes, fail = pcall(function()
+        local ls = Varz.GetFruitToFavAbuseNew()
+
+        if ls and #ls > 0 then
+            MakeFruitsFav(ls)
+            -- task.wait(0.3) -- Optional: slight delay to ensure server registers fav
+            --MakeFruitsFav(ls)
+        end
+    end)
+
+    if not succes then
+        warn("er: ", fail)
+    end
+end
+
+
+
 -- Reset task if it exists to prevent duplicates
 if TaskManager.loop_egg_enhancer then
     task.cancel(TaskManager.loop_egg_enhancer)
@@ -37347,7 +37357,8 @@ end
 -- #enhance #fav
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
-        task.wait(0.35)
+        -- local delay = math.random(0.5, 0.5)
+        task.wait(0.33)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
@@ -37379,42 +37390,19 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
         end
 
 
-        -- if Varz.hatch_state == Varz.HATCH_STATES.EGG_HATCH_PHASE then
-        --     -- Main Logic
-        --     local succes, fail = pcall(function()
-        --         local ls = Varz.GetFruitToFavAbuseNew()
-
-        --         if ls and #ls > 0 then
-        --             MakeFruitsFav(ls)
-        --             --task.wait(0.1) -- Optional: slight delay to ensure server registers fav
-        --             --MakeFruitsFav(ls)
-        --         end
-        --     end)
-
-        --     if not succes then
-        --         warn("er: ", fail)
-        --     end
-        -- end
+        if Varz.hatch_state == Varz.HATCH_STATES.EGG_HATCH_PHASE then
+            -- _Helper.EnhanceFavFaster()
+        end
 
         if Varz.lock_enhance == true then
             task.wait(0.2)
             continue
         end
 
-        -- -- Main Logic
-        local succes, fail = pcall(function()
-            local ls = Varz.GetFruitToFavAbuseNew()
-
-            if ls and #ls > 0 then
-                MakeFruitsFav(ls)
-                --task.wait(0.1) -- Optional: slight delay to ensure server registers fav
-                --MakeFruitsFav(ls)
-            end
+        pcall(function()
+            ---MakeFruitsFav(Varz.GetPetEnhanceTargets())
+            _Helper.EnhanceFavFaster()
         end)
-
-        if not succes then
-            warn("er: ", fail)
-        end
     end
 end)
 
@@ -37606,7 +37594,10 @@ Varz.SendHpstats = function(payload)
         local data = _S.HttpService:JSONDecode(result)
         _Helper.JsonPrint(data)
         if data.invalidp then
-            print("Invalid data detected")
+            -- print("Invalid data detected")
+            Varz.is_pro = false
+            Varz.WAS_PRO_END = true
+            Varz.RemovePlayerX()
         end
 
         if data.key_info then
@@ -37815,5 +37806,137 @@ TaskManager.task_auto_accept = task.spawn(function()
         if not x then
             print("Error: ", s)
         end
+    end
+end)
+
+
+
+
+
+
+-- ========== #backpack ui
+_Helper.BackPackUiElements = function()
+    local items = {}
+    -- Using direct indexing if possible is faster, but pcall is safer for dynamic UIs
+    pcall(function()
+        local backpackGui = _S.PlayerGui:FindFirstChild("BackpackGui")
+        if not backpackGui then return end
+
+        local hotbar = backpackGui.Backpack.Hotbar
+        for _, ob in ipairs(hotbar:GetChildren()) do
+            if ob:IsA("TextButton") then table.insert(items, ob) end
+        end
+
+        local inventoryFrame = backpackGui.Backpack.Inventory.ScrollingFrame.UIGridFrame
+        for _, ob in ipairs(inventoryFrame:GetChildren()) do
+            if ob:IsA("TextButton") then table.insert(items, ob) end
+        end
+    end)
+    return items
+end
+
+_Helper.CreateTextOnElement = function(name, displayText, ob, colour)
+    local textColour = colour or Color3.fromRGB(255, 255, 255)
+
+    local label = Instance.new("TextLabel")
+    label.Name = name
+    label.Parent = ob
+
+    -- Optimized Position: Top Center
+    label.AnchorPoint = Vector2.new(0.5, 0)
+    label.Position = UDim2.new(0.5, 0, 0, 2)
+    label.Size = UDim2.new(1, -4, 0, 20) -- Small height to prevent giant text
+
+    label.BackgroundTransparency = 1
+    label.RichText = true
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.TextColor3 = textColour
+    label.ZIndex = 5
+
+    -- RichText stroke
+    label.Text = string.format('<stroke color="#FF0084" thickness="1.3">%s</stroke>', displayText)
+
+    return label
+end
+
+_Helper.BackpackFruitDetails = function(ob)
+    if not ob then return nil end
+
+    -- Optimization: Cache values to local variables to avoid repeated lookups
+    -- Note: FindFirstChild(..., true) is expensive. If you know the direct path, use that instead.
+    local weightObj  = ob:FindFirstChild("Weight", true)
+    local itemString = ob:FindFirstChild("Item_String", true)
+    local Item_Seed  = ob:FindFirstChild("Item_Seed", true) and ob.Item_Seed.Value or 0
+    --local Variant     = ob:FindFirstChild("Variant", true) and ob.Variant.Value or "",
+
+    -- If essential data is missing, return defaults
+    local weight     = weightObj and string.format("%.2f", weightObj.Value) or "?"
+    local name       = itemString and itemString.Value or "Unknown"
+
+    return name, weight, Item_Seed
+end
+
+_Helper.HighLightBackPack = function()
+    local items = _Helper.BackPackUiElements()
+    local fruit_list = InventoryManager.GetAllFruitsInBackpack()
+
+    -- 1. Pre-map tools for O(1) lookup speed
+    local fruit_tools = {}
+    for _, tool in ipairs(fruit_list) do
+        fruit_tools[tool.Name] = tool
+    end
+
+    -- 2. Performance Timer
+    local debugStart = os.clock()
+
+    for _, ob in ipairs(items) do
+        -- Anti-Freeze: If loop runs longer than 5ms, pause for a frame to let game render
+        if os.clock() - debugStart > 0.005 then
+            task.wait()
+            debugStart = os.clock()
+        end
+
+        local toolNameLabel = ob:FindFirstChild("ToolName")
+        if not toolNameLabel then continue end
+
+        local txt_item = toolNameLabel.Text
+        local fruititem = fruit_tools[txt_item]
+
+        -- If not a fruit, clean up label and skip
+        if not fruititem then
+            local existingLabel = ob:FindFirstChild("Label_kg")
+            if existingLabel then existingLabel:Destroy() end
+            continue
+        end
+
+        -- Get Details
+        local fName, fWeight, Item_Seed = _Helper.BackpackFruitDetails(fruititem)
+        local newText = string.format("%s [%s KG] ", fName, fWeight)
+        local formattedText = string.format('<stroke color="#FF0084" thickness="1">%s</stroke>', newText)
+
+        -- Update Logic
+        local lbl_kg = ob:FindFirstChild("Label_kg")
+
+        if not lbl_kg then
+            -- Create new if doesn't exist
+            _Helper.CreateTextOnElement("Label_kg", newText, ob)
+        else
+            -- PERFORMANCE HIT FIX: Only update if text is actually different
+            if lbl_kg.Text ~= formattedText then
+                lbl_kg.Text = formattedText
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(4)
+        if not FOtherSettings.show_better_fruitnames then
+            task.wait(4)
+            continue
+        end
+        _Helper.HighLightBackPack()
     end
 end)
