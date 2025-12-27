@@ -921,7 +921,9 @@ local petsOptions = {
     "Kitsune",
     "French Fry Ferret",
 	"Yeti",
-	"Ice Golem"
+	"Ice Golem",
+	"Disco Bee",
+	"Butterfly"
 }
 
 local ddPets = main_tab:AddDropdown("PetsToList", {
