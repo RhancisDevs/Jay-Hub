@@ -257,40 +257,18 @@ local function moveToCFrame(cf)
     if not hrp or not hrp.Parent then return false end
 
     local targetPos = (typeof(cf) == "CFrame") and cf.Position or cf
-    local startPos = hrp.Position
-    local distance = (startPos - targetPos).Magnitude
 
-    if distance < 2 then
-        return true
-    end
-
-    local travelTime = math.max(0.1, distance / MOVE_SPEED_ESTIMATE)
-
-    local tween = TweenService:Create(
-        hrp,
-        TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
-        { CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0)) }
-    )
-
-    local completed = false
-    tween.Completed:Connect(function()
-        completed = true
+    pcall(function()
+        if character and character.PrimaryPart then
+            character:SetPrimaryPartCFrame(CFrame.new(targetPos + Vector3.new(0, 2, 0)))
+        else
+            hrp.CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0))
+        end
     end)
 
-    tween:Play()
-
-    local timeout = tick() + travelTime + 2
-    while not completed and tick() < timeout do
-        if not hrp or not hrp.Parent then
-            tween:Cancel()
-            return false
-        end
-        task.wait(0.05)
-    end
-
-    return completed
+    return true
 end
-
+	
 local function findUnclaimedBooth()
     local root = workspace:FindFirstChild("TradeWorld")
     if not root then return nil end
