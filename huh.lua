@@ -1213,7 +1213,7 @@ SaveManager:SetIgnoreIndexes({})
 local save_config_file_name = "Auto_Lako_" .. LocalPlayer.UserId .. "_" .. LocalPlayer.Name .. ".json"
 
 InterfaceManager:SetFolder("JayHub")
-SaveManager:SetFolder("JayHub/" .. save_config_file_name)
+SaveManager:SetFolder("JayHub/Script-Game")
 InterfaceManager:BuildInterfaceSection(settings_tab)
 SaveManager:BuildConfigSection(settings_tab)
 	
