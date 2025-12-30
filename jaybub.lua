@@ -162,8 +162,8 @@ if not Library then
 end
 
 -- #start
-_S.AppName = "Jay Hub"
-_S.CurentV = "v1.32.4"
+_S.AppName = "Exotic Hub"
+_S.CurentV = "v1.33.3"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -405,6 +405,8 @@ end
 
 -- save for mutations and others
 local FOtherSettings = {
+    petpp_overrides                            = {},
+    petpp_selected                             = "",
     rmplants                                   = {
         mut_whitelist = {},
         mut_blacklist = {},
@@ -484,6 +486,7 @@ local FOtherSettings = {
     g_fruit_weight_min                         = 0,
     is_fall_event_running                      = false,
     is_fall_event_fastmode                     = false,
+    newyear_dailyclaim                         = false,
     is_fall_questline_auto                     = false,
     is_fall_questline_reroll                   = false,
     is_playerstats_running                     = true,
@@ -562,6 +565,7 @@ local FOtherSettings = {
     seed_location_vector                       = "0,0,0",
 
     show_better_fruitnames                     = false,
+    remove_visuals_weather                     = false,
 
 }
 
@@ -671,7 +675,7 @@ local FSettings = {
         pet_list = {},
         delay_before_unequip = 0.4,
         delay_before_place = 0.2,
-        boost_amount = 1,
+        boost_amount = 1
     },
     seedpack = {
         is_active = false,
@@ -695,6 +699,7 @@ local FSettings = {
     },
 
     mut_system = {
+        gm_sprinkler = false,
         level = 40,
         lvl_baseweight = 40,
         required_weight = 2.10,
@@ -717,8 +722,8 @@ local FSettings = {
         single_unit_allowed = false,
         is_baseweight_mode = false,
         turbo_xp_teams = false,
-        realtime_monitor_system = false,
-        timeout_system = false,
+        realtime_monitor_system = true,
+        timeout_system = true,
         disable_horseman = false,
     },
     show_activepets_ui = true,
@@ -835,6 +840,28 @@ local FSettings = {
         -- Corrupted Zen Egg [dnt need]
         -- Premium Christmas Egg | Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
         -- Premium Winter Egg
+        -- Premium New Year's Egg
+
+        --Rainbow Premium New Year's Egg
+        ["Rainbow Premium New Year's Egg"] = {
+            ["Rainbow New Year's Bird"] = false,
+            ["Rainbow Firework Sprite"] = false,
+            ["Rainbow Celebration Puppy"] = false,
+            ["Rainbow New Year's Chimp"] = false,
+            ["Rainbow Star Wolf"] = false,
+            ["Rainbow New Year's Dragon"] = false
+        },
+
+        -- New Year's Egg
+        ["New Year's Egg"] = {
+            ["New Year's Bird"] = true,
+            ["Firework Sprite"] = true,
+            ["Celebration Puppy"] = true,
+            ["New Year's Chimp"] = true,
+            ["Star Wolf"] = true,
+            ["New Year's Dragon"] = false -- (0.25%)
+        },
+
 
         -- Winter Egg
         ["Winter Egg"] = {
@@ -1031,42 +1058,45 @@ local FSettings = {
     },
 
     eggs_to_place_array = {
-        ["Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(120, 180, 255) },                   -- Icy blue (clean, winter feel on dark UI)
-        ["Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 215, 100) },           -- Frosted gold (premium, high contrast)
-        ["Festive Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(180, 120, 255) },   -- Aurora purple (festive, rare pop)
-        ["Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 70, 90) },                  -- Festive red (clear on dark UI)
-        ["Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 120, 60) },         -- Premium orange-gold (high contrast)
-        ["Festive Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 60, 180) }, -- Rare magenta (pops on dark)
-        ["Gem Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(220, 40, 70) },                        -- red
-        ["Safari Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(189, 155, 84) },                    -- Safari Gold
-        ["Spooky Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(106, 13, 173) },                    -- Spooky Purple
-        ["Jungle Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(50, 205, 50) },                     -- Lime Green
-        ["Fall Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 140, 0) },                       -- pumpkin orange
-        ["Common Egg"] = { enabled = true, order = 1, color = Color3.fromRGB(255, 0, 255) },                      -- bright magenta
-        ["Anti Bee Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 128, 0) },                   -- neon orange
-        ["Enchanted Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(0, 255, 255) },                  -- bright cyan
-        ["Paradise Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(0, 255, 128) },                   -- neon green
-        ["Premium Primal Egg"] = { enabled = false, order = 6, color = Color3.fromRGB(255, 255, 0) },             -- bright yellow
-        ["Rainbow Premium Primal Egg"] = { enabled = false, order = 7, color = Color3.fromRGB(255, 0, 128) },     -- neon pink
-        ["Zen Egg"] = { enabled = false, order = 8, color = Color3.fromRGB(128, 0, 255) },                        -- neon purple
-        ["Night Egg"] = { enabled = false, order = 9, color = Color3.fromRGB(0, 128, 255) },                      -- bright blue
-        ["Rare Egg"] = { enabled = false, order = 10, color = Color3.fromRGB(255, 64, 0) },                       -- neon red-orange
-        ["Oasis Egg"] = { enabled = false, order = 11, color = Color3.fromRGB(0, 255, 255) },                     -- bright cyan
-        ["Rare Summer Egg"] = { enabled = false, order = 12, color = Color3.fromRGB(255, 0, 0) },                 -- neon red
-        ["Primal Egg"] = { enabled = false, order = 13, color = Color3.fromRGB(128, 255, 0) },                    -- neon lime
-        ["Dinosaur Egg"] = { enabled = false, order = 14, color = Color3.fromRGB(0, 255, 128) },                  -- bright green
-        ["Gourmet Egg"] = { enabled = false, order = 15, color = Color3.fromRGB(255, 0, 255) },                   -- neon magenta
-        ["Sprout Egg"] = { enabled = false, order = 16, color = Color3.fromRGB(0, 255, 64) },                     -- neon mint
-        ["Bee Egg"] = { enabled = false, order = 17, color = Color3.fromRGB(255, 255, 0) },                       -- bright yellow
-        ["Bug Egg"] = { enabled = false, order = 18, color = Color3.fromRGB(255, 128, 0) },                       -- neon orange
-        ["Premium Night Egg"] = { enabled = false, order = 19, color = Color3.fromRGB(255, 0, 128) },             -- neon pink
-        ["Common Summer Egg"] = { enabled = false, order = 20, color = Color3.fromRGB(255, 192, 203) },           -- pink
-        ["Exotic Bug Egg"] = { enabled = false, order = 23, color = Color3.fromRGB(255, 165, 0) },                -- orange
-        ["Legendary Egg"] = { enabled = false, order = 24, color = Color3.fromRGB(255, 215, 0) },                 -- gold
-        ["Mythical Egg"] = { enabled = false, order = 25, color = Color3.fromRGB(0, 255, 255) },                  -- cyan
-        ["Premium Anti Bee Egg"] = { enabled = false, order = 27, color = Color3.fromRGB(255, 140, 0) },          -- dark orange
-        ["Premium Oasis Egg"] = { enabled = false, order = 28, color = Color3.fromRGB(0, 191, 255) },             -- deep sky blue
-        ["Uncommon Egg"] = { enabled = false, order = 29, color = Color3.fromRGB(173, 255, 47) },                 -- green-yellow
+        ["New Year's Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 215, 100) },                 -- Festive gold
+        ["Premium New Year's Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(255, 120, 120) },         -- Premium red
+        ["Rainbow Premium New Year's Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(160, 120, 255) }, -- Premium rainbow purple
+        ["Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(120, 180, 255) },                     -- Icy blue (clean, winter feel on dark UI)
+        ["Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 215, 100) },             -- Frosted gold (premium, high contrast)
+        ["Festive Premium Winter Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(180, 120, 255) },     -- Aurora purple (festive, rare pop)
+        ["Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 70, 90) },                    -- Festive red (clear on dark UI)
+        ["Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 120, 60) },           -- Premium orange-gold (high contrast)
+        ["Festive Premium Christmas Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 60, 180) },   -- Rare magenta (pops on dark)
+        ["Gem Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(220, 40, 70) },                          -- red
+        ["Safari Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(189, 155, 84) },                      -- Safari Gold
+        ["Spooky Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(106, 13, 173) },                      -- Spooky Purple
+        ["Jungle Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(50, 205, 50) },                       -- Lime Green
+        ["Fall Egg"] = { enabled = false, order = 1, color = Color3.fromRGB(255, 140, 0) },                         -- pumpkin orange
+        ["Common Egg"] = { enabled = true, order = 1, color = Color3.fromRGB(255, 0, 255) },                        -- bright magenta
+        ["Anti Bee Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 128, 0) },                     -- neon orange
+        ["Enchanted Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(0, 255, 255) },                    -- bright cyan
+        ["Paradise Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(0, 255, 128) },                     -- neon green
+        ["Premium Primal Egg"] = { enabled = false, order = 6, color = Color3.fromRGB(255, 255, 0) },               -- bright yellow
+        ["Rainbow Premium Primal Egg"] = { enabled = false, order = 7, color = Color3.fromRGB(255, 0, 128) },       -- neon pink
+        ["Zen Egg"] = { enabled = false, order = 8, color = Color3.fromRGB(128, 0, 255) },                          -- neon purple
+        ["Night Egg"] = { enabled = false, order = 9, color = Color3.fromRGB(0, 128, 255) },                        -- bright blue
+        ["Rare Egg"] = { enabled = false, order = 10, color = Color3.fromRGB(255, 64, 0) },                         -- neon red-orange
+        ["Oasis Egg"] = { enabled = false, order = 11, color = Color3.fromRGB(0, 255, 255) },                       -- bright cyan
+        ["Rare Summer Egg"] = { enabled = false, order = 12, color = Color3.fromRGB(255, 0, 0) },                   -- neon red
+        ["Primal Egg"] = { enabled = false, order = 13, color = Color3.fromRGB(128, 255, 0) },                      -- neon lime
+        ["Dinosaur Egg"] = { enabled = false, order = 14, color = Color3.fromRGB(0, 255, 128) },                    -- bright green
+        ["Gourmet Egg"] = { enabled = false, order = 15, color = Color3.fromRGB(255, 0, 255) },                     -- neon magenta
+        ["Sprout Egg"] = { enabled = false, order = 16, color = Color3.fromRGB(0, 255, 64) },                       -- neon mint
+        ["Bee Egg"] = { enabled = false, order = 17, color = Color3.fromRGB(255, 255, 0) },                         -- bright yellow
+        ["Bug Egg"] = { enabled = false, order = 18, color = Color3.fromRGB(255, 128, 0) },                         -- neon orange
+        ["Premium Night Egg"] = { enabled = false, order = 19, color = Color3.fromRGB(255, 0, 128) },               -- neon pink
+        ["Common Summer Egg"] = { enabled = false, order = 20, color = Color3.fromRGB(255, 192, 203) },             -- pink
+        ["Exotic Bug Egg"] = { enabled = false, order = 23, color = Color3.fromRGB(255, 165, 0) },                  -- orange
+        ["Legendary Egg"] = { enabled = false, order = 24, color = Color3.fromRGB(255, 215, 0) },                   -- gold
+        ["Mythical Egg"] = { enabled = false, order = 25, color = Color3.fromRGB(0, 255, 255) },                    -- cyan
+        ["Premium Anti Bee Egg"] = { enabled = false, order = 27, color = Color3.fromRGB(255, 140, 0) },            -- dark orange
+        ["Premium Oasis Egg"] = { enabled = false, order = 28, color = Color3.fromRGB(0, 191, 255) },               -- deep sky blue
+        ["Uncommon Egg"] = { enabled = false, order = 29, color = Color3.fromRGB(173, 255, 47) },                   -- green-yellow
     }
 }
 
@@ -1272,6 +1302,14 @@ _Helper.IsPrivateServer = function()
 
     return false
 end
+
+
+
+
+
+
+
+
 
 
 
@@ -1492,6 +1530,55 @@ end
 
 
 
+_Helper.StringToColor3Light = function(str)
+    local default_color = "#FFFF00"
+    if type(str) ~= "string" then return default_color end
+
+    local success, result = pcall(function()
+        -- 1. Calculate a Hash (FNV-1a style for better scattering)
+        local hash = 5381
+        for i = 1, #str do
+            local c = string.byte(str, i)
+            hash = ((hash * 33) + c) % 4294967296 -- Keep within 32-bit integer range
+        end
+
+        -- 2. HUE: Golden Ratio Coloring (The Fix)
+        -- Instead of mapping directly, we multiply by the Golden Ratio Conjugate.
+        -- This ensures that "Name1" and "Name2" get wildly different colors.
+        local golden_ratio = 0.618033988749895
+        local h = (hash * golden_ratio) % 1
+
+        -- 3. SATURATION & LIGHTNESS (Optimized for Dark Backgrounds)
+        local s = 0.85 -- Very vibrant
+        local l = 0.65 -- Bright enough to be read, not so bright it's white
+
+        -- 4. Convert HSL to RGB
+        local function hue2rgb(p, q, t)
+            if t < 0 then t = t + 1 end
+            if t > 1 then t = t - 1 end
+            if t < 1 / 6 then return p + (q - p) * 6 * t end
+            if t < 1 / 2 then return q end
+            if t < 2 / 3 then return p + (q - p) * (2 / 3 - t) * 6 end
+            return p
+        end
+
+        local r, g, b
+        local q = l < 0.5 and l * (1 + s) or l + s - l * s
+        local p = 2 * l - q
+
+        r = hue2rgb(p, q, h + 1 / 3)
+        g = hue2rgb(p, q, h)
+        b = hue2rgb(p, q, h - 1 / 3)
+
+        return string.format("#%02x%02x%02x",
+            math.floor(r * 255),
+            math.floor(g * 255),
+            math.floor(b * 255)
+        )
+    end)
+
+    return success and result or default_color
+end
 
 -- ==== Load pet list
 _Helper.AllPetPassiveData = {}
@@ -1504,13 +1591,115 @@ end
 _Helper.GetAllPetDataPassives()
 
 _Helper.AllEggNamesList = {}
+_Helper.PetToEggNames = {}
 _Helper.GetAllEggNames = function()
     for eggName, value in pairs(_S.PetRegistry.PetEggs) do
+        local RarityData = value.RarityData
+        if RarityData then
+            local Items = RarityData.Items
+            if Items then
+                for pname, otherdata in pairs(Items) do
+                    _Helper.PetToEggNames[pname] = eggName
+                end
+            end
+        end
         table.insert(_Helper.AllEggNamesList, eggName)
     end
     return _Helper.AllEggNamesList
 end
 _Helper.GetAllEggNames()
+
+
+-- #petdata #pet
+Varz.GetPetDetails = function(_name)
+    -- 1. SETUP & CHECKS
+    local petList = _S.PetRegistry and _S.PetRegistry.PetList
+    if not petList then return "Error: PetRegistry not found." end
+
+    local pet = petList[_name]
+
+    -- Get the Egg Name (Handle nil if the helper or key doesn't exist)
+    local eggname = "Unknown"
+    if _Helper and _Helper.PetToEggNames then
+        eggname = _Helper.PetToEggNames[_name] or "Unknown"
+    end
+
+    if not pet then
+        return "<font color='#FF5555'>❌ Pet not found: " .. tostring(_name) .. "</font>"
+    end
+
+    -- 2. COLOR PALETTE (Hex Codes)
+    -- You can change these hex codes to whatever colors you prefer
+    local C_TITLE = "#FFD700" -- Gold (for Name)
+    local C_LABEL = "#B4B4B4" -- Light Grey (for "Speed:", "Rarity:", etc.)
+    local C_VAL   = "#FFFFFF" -- White (for the actual values)
+    local C_MONEY = "#55FF55" -- Green (for Price)
+    local C_EGG   = "#55AAFF" -- Blue (for Egg Name)
+
+    -- 3. HELPER FUNCTIONS
+
+    -- Adds commas to numbers
+    local function formatNumber(n)
+        return tostring(n):reverse():gsub("%d%d%d", "%1,"):reverse():gsub("^,", "")
+    end
+
+    -- Helper to wrap text in color tags easily
+    local function colorText(text, color)
+        return '<font color="' .. color .. '">' .. text .. '</font>'
+    end
+
+    -- 4. BUILD THE TEXT
+    local lines = {}
+
+    -- HEADER (Name in Bold and Gold)
+    table.insert(lines, "<b>" .. colorText("🐾 " .. string.upper(_name), C_TITLE) .. "</b>")
+    table.insert(lines, colorText("----------------", "#444444")) -- Dark grey divider
+
+    -- EGG SOURCE (New Requirement)
+    if eggname then
+        table.insert(lines, colorText("• Found in: ", C_LABEL) .. colorText(eggname, C_EGG))
+    end
+
+    -- RARITY
+    if pet.Rarity then
+        -- Optional: specific colors for specific rarities
+        local rColor = C_VAL
+        if pet.Rarity == "Mythical" then rColor = "#FF55FF" end  -- Pink for Mythical
+        if pet.Rarity == "Legendary" then rColor = "#FFAA00" end -- Orange for Legendary
+
+        table.insert(lines, colorText("• Rarity: ", C_LABEL) .. colorText(pet.Rarity, rColor))
+    end
+
+    -- DESCRIPTION
+    if pet.Description and pet.Description ~= "" then
+        table.insert(lines, colorText("• Desc: ", C_LABEL) .. colorText(pet.Description, C_VAL))
+    end
+
+    -- PASSIVES
+    if pet.Passives and type(pet.Passives) == "table" and #pet.Passives > 0 then
+        local passiveList = table.concat(pet.Passives, ", ")
+        table.insert(lines, colorText("• Passives: ", C_LABEL) .. colorText(passiveList, C_VAL))
+    end
+
+    -- SELL PRICE
+    if pet.SellPrice then
+        local priceStr = "$" .. formatNumber(pet.SellPrice)
+        table.insert(lines, colorText("• Sell Price: ", C_LABEL) .. colorText(priceStr, C_MONEY))
+    end
+
+    -- MOVEMENT SPEED
+    if pet.MovementSpeed then
+        table.insert(lines, colorText("• Speed: ", C_LABEL) .. colorText(pet.MovementSpeed, C_VAL))
+    end
+
+    -- MAX HUNGER
+    if pet.DefaultHunger then
+        table.insert(lines, colorText("• Max Hunger: ", C_LABEL) .. colorText(pet.DefaultHunger, C_VAL))
+    end
+
+    -- 5. RETURN
+    return table.concat(lines, "\n")
+end
 
 
 Varz.AscensionFruitName = nil
@@ -1615,47 +1804,19 @@ Varz.PlayerSecrets = {
 
 
 -- Holds our current eggs
-Varz.egg_counts = {
-    ["Winter Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Winter Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Festive Premium Winter Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Christmas Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Christmas Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Festive Premium Christmas Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Gem Egg"] = { current_amount = 0, new_amount = 0 },           -- #
-    ["Safari Egg"] = { current_amount = 0, new_amount = 0 },        -- #
-    ["Spooky Egg"] = { current_amount = 0, new_amount = 0 },        -- #
-    ["Jungle Egg"] = { current_amount = 0, new_amount = 0 },        -- #
-    ["Fall Egg"] = { current_amount = 0, new_amount = 0 },          -- #
-    ["Enchanted Egg"] = { current_amount = 0, new_amount = 0 },     -- #
-    ["Anti Bee Egg"] = { current_amount = 0, new_amount = 0 },      -- #
-    ["Bee Egg"] = { current_amount = 0, new_amount = 0 },           --#
-    ["Bug Egg"] = { current_amount = 0, new_amount = 0 },           --#
-    ["Common Egg"] = { current_amount = 0, new_amount = 0 },        --#
-    ["Common Summer Egg"] = { current_amount = 0, new_amount = 0 }, --#
-    ["Corrupted Zen Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Dinosaur Egg"] = { current_amount = 0, new_amount = 0 },      --#
-    ["Eggs"] = { current_amount = 0, new_amount = 0 },
-    ["Exotic Bug Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Gourmet Egg"] = { current_amount = 0, new_amount = 0 }, --#
-    ["Legendary Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Mythical Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Night Egg"] = { current_amount = 0, new_amount = 0 }, --#
-    ["Oasis Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Paradise Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Pet Eggs"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Anti Bee Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Night Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Oasis Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Premium Primal Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Primal Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Rainbow Premium Primal Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Rare Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Rare Summer Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Sprout Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Uncommon Egg"] = { current_amount = 0, new_amount = 0 },
-    ["Zen Egg"] = { current_amount = 0, new_amount = 0 },
-}
+
+
+
+--#eggcount #egg
+Varz.egg_counts = {}
+
+for index, eggName in ipairs(_Helper.AllEggNamesList) do
+    Varz.egg_counts[eggName] = {
+        current_amount = 0,
+        new_amount = 0,
+    }
+end
+
 
 
 
@@ -2422,6 +2583,15 @@ end
 
 Varz.rare_pets = {
 
+    ["New Year's Dragon"] = true,
+
+    ["Rainbow New Year's Bird"] = true,
+    ["Rainbow Firework Sprite"] = true,
+    ["Rainbow Celebration Puppy"] = true,
+    ["Rainbow New Year's Chimp"] = true,
+    ["Rainbow Star Wolf"] = true,
+    ["Rainbow New Year's Dragon"] = true,
+
     ["Frost Squirrel"] = true,
     ["Wendigo"] = true,
     ["Festive Partridge"] = true,
@@ -2549,22 +2719,26 @@ end
 
 
 ---------------=========== Craft #craft
-
+-- #bringback #update
 Varz.BringBackStuff = function()
     local success, fail
     pcall(function()
-        local m = _S.ReplicatedStorage.Modules.UpdateService.SmithingEvent
+        local m = _S.ReplicatedStorage.Modules.UpdateService.AdventPlatformOld
         if m then
             m.Parent = _S.Workspace
+        end
+        local m1 = _S.ReplicatedStorage.Modules.UpdateService.LumberjackPlatformOld
+        if m1 then
+            m1.Parent = _S.Workspace
         end
     end)
 
     if not success then
-        warn("bb ", fail)
+        warn("bringback ", fail)
     end
 end
 
-Varz.BringBackStuff()
+--Varz.BringBackStuff()
 
 CraftManager.AllReceipeData = {}
 CraftManager.BenchModels = {}
@@ -2733,6 +2907,23 @@ local function ParseWeightNumber(input)
     return num
 end
 
+local function ParseWeightNumber2d(input)
+    -- Check input is valid (not nil/empty)
+    if input == nil or (type(input) == "string" and input:match("^%s*$")) then
+        return nil
+    end
+
+    -- Try converting to number
+    local num = tonumber(input)
+    if not num then
+        return nil
+    end
+
+    -- Format to 2 decimals string, then convert back to number
+    -- This rounds 10.556 -> 10.56 and keeps 10 -> 10
+    return tonumber(string.format("%.2f", num))
+end
+
 -- Function to check if a pet is sellable
 local function IsPetHatchable(petName)
     if not petName then return false end
@@ -2756,6 +2947,15 @@ _Helper.ShortName = function(str, max)
     max = max or 5
     if #str > max then
         return str:sub(1, max) .. "..."
+    else
+        return str
+    end
+end
+
+_Helper.ShortNameNoDots = function(str, max)
+    max = max or 3
+    if #str > max then
+        return str:sub(1, max)
     else
         return str
     end
@@ -4092,10 +4292,6 @@ MoneyMarkets.Market = {
 
 
 
-
-
-
-
 -------------------------------------------------
 -------- Inventory functions
 -------------------------------------------------
@@ -4105,7 +4301,6 @@ InventoryManager.SellPetsUsingTools = function(_data)
     unequipTools()
     -- Start Selling
     for _, tool in ipairs(_data) do
-        task.wait(math.random(0.01, 0.3))
         _S.SellPetShopSelected:FireServer(tool)
     end
     return true
@@ -4517,6 +4712,7 @@ InventoryManager.GetPetBoostUsingName = function(_name)
 end
 
 InventoryManager.IsFood = function(item)
+    if not item then return false end
     if not item:IsA("Tool") then return false end
     if not item:GetAttribute("f") then return false end
     local b = item:GetAttribute("b")
@@ -4541,6 +4737,23 @@ InventoryManager.GetCleansingPetShard = function()
         if not f then continue end
         -- check name here
         if f == _name then
+            return item
+        end
+    end
+    return nil
+end
+
+
+
+
+InventoryManager.GetFoodRandomAny = function()
+    local tool = InventoryManager.GetHeldTool()
+    if InventoryManager.IsFood(tool) then
+        return tool
+    end
+
+    for _, item in ipairs(_S.Backpack:GetChildren()) do
+        if InventoryManager.IsFood(item) then
             return item
         end
     end
@@ -5013,6 +5226,8 @@ InventoryManager.GetFruitUsingUUID = function(_uuid)
     return nil
 end
 
+
+
 InventoryManager.GetHoldableUsingName = function(_name)
     local is_valid_item = function(item)
         if not item:IsA("Tool") then return nil end
@@ -5066,6 +5281,42 @@ InventoryManager.IsEggTool = function(tool)
     end
 
     return false
+end
+
+InventoryManager.GetEggToolCount = function(tool)
+    if not tool then return 0 end
+    local uses = tool:GetAttribute("e") or 0
+    return uses
+end
+
+
+
+InventoryManager.GetEggCountUsingName = function(_name)
+    if typeof(_name) ~= "string" or _name == "" then
+        print("fail not a string")
+        return 0
+    end
+
+    local tool = InventoryManager.GetHeldTool()
+    if tool then
+        local eggname = tool:GetAttribute("h")
+        if eggname and string.find(eggname, _name, 1, true) then
+            return InventoryManager.GetEggToolCount(tool)
+        end
+    end
+
+    -- Then scan backpack
+    for _, item in ipairs(_S.Backpack:GetChildren()) do
+        if InventoryManager.IsEggTool(item) then
+            local eggname = item:GetAttribute("h")
+
+            if eggname and string.find(eggname, _name, 1, true) then
+                return InventoryManager.GetEggToolCount(item)
+            end
+        end
+    end
+
+    return 0
 end
 
 
@@ -13992,34 +14243,10 @@ task.spawn(function()
 end)
 
 
--- Get egg count, count passed in egg name
-local function GetEggCount(eggName)
-    if not eggName then return 0 end
-    local egg_ar = _S.Backpack:GetChildren();
-    for _, item in ipairs(egg_ar) do
-        if item:IsA("Tool") and item:GetAttribute("h") == eggName then
-            local uses = item:GetAttribute("e") or 0
-            return uses
-        end
-    end
-
-    -- check if the user is holding the egg
-
-    -- check if the user is holding the egg
-    for _, item in ipairs(_S.Character:GetChildren()) do
-        if item:IsA("Tool") and item:GetAttribute("h") == eggName then
-            local uses = item:GetAttribute("e") or 0
-            return uses
-        end
-    end
-
-    return 0
-end
-
 -- This will be called before to fill up egg counts
 local function BeforeUpdateEggCountForAllEggs()
     for eggName, data in pairs(Varz.egg_counts) do
-        local current_countx = GetEggCount(eggName)
+        local current_countx = InventoryManager.GetEggCountUsingName(eggName)
         data.current_amount = current_countx
     end
 end
@@ -14027,7 +14254,7 @@ end
 -- this called last to detect how many eggs we lost of gain
 local function AfterUpdateEggCountForAllEggs()
     for eggName, data in pairs(Varz.egg_counts) do
-        local current_countx = GetEggCount(eggName)
+        local current_countx = InventoryManager.GetEggCountUsingName(eggName)
         data.new_amount = current_countx
     end
 end
@@ -14203,6 +14430,8 @@ _Helper.HatchReportWebhook = function(_config)
                 pets = {}
             }
         end
+
+
 
         table.insert(groupedEggs[peteggname].pets, fullName)
         -- group ends
@@ -15143,13 +15372,12 @@ FallEventManager.GetLookingForTrait = function()
     end
 end
 
-
 FallEventManager.EventFolderExists = function()
     local success, res = pcall(function()
         --  local model = FallEventManager.findInWorkspaceOrInteraction("SafariEvent", "Folder")
         local model = nil
 
-        local modelx = FallEventManager.findInWorkspaceMulti("LumberjackPlatform", "Model")
+        local modelx = FallEventManager.findInWorkspaceMulti("LumberjackPlatformOld", "Model")
         for _, mod in ipairs(modelx) do
             -- local progressBar = mod:FindFirstChild("ProgressBar", true)
             -- if progressBar then
@@ -15167,6 +15395,27 @@ FallEventManager.EventFolderExists = function()
     end
     return nil
 end
+
+
+-- #newyear
+FallEventManager.ClaimDailyNewYears = function()
+    for i = 1, 10, 1 do
+        pcall(function()
+            game:GetService("ReplicatedStorage").GameEvents.NewYearsEvent.ClaimAdventCalendarDay:FireServer(i)
+        end)
+    end
+end
+
+
+task.spawn(function()
+    while true do
+        task.wait(60)
+        if not FOtherSettings.newyear_dailyclaim then
+            continue
+        end
+        FallEventManager.ClaimDailyNewYears()
+    end
+end)
 
 -- FallEventManager.GetProgressPercentx = function()
 --     -- no progress.
@@ -16869,9 +17118,26 @@ _S.Workspace.ChildAdded:Connect(function(child)
         return
     end
 
+    local lsn = {
+        "Wisp",
+        "WindyFrostEffect",
+        "WindBlastTemplate"
+    }
+
+
+    for index, value in ipairs(lsn) do
+        if child.Name == value then
+            child.Parent = _S.ReplicatedStorage.BenchmarkTest
+            return
+        end
+    end
+
+
     if child.Name == "SpiderWebFX" then
         pcall(function()
-            child.Parent = _S.ReplicatedStorage.BenchmarkTest
+            if FOtherSettings.remove_visuals_weather then
+                child.Parent = _S.ReplicatedStorage.BenchmarkTest
+            end
         end)
         return
     end
@@ -16913,18 +17179,34 @@ _S.Workspace.ChildAdded:Connect(function(child)
     --VulnManager.Visuals.RewardDropVisual(child)
 end)
 
-_S.Workspace.Visuals.ChildAdded:Connect(function(child)
-    if child:IsA("Part") then
-        child.Parent = _S.ReplicatedStorage.BenchmarkTest
-        return
-    end
-end)
 
-_S.Workspace.WeatherVisuals.ChildAdded:Connect(function(child)
-    pcall(function()
-        child.Parent = _S.ReplicatedStorage.BenchmarkTest
-    end)
-end)
+-- List of folders to monitor
+Varz.weatherv = {
+    "Visuals",
+    "Water_Effect",
+    "WeatherObjects",
+    "WeatherVisuals",
+    "SecretObby",
+    "Rainbows",
+    "Dirt_VFX",
+}
+
+if FOtherSettings.remove_visuals_weather then
+    -- Iterate over each folder
+    for _, folderName in ipairs(Varz.weatherv) do
+        local folder = _S.Workspace:FindFirstChild(folderName)
+        if folder and folder:IsA("Folder") then
+            folder.ChildAdded:Connect(function(child)
+                pcall(function()
+                    if FOtherSettings.remove_visuals_weather then
+                        child.Parent = _S.ReplicatedStorage
+                    end
+                end)
+            end)
+        end
+    end
+end
+
 
 -- #plants
 _Helper.RemovePlantsOrFruitsLoop = function(plant)
@@ -17952,6 +18234,14 @@ TaskManager.task_agebreak_machine = task.spawn(function()
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
             agebreak.UpdateAgebreakStatus("🔴 [Age Break] Is Waiting for farm data to load.")
             task.wait(5)
+            continue
+        end
+
+        if not Varz.GetCheckIfPro() then
+            agebreak.UpdateAgebreakStatus("🔴 [Age Break] None premium user detected. Shutdown.")
+            FSettings.agebreak.is_active_agebreak = false
+            SaveData()
+            task.wait(10)
             continue
         end
 
@@ -20797,13 +21087,9 @@ local function HatchAllEggsAvailable(hatch_all)
             -- #hatchegg
             if FSettings.is_test == false then
                 if can_hatch_this then
+                    -- _S.PetEggService:FireServer("HatchPet", eggModel)
+                    -- task.wait(0.33)
                     _S.PetEggService:FireServer("HatchPet", eggModel)
-
-                    -- for i = 1, 2, 1 do
-                    --     task.spawn(function()
-                    --         _S.PetEggService:FireServer("HatchPet", eggModel)
-                    --     end)
-                    -- end
                 end
             end
         end
@@ -21329,15 +21615,26 @@ _Helper.MatchNameInTable = function(target, array)
     return false
 end
 
+Varz.farm_middle_pos = FarmManager.mFarm.Center_Point.Position
+
 _Helper.PickPlaceUnit = function(_uuid, _name)
     if _uuid == nil then
         return
     end
+    local center = Varz.farm_middle_pos
     local active_delay = tonumber(FSettings.pet_pickplace_activactiondelay) or 0.32
     local equip_delay = tonumber(FSettings.pet_pickplace_equipe_delay) or 0.11
-    local delayx = active_delay
 
-    local center = FarmManager.mFarm.Center_Point.Position
+
+
+    -- Can we override pets
+    local p = FOtherSettings.petpp_overrides[_name]
+    if p and p.enabled then
+        active_delay = tonumber(p.unequip) or 0.70
+        equip_delay = tonumber(p.equip) or 0.12
+    end
+
+    local delayx = active_delay
 
     -- optional tiny random offset (e.g. ±0.05 studs)
     local offsetRange = 0.03
@@ -21347,6 +21644,7 @@ _Helper.PickPlaceUnit = function(_uuid, _name)
         math.random() * (2 * offsetRange) - offsetRange
     )
 
+    -- local placementCF = CFrame.new(center + randomOffset)
     local placementCF = CFrame.new(center + randomOffset)
 
     if FSettings.pet_pickplace_random then
@@ -21357,12 +21655,8 @@ _Helper.PickPlaceUnit = function(_uuid, _name)
     if FSettings.pet_pickplace_random_equip then
         equip_delay = _Helper.GetRandomisedValue(equip_delay)
     end
-    if string.find(_name, "Queen Bee") then
-        task.wait(delayx + 0.3)
-    else
-        task.wait(delayx)
-    end
-    --task.wait(delayx)
+
+    task.wait(delayx)
     _S.petsServiceRemote:FireServer("UnequipPet", _uuid)
 
     -- also remove model from the workspace?
@@ -21404,7 +21698,6 @@ _Helper.PickPlacePetsFast = function()
         return
     end
 
-
     local _allowPets = FSettings.pet_pickplacehatchingstage
     local _cd = tonumber(FSettings.pet_pickplace_cooldownsecs)
     local isThreading = FSettings.pet_pickplace_threading
@@ -21416,6 +21709,9 @@ _Helper.PickPlacePetsFast = function()
     end
 
     for _uuid, pet_info in pairs(Varz.cooldown_pets) do
+        if list_avoid[_uuid] then
+            continue
+        end
         local _petname = _Helper.PetDataLocal[_uuid]
         if not _petname then
             --warn("Not found name")
@@ -21423,10 +21719,6 @@ _Helper.PickPlacePetsFast = function()
         end
 
         if _Helper.UnitProcessing[_uuid] or Varz.DisablePickPlace then
-            continue
-        end
-
-        if list_avoid[_uuid] then
             continue
         end
 
@@ -21810,6 +22102,7 @@ _Helper.findinf = function()
     -- else
     --     Varz.rng_found_stable_tools = false
     -- end
+
 
     if can_sell then
         -- sell here
@@ -22228,6 +22521,8 @@ local function SessionLoop()
 
         Varz.SetDisablePickPlaceFor(9)
 
+        BeforeUpdateEggCountForAllEggs()
+
         Varz.hatch_state = Varz.HATCH_STATES.NORMAL
         Varz.is_eggs_reduction_active = false
 
@@ -22235,6 +22530,8 @@ local function SessionLoop()
         if Varz.is_forced_stop or not FSettings.is_running then
             break
         end
+
+
 
 
         if GetCountEggsOnFarm() == 0 then
@@ -22302,7 +22599,6 @@ local function SessionLoop()
             task.wait(1.5 + _Helper.GetSafePing())
         end
 
-        BeforeUpdateEggCountForAllEggs()
         --local pet_snapshot_start = GameDataManager.Inventory.GetCurrentPetsInData()
 
         local pet_snapshot_start
@@ -23113,7 +23409,7 @@ PetMutation.Loop = function()
         end
 
         local time_out_system = os.clock()
-        local timeout_mins = Varz.GetMinsToSecs(9) -- min
+        local timeout_mins = Varz.GetMinsToSecs(15) -- min
 
         -- Check if we need to max level any pets, these are pets that have reached required mutation and have not reached maximum level yet.
         -- ==============================================
@@ -23238,6 +23534,13 @@ PetMutation.Loop = function()
                         team_name,
                         _title,
                         totalx, timerx, str_names)
+
+                    local timeleftx = _Helper.GetTimeLeft(time_out_system, timeout_mins)
+                    local tmformated = _Helper.FormatTime(timeleftx)
+                    if FSettings.mut_system.timeout_system then
+                        display_txt = display_txt .. "🔄 Refresh In: " .. tmformated
+                    end
+
                     PetMutation.mut_ui.UpdateStats(display_txt)
                     task.wait(0.5)
                 end
@@ -23261,9 +23564,9 @@ PetMutation.Loop = function()
             -- local tm, petsAdded, isMaxLevelPlaced = PetMutation.mut.SmartGenTeam_MaxLevel(pets_under_level, false)
             local tm, petsAdded, isMaxLevelPlaced = PetMutation.mut.AdvancedTeamMaker(pets_under_level, false)
             --pets_under_level = {}
-            for _uuid, _ in pairs(petsAdded) do
-                --table.insert(pets_under_level, _uuid)
-            end
+            -- for _uuid, _ in pairs(petsAdded) do
+            --     --table.insert(pets_under_level, _uuid)
+            -- end
             task.wait(0.5)
             if isMaxLevelPlaced then
                 PetMutation.mut_ui.UpdateStats("✨ Placing Max Level Team ✨")
@@ -23303,6 +23606,7 @@ PetMutation.Loop = function()
             time_out_system = os.clock()
 
             local pets_removeded_cycle = {}
+            local was_restart_exit = false
 
             while PetMutation.is_running do
                 task.wait(0.5)
@@ -23322,8 +23626,9 @@ PetMutation.Loop = function()
                 if _Helper.IsTimeUp(time_out_system, timeout_mins) then
                     if PetMutation.RestartSystemSafe() then
                         PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
-                        task.wait(3)
                         was_break = true
+                        was_restart_exit = true
+                        task.wait(3)
                         break
                     end
                 end
@@ -23444,13 +23749,21 @@ PetMutation.Loop = function()
                 local disply_in = string.format("%s Leveling: (%s/%s)\n%s \n%s", team_name, dif, total_, timer_st,
                     str_names)
 
+                local timeleftx = _Helper.GetTimeLeft(time_out_system, timeout_mins)
+                local tmformated = _Helper.FormatTime(timeleftx)
+                if FSettings.mut_system.timeout_system then
+                    disply_in = disply_in .. "🔄 Refresh In: " .. tmformated
+                end
+
                 PetMutation.mut_ui.UpdateStats(disply_in)
                 task.wait(0.5)
             end
 
             -- Change turn
             if not was_break then
-                PetMutation.UpdateTurn(PetMutation.Turns.MUTATE)
+                if was_restart_exit == false then
+                    PetMutation.UpdateTurn(PetMutation.Turns.MUTATE)
+                end
             end
 
             if not was_end_turboxp then
@@ -23527,6 +23840,7 @@ PetMutation.Loop = function()
 
             -- #timeout
             time_out_system = os.clock()
+            local gm_timeout = os.clock()
 
 
             while PetMutation.is_running do
@@ -23540,8 +23854,8 @@ PetMutation.Loop = function()
                 if _Helper.IsTimeUp(time_out_system, timeout_mins) then
                     if PetMutation.RestartSystemSafe() then
                         PetMutation.mut_ui.UpdateStats("⏳ Timeout, restarting...")
-                        task.wait(3)
                         was_exit = true
+                        task.wait(1)
                         break
                     end
                 end
@@ -23556,10 +23870,31 @@ PetMutation.Loop = function()
                 end
 
 
+                -- place grandmaster sprinkler #gm #grandmaster
+                if FSettings.mut_system.gm_sprinkler and _flag == "weight" then
+                    if _Helper.IsTimeUp(gm_timeout, 14) then
+                        gm_timeout = os.clock()
+
+                        -- Apply Grandmaster sprinkler
+                        local item_namek = "Grandmaster Sprinkler"
+                        local _gm = FarmManager.GetSprinklerOnFarm(item_namek)
+                        if not _gm then
+                            WaterManager.Sprinkler.PlaceGrandMaster(item_namek)
+                        end
+                        task.wait(0.2 + _Helper.GetSafePing())
+                    end
+                end
+
+
+                -- check if any pets have reached any required levels
+                local test_v = pets_require_mut
+                if FSettings.mut_system.realtime_monitor_system then
+                    test_v = PetMutation.GetTargetPetsOnField()
+                end
 
 
                 -- checks success
-                local anyreached, tbl_names = PetMutation.mut.HasPetsReachedRequiredMutations_OnFarm(pets_require_mut,
+                local anyreached, tbl_names = PetMutation.mut.HasPetsReachedRequiredMutations_OnFarm(test_v,
                     petsAddedM, _flag)
                 if #anyreached > 0 then
                     _Helper.StopTimer(mut_key)
@@ -23767,7 +24102,16 @@ PetMutation.Loop = function()
                 end
                 local timerzx = _Helper.GetTimerFormatted(mut_key)
                 local totalx = #FSettings.mut_system.targetteam
+
+
+
                 local disply_in = string.format("%s Left: (%s)\n%s\n%s", lbl_mutbw, #pets_require_mut, timerzx, str_names)
+
+                local timeleftx = _Helper.GetTimeLeft(time_out_system, timeout_mins)
+                local tmformated = _Helper.FormatTime(timeleftx)
+                if FSettings.mut_system.timeout_system then
+                    disply_in = disply_in .. "🔄 Refresh In: " .. tmformated
+                end
 
                 pass_timex = pass_timex + 1
                 PetMutation.mut_ui.UpdateStats(disply_in)
@@ -24864,6 +25208,366 @@ Varz.ProUi = function()
     local gEnhancepro = UIProTab:AddLeftGroupbox("<b><font color='#FF0099'>🔥 Enhancer Pro</font></b>",
         "book-search")
 
+
+    local titleagebreak =
+        "💥 <stroke color='#000055' thickness='1.5' joins='round'>" ..
+        "<b><font color='#00FFFF'>PET</font> <font color='#FFFFFF'>AGE</font> <font color='#FF00FF'>MACHINE</font></b>" ..
+        "</stroke>"
+    local gAgeBreakUI = UIProTab:AddLeftGroupbox(titleagebreak)
+
+
+    local gPetData = UIProTab:AddRightGroupbox("<b><font color='#266ED9'>Pet Data</font></b>",
+        "book-search")
+
+    -- ===============================================
+    --- #PetData #petinfo
+    -- ===============================================
+    local pet_data_array = ""
+    if gPetData then
+        if Varz.GetCheckIfPro() then
+            gPetData:AddLabel({
+                Text =
+                "💡Shows pet details",
+                DoesWrap = true
+            })
+
+            local lbl_petdata
+
+            local viewPetData = function(petname)
+                local ftxt = Varz.GetPetDetails(petname)
+                if lbl_petdata then
+                    lbl_petdata:SetText(ftxt)
+                end
+            end
+
+
+
+            local petdatadropd = gPetData:AddDropdown("petdatadropd", {
+                Values = {},
+                Default = {},
+                Multi = false,
+                Searchable = true,
+                MaxVisibleDropdownItems = 10,
+                Text = "🤖 Select Pet",
+                Callback = function(Values)
+                    if Values == nil then
+                        return
+                    end
+                    viewPetData(Values)
+                    pet_data_array = Values
+                    -- SaveData()
+                end
+            })
+
+            petdatadropd:SetValues(Varz.all_pets_names_list)
+            petdatadropd:SetValue(pet_data_array)
+
+
+            lbl_petdata = gPetData:AddLabel({
+                Text = "",
+                DoesWrap = true
+            })
+        else
+            -- #pro
+            gPetData:AddLabel({
+                Text = Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        end
+
+
+        gPetData:AddSpacer(50)
+    end
+
+    -- ===============================================
+    --- End #PetData #petinfo
+    -- ===============================================
+
+
+
+
+
+
+
+
+
+    ----------------------------------------------
+    -------- ===== Age Break #age #break #agebreak
+    ----------------------------------------------
+    if gAgeBreakUI then
+        if not Varz.GetCheckIfPro() then
+            gAgeBreakUI:AddLabel({
+                Text = Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        end
+
+        gAgeBreakUI:AddLabel({
+            Text =
+            "💡 Automatically level up pets using the Pet Age Machine.",
+            DoesWrap = true
+        })
+
+        UI_LABELS.lbl_agebreak_status = gAgeBreakUI:AddLabel({
+            Text = "Waiting...",
+            DoesWrap = true
+        })
+
+        -- Texts
+
+        local GetText_AgebreakTargetTeam = function()
+            local current_selected = #FSettings.agebreak.target_team
+            local max_allowed = 100
+
+            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
+
+            local txt = string.format(
+                '<font color="#00FF3C"><b>♻️ Target Pets</b></font> ' ..
+                '<font color="#DDDDDD">[</font>' ..
+                '<font color="%s"><b>%d</b></font>' ..
+                '<font color="#FFFFFF">/</font>' ..
+                '<font color="#DDDDDD"><b>%d</b></font>' ..
+                '<font color="#DDDDDD">]</font>',
+                ratio_colour,
+                current_selected,
+                max_allowed
+            )
+            return txt
+        end
+
+        local GetText_AgebreakDupTeam = function()
+            local current_selected = #FSettings.agebreak.dup_team
+            local max_allowed = 185
+
+            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
+
+            local txt = string.format(
+                '<font color="#FF0066"><b>🔷 Duplicates</b></font> ' ..
+                '<font color="#DDDDDD">[</font>' ..
+                '<font color="%s"><b>%d</b></font>' ..
+                '<font color="#FFFFFF">/</font>' ..
+                '<font color="#DDDDDD"><b>%d</b></font>' ..
+                '<font color="#DDDDDD">]</font>',
+                ratio_colour,
+                current_selected,
+                max_allowed
+            )
+
+            return txt
+        end
+
+        --- =========== Target Pets
+
+        UI_Dropdown.agebreaktarget_team = gAgeBreakUI:AddDropdown("agebreaktarget_team", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_AgebreakTargetTeam(),
+            Tooltip = "Select pets to level",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+                if not _allowed then
+                    UI_Dropdown.agebreaktarget_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.target_team))
+                    Library:Notify(
+                        "This pet is in your pet mutation (Elephant/Horseman) teams, please remove it from there.")
+                    return
+                end
+
+                local max_allowed = 99
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.agebreaktarget_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.target_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.agebreak.target_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.agebreaktarget_team:SetText(GetText_AgebreakTargetTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        --- =========== Dup Pets
+
+        UI_Dropdown.agebreakdup_team = gAgeBreakUI:AddDropdown("agebreakdup_team", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_AgebreakDupTeam(),
+            Tooltip =
+            "Select pets that will be used to level up your pets, these wil be consumed by the system 1 per level. You must add same type of pet. e.g. For Butterfly select butterflys",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+                local _allowed = true
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
+                            table.insert(tmp_tbl, _uuid)
+                        else
+                            _allowed = false
+                        end
+                    end
+                    -- loop ends
+                end
+                if not _allowed then
+                    UI_Dropdown.agebreakdup_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.dup_team))
+                    Library:Notify(
+                        "This pet is in your pet mutation (Elephant/Horseman) teams, please remove it from there.")
+                    return
+                end
+
+                local max_allowed = 125
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.agebreakdup_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.dup_team))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.agebreak.dup_team = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.agebreakdup_team:SetText(GetText_AgebreakDupTeam())
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        gAgeBreakUI:AddLabel({
+            Text = "---------------",
+            DoesWrap = false
+        })
+        gAgeBreakUI:AddToggle("baseweightlimitagebreak", {
+            Text = "🔴BaseWeight Limit",
+            Default = FSettings.agebreak.avoid_weight_filter,
+            Tooltip = "If enabled, any pets with baseweight more than 3.5 KG will be ignored.",
+            Callback = function(Value)
+                FSettings.agebreak.avoid_weight_filter = Value
+                SaveData()
+            end
+        })
+
+        gAgeBreakUI:AddToggle("levellimitagebreak", {
+            Text = "🟡Level Limit",
+            Default = FSettings.agebreak.avoid_age_filter,
+            Tooltip = "If enabled, any pet over the age of 99 will be ignored.",
+            Callback = function(Value)
+                FSettings.agebreak.avoid_age_filter = Value
+                SaveData()
+            end
+        })
+
+        gAgeBreakUI:AddLabel({
+            Text = "---------------",
+            DoesWrap = false
+        })
+        gAgeBreakUI:AddDivider()
+        gAgeBreakUI:AddToggle("toggleauto_skip_tokens", {
+            Text = "💰 Skip Token",
+            Default = FSettings.agebreak.auto_skip_tokens,
+            Tooltip = "If enabled, tries to skip using tokens.",
+            Callback = function(Value)
+                FSettings.agebreak.auto_skip_tokens = Value
+                SaveData()
+            end
+        })
+
+
+
+        gAgeBreakUI:AddDivider()
+
+        local function GetAgeBreakMaxLevelCustom()
+            local level = FSettings.agebreak.max_level
+            local str = string.format(
+                "<b><font color='#7327F5'>🎯 Target Lv.</font></b><font color='#00FFFF'>%s</font>", level)
+            return str
+        end
+
+        local inputageMaxLevelCustom
+        inputageMaxLevelCustom = gAgeBreakUI:AddInput("inputageMaxLevelCustom", {
+            Text = GetAgeBreakMaxLevelCustom(),
+            Default = FSettings.agebreak.max_level,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 101",
+            Tooltip = "Enter level, must be over 100",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 100 then
+                    Library:Notify("Invalid Level: " .. Value, 3)
+                    inputageMaxLevelCustom:SetValue(tostring(FSettings.agebreak.max_level))
+                    return
+                end
+                if num > 125 then
+                    Library:Notify("Max level can't exceed 125: " .. Value, 3)
+                    inputageMaxLevelCustom:SetValue(tostring(FSettings.agebreak.max_level))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.agebreak.max_level = num
+                    SaveData()
+                    inputageMaxLevelCustom:SetText(GetAgeBreakMaxLevelCustom())
+                end
+            end
+        })
+        gAgeBreakUI:AddDivider()
+
+        local toggleAgebreak = gAgeBreakUI:AddToggle("eAgeBreak", {
+            Text = "⚡ Enable Age Break",
+            Default = FSettings.agebreak.is_active_agebreak,
+            Tooltip = "Enables the Age Break System.",
+            DisabledTooltip = Varz.GetProMessage(),
+            Callback = function(Value)
+                FSettings.agebreak.is_active_agebreak = Value
+                SaveData()
+            end
+        })
+
+
+        if not Varz.GetCheckIfPro() then
+            toggleAgebreak:SetDisabled(true)
+        end
+
+
+        gAgeBreakUI:AddDivider()
+        gAgeBreakUI:AddButton({
+            Text = "<font color='#00FF04'>♻️ Reload Teams</font>",
+            Func = function()
+                UpdatePetData()
+            end
+        })
+
+
+        gAgeBreakUI:AddSpacer(200)
+    end
+    ----------------------------------------------
+    -------- ===== End Age Break
+    ----------------------------------------------
+
     -- ===============================================
     --- Enhance options 🔥 #enhance
     -- ===============================================
@@ -25087,7 +25791,7 @@ Varz.ProUi = function()
     -- ===============================================
 
     if gTargetEnhance then
-        local max_en_targets = 3
+        local max_en_targets = 50
 
         local isTargetAllowed = function(uuid)
             if not uuid then
@@ -25340,7 +26044,7 @@ Varz.ProUi = function()
     -- ===============================================
 
     -- ===============================================
-    --- Pick Place #pickplaceui
+    --- Pick Place #pickplaceui #pickplace #pick
     -- ===============================================
     if pickplaceGroup then
         if Varz.GetCheckIfPro() then
@@ -25355,7 +26059,7 @@ Varz.ProUi = function()
                 Multi = true,
                 Searchable = true,
                 MaxVisibleDropdownItems = 10,
-                Text = "🔄 Pick Place",
+                Text = "🤖 Target Pets",
                 Callback = function(Values)
                     if Values == nil then
                         return
@@ -25515,6 +26219,197 @@ Varz.ProUi = function()
                     SaveData()
                 end
             })
+
+            pickplaceGroup:AddDivider()
+
+            local tx = string.format(
+                "--<font color='#F50A9F'> Advanced Overrides</font> -- ")
+            pickplaceGroup:AddLabel({ Text = "==========================", DoesWrap = false })
+            pickplaceGroup:AddLabel({ Text = tx, DoesWrap = false })
+            pickplaceGroup:AddLabel({ Text = "==========================", DoesWrap = false })
+            pickplaceGroup:AddDivider()
+            -- Define default values for new overrides
+            local defaultOverrideData = { enabled = false, unequip = 0.81, equip = 0.15 }
+
+            -- Forward declaration of UI elements so we can reference them inside callbacks
+            local overrideToggle
+            local unequipInput
+            local equipInput
+            local active_overrides
+
+            local function UpdateActiveOverrides()
+                local lines = {}
+
+                for petName, data in pairs(FOtherSettings.petpp_overrides) do
+                    if not data.enabled then
+                        continue
+                    end
+
+                    local colo_ = _Helper.StringToColor3Light(petName)
+                    local nd = string.format("<font color='%s'>%s</font>", colo_, petName)
+
+                    local display_txt = string.format(
+                        '%s <font color="#9E9E9E">(</font>' ..
+                        '<font color="#FFE100">%ss</font>' ..
+                        '<font color="#9E9E9E">/</font>' ..
+                        '<font color="#81C784">%ss</font>' ..
+                        '<font color="#9E9E9E">)</font>',
+                        nd,
+                        data.unequip,
+                        data.equip
+                    )
+
+                    table.insert(lines, display_txt)
+                end
+
+                if active_overrides then
+                    active_overrides:SetText(table.concat(lines, "\n"))
+                end
+            end
+
+            -- // Helper Function: Updates the UI elements based on the selected pet
+            local function RefreshOverrideEditor(petName)
+                UpdateActiveOverrides()
+                if not petName then return end
+
+
+                -- Retrieve existing data or use defaults (without saving defaults yet to keep file size low)
+                local data = FOtherSettings.petpp_overrides[petName] or defaultOverrideData
+
+                if overrideToggle and unequipInput and equipInput then
+                    if petName == "" or petName == nil then
+                        overrideToggle:SetVisible(false)
+                        unequipInput:SetVisible(false)
+                        equipInput:SetVisible(false)
+                        UpdateActiveOverrides()
+                        return
+                    end
+                    overrideToggle:SetValue(data.enabled)
+                    unequipInput:SetValue(tostring(data.unequip))
+                    equipInput:SetValue(tostring(data.equip))
+
+                    overrideToggle:SetVisible(true)
+                    unequipInput:SetVisible(true)
+                    equipInput:SetVisible(true)
+                end
+                UpdateActiveOverrides()
+            end
+
+            -- // Helper Function: Save a specific value for the CURRENT selected pet
+            local function UpdateCurrentOverride(key, value)
+                UpdateActiveOverrides()
+                local currentPet = FOtherSettings.petpp_selected
+                if not currentPet then return end
+                if currentPet == "" then return end
+
+                -- Ensure the table exists for this pet before modifying
+                if not FOtherSettings.petpp_overrides[currentPet] then
+                    -- Clone defaults if creating new entry
+                    FOtherSettings.petpp_overrides[currentPet] = {
+                        enabled = defaultOverrideData.enabled,
+                        unequip = defaultOverrideData.unequip,
+                        equip = defaultOverrideData.equip
+                    }
+                end
+
+                FOtherSettings.petpp_overrides[currentPet][key] = value
+                SaveDataOther()
+                UpdateActiveOverrides()
+            end
+
+
+
+            local pickplaceoverrides
+            pickplaceoverrides = pickplaceGroup:AddDropdown("pickplaceoverrides", {
+                Values = {},
+                Default = {},
+                Multi = false,
+                Searchable = true,
+                MaxVisibleDropdownItems = 10,
+                Text = "🦖 Override Pet",
+                Callback = function(Values)
+                    if Values == nil then
+                        return
+                    end
+                    FOtherSettings.petpp_selected = Values
+                    -- Refresh the editor UI below to show this pet's settings
+                    RefreshOverrideEditor(Values)
+                    SaveDataOther()
+                end
+            })
+
+            pickplaceoverrides:SetValues(Varz.all_pets_names_list)
+            pickplaceoverrides:SetValue(FOtherSettings.petpp_selected)
+
+
+            pickplaceGroup:AddButton({
+                Text = "<font color='#00FF04'>❌ Clear All Overrides</font>",
+                Func = function()
+                    FOtherSettings.petpp_overrides = {}
+                    SaveDataOther()
+                    UpdateActiveOverrides()
+                end
+            })
+
+            -- // 2. The Editor Controls
+            -- These controls always edit the data of whatever is currently selected in the dropdown above
+
+            unequipInput = pickplaceGroup:AddInput("OverrideUnequip", {
+                Text = "Unequip Delay",
+                Default = "0.81",
+                Numeric = true,
+                Finished = false, -- Only callback on enter/focus lost
+                ClearTextOnFocus = false,
+                Callback = function(Value)
+                    local num = ParseWeightNumber2d(Value)
+                    if num then
+                        UpdateCurrentOverride("unequip", num)
+                    end
+                end
+            })
+
+            equipInput = pickplaceGroup:AddInput("OverrideEquip", {
+                Text = "Equip Delay",
+                Default = "0.15",
+                Numeric = true,
+                Finished = false,
+                ClearTextOnFocus = false,
+                Callback = function(Value)
+                    local num = ParseWeightNumber2d(Value)
+                    if num then
+                        UpdateCurrentOverride("equip", num)
+                    end
+                end
+            })
+
+            overrideToggle = pickplaceGroup:AddToggle("OverrideEnabled", {
+                Text = "💥 Enable",
+                Default = false,
+                Callback = function(Value)
+                    UpdateCurrentOverride("enabled", Value)
+                end
+            })
+
+            -- // Initialize the UI state on load
+
+            RefreshOverrideEditor(FOtherSettings.petpp_selected)
+
+
+            pickplaceGroup:AddDivider()
+            pickplaceGroup:AddDivider()
+
+            local tx1 = string.format(
+                "= <font color='#84F906'> Active Overrides</font> =")
+            pickplaceGroup:AddLabel({ Text = tx1, DoesWrap = false })
+
+            active_overrides = pickplaceGroup:AddLabel({
+                Text =
+                " ",
+                DoesWrap = true
+            })
+
+
+            UpdateActiveOverrides()
         else
             -- #pro
             pickplaceGroup:AddLabel({
@@ -25535,6 +26430,42 @@ Varz.ProUi = function()
     -------- Mutation Pet #mutui
     ----------------------------------------------
     if gMutOnFarm then
+        local topbuttonmutpet = gMutOnFarm:AddButton({
+            Text = "🟢 Start",
+            Func = function()
+                if not Varz.GetCheckIfPro() then
+                    Library:Notify("Premium feature can't be run.")
+                else
+                    FSettings.mut_system.is_ruuning = true
+                    PetMutation.StartThread()
+                end
+            end
+        })
+
+        topbuttonmutpet:AddButton({
+            Text = "🔴 Stop",
+            Func = function()
+                PetMutation.StopThread()
+            end
+        })
+
+
+        local btntopmutp = gMutOnFarm:AddButton({
+            Text = "<font color='#00FF04'>♻️ Reload Teams</font>",
+            Func = function()
+                UpdatePetData()
+            end
+        })
+
+        -- Unequip
+        btntopmutp:AddButton({
+            Text = "<font color='#FF0000'>❌ UnEquip</font>",
+            Func = function()
+                UnEquipAllPets()
+            end
+        })
+
+
         UI_LABELS.lbl_pet_mutation_status = gMutOnFarm:AddLabel({
             Text = "🔴 Stopped",
             DoesWrap = true
@@ -26242,6 +27173,19 @@ Varz.ProUi = function()
             end
         })
 
+        -- #gmui
+        gMutOnFarm:AddToggle("elephantgm", {
+            Text =
+            "<b><stroke color='#000000' thickness='1'>🚀 <font color='#00FFFF'>Elephant</font> <font color='#FFBB00'>Grandmaster</font></stroke></b>",
+            Default = FSettings.mut_system.gm_sprinkler,
+            Tooltip =
+            "If enabled places a grand master sprinkler",
+            Callback = function(Value)
+                FSettings.mut_system.gm_sprinkler = Value
+                SaveData()
+            end
+        })
+
 
         gMutOnFarm:AddButton({
             Text = "🟢 Start Pet Mutation",
@@ -26412,16 +27356,16 @@ Varz.ProUi = function()
         gMutOnFarm:AddLabel({
             Text =
                 "🚨 Restart System:\n" ..
-                "🔄 Restarts every 9 minutes to prevent freezes and automatically recover from unexpected issues.",
+                "🔄 Refresh every 15 minutes to prevent freezes and automatically recover from unexpected issues.",
             DoesWrap = true
         })
         gMutOnFarm:AddToggle("disablehorsemanteamRestart", {
             Text =
-                "<b><stroke color='#000000' thickness='1'>🔍<font color='#00FFB3'>Restart</font> " ..
+                "<b><stroke color='#000000' thickness='1'>🔍<font color='#00FFB3'>Refresh</font> " ..
                 "<font color='#E5FF00'>System</font></stroke></b>",
             Default = FSettings.mut_system.timeout_system,
             Tooltip =
-            "If enabled it will restart the system every set time.",
+            "If enabled it will Refresh the system every set time.",
             Callback = function(Value)
                 FSettings.mut_system.timeout_system = Value
                 SaveData()
@@ -29809,14 +30753,6 @@ local function MEventsUi()
     --local gSmithMan = UIEventsTab:AddLeftGroupbox("🔨 Smith Man", "speech")
 
 
-    local titleagebreak =
-        "💥 <stroke color='#000055' thickness='1.5' joins='round'>" ..
-        "<b><font color='#00FFFF'>PET</font> <font color='#FFFFFF'>AGE</font> <font color='#FF00FF'>MACHINE</font></b>" ..
-        "</stroke>"
-
-    local gAgeBreakUI = UIEventsTab:AddLeftGroupbox(titleagebreak)
-
-
     --local gTradeEvent = UIEventsTab:AddLeftGroupbox("💰 Trade Event", "store")
 
 
@@ -29980,276 +30916,6 @@ local function MEventsUi()
     ----------------------------------------------
     -------- ===== End Teams
     ----------------------------------------------
-
-
-
-
-
-
-
-    ----------------------------------------------
-    -------- ===== Age Break #age #break #agebreak
-    ----------------------------------------------
-    if gAgeBreakUI then
-        gAgeBreakUI:AddLabel({
-            Text =
-            "💡 Automatically level up pets using the Pet Age Machine.",
-            DoesWrap = true
-        })
-
-        UI_LABELS.lbl_agebreak_status = gAgeBreakUI:AddLabel({
-            Text = "Waiting...",
-            DoesWrap = true
-        })
-
-        -- Texts
-
-        local GetText_AgebreakTargetTeam = function()
-            local current_selected = #FSettings.agebreak.target_team
-            local max_allowed = 99
-
-            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
-
-            local txt = string.format(
-                '<font color="#00FF3C"><b>♻️ Target Pets</b></font> ' ..
-                '<font color="#DDDDDD">[</font>' ..
-                '<font color="%s"><b>%d</b></font>' ..
-                '<font color="#FFFFFF">/</font>' ..
-                '<font color="#DDDDDD"><b>%d</b></font>' ..
-                '<font color="#DDDDDD">]</font>',
-                ratio_colour,
-                current_selected,
-                max_allowed
-            )
-            return txt
-        end
-
-        local GetText_AgebreakDupTeam = function()
-            local current_selected = #FSettings.agebreak.dup_team
-            local max_allowed = 125
-
-            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
-
-            local txt = string.format(
-                '<font color="#FF0066"><b>🔷 Duplicates</b></font> ' ..
-                '<font color="#DDDDDD">[</font>' ..
-                '<font color="%s"><b>%d</b></font>' ..
-                '<font color="#FFFFFF">/</font>' ..
-                '<font color="#DDDDDD"><b>%d</b></font>' ..
-                '<font color="#DDDDDD">]</font>',
-                ratio_colour,
-                current_selected,
-                max_allowed
-            )
-
-            return txt
-        end
-
-        --- =========== Target Pets
-
-        UI_Dropdown.agebreaktarget_team = gAgeBreakUI:AddDropdown("agebreaktarget_team", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = GetText_AgebreakTargetTeam(),
-            Tooltip = "Select pets to level",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-                if not _allowed then
-                    UI_Dropdown.agebreaktarget_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.target_team))
-                    Library:Notify(
-                        "This pet is in your pet mutation (Elephant/Horseman) teams, please remove it from there.")
-                    return
-                end
-
-                local max_allowed = 99
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.agebreaktarget_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.target_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.agebreak.target_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.agebreaktarget_team:SetText(GetText_AgebreakTargetTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        --- =========== Dup Pets
-
-        UI_Dropdown.agebreakdup_team = gAgeBreakUI:AddDropdown("agebreakdup_team", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = GetText_AgebreakDupTeam(),
-            Tooltip =
-            "Select pets that will be used to level up your pets, these wil be consumed by the system 1 per level. You must add same type of pet. e.g. For Butterfly select butterflys",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-                local _allowed = true
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-                        if PetMutation.mut.IsNotInTargetTeamPet(_uuid) then
-                            table.insert(tmp_tbl, _uuid)
-                        else
-                            _allowed = false
-                        end
-                    end
-                    -- loop ends
-                end
-                if not _allowed then
-                    UI_Dropdown.agebreakdup_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.dup_team))
-                    Library:Notify(
-                        "This pet is in your pet mutation (Elephant/Horseman) teams, please remove it from there.")
-                    return
-                end
-
-                local max_allowed = 125
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.agebreakdup_team:SetValue(ConvertUUIDToPetNamesPairs(FSettings.agebreak.dup_team))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.agebreak.dup_team = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.agebreakdup_team:SetText(GetText_AgebreakDupTeam())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        gAgeBreakUI:AddLabel({
-            Text = "---------------",
-            DoesWrap = false
-        })
-        gAgeBreakUI:AddToggle("baseweightlimitagebreak", {
-            Text = "🔴BaseWeight Limit",
-            Default = FSettings.agebreak.avoid_weight_filter,
-            Tooltip = "If enabled, any pets with baseweight more than 3.5 KG will be ignored.",
-            Callback = function(Value)
-                FSettings.agebreak.avoid_weight_filter = Value
-                SaveData()
-            end
-        })
-
-        gAgeBreakUI:AddToggle("levellimitagebreak", {
-            Text = "🟡Level Limit",
-            Default = FSettings.agebreak.avoid_age_filter,
-            Tooltip = "If enabled, any pet over the age of 99 will be ignored.",
-            Callback = function(Value)
-                FSettings.agebreak.avoid_age_filter = Value
-                SaveData()
-            end
-        })
-
-        gAgeBreakUI:AddLabel({
-            Text = "---------------",
-            DoesWrap = false
-        })
-        gAgeBreakUI:AddDivider()
-        gAgeBreakUI:AddToggle("toggleauto_skip_tokens", {
-            Text = "💰 Skip Token",
-            Default = FSettings.agebreak.auto_skip_tokens,
-            Tooltip = "If enabled, tries to skip using tokens.",
-            Callback = function(Value)
-                FSettings.agebreak.auto_skip_tokens = Value
-                SaveData()
-            end
-        })
-
-
-
-        gAgeBreakUI:AddDivider()
-
-        local function GetAgeBreakMaxLevelCustom()
-            local level = FSettings.agebreak.max_level
-            local str = string.format(
-                "<b><font color='#7327F5'>🎯 Target Lv.</font></b><font color='#00FFFF'>%s</font>", level)
-            return str
-        end
-
-        local inputageMaxLevelCustom
-        inputageMaxLevelCustom = gAgeBreakUI:AddInput("inputageMaxLevelCustom", {
-            Text = GetAgeBreakMaxLevelCustom(),
-            Default = FSettings.agebreak.max_level,
-            Numeric = true,
-            AllowEmpty = true,
-            Finished = true,
-            ClearTextOnFocus = false,
-            Placeholder = "e.g. 101",
-            Tooltip = "Enter level, must be over 100",
-            Callback = function(Value)
-                local num = ParseWholeNumber(Value)
-
-                if not num or num <= 100 then
-                    Library:Notify("Invalid Level: " .. Value, 3)
-                    inputageMaxLevelCustom:SetValue(tostring(FSettings.agebreak.max_level))
-                    return
-                end
-                if num > 125 then
-                    Library:Notify("Max level can't exceed 125: " .. Value, 3)
-                    inputageMaxLevelCustom:SetValue(tostring(FSettings.agebreak.max_level))
-                    return
-                end
-
-                if num > 0 then
-                    FSettings.agebreak.max_level = num
-                    SaveData()
-                    inputageMaxLevelCustom:SetText(GetAgeBreakMaxLevelCustom())
-                end
-            end
-        })
-        gAgeBreakUI:AddDivider()
-
-        gAgeBreakUI:AddToggle("eAgeBreak", {
-            Text = "⚡ Enable Age Break",
-            Default = FSettings.agebreak.is_active_agebreak,
-            Tooltip = "Enables the Age Break System.",
-            Callback = function(Value)
-                FSettings.agebreak.is_active_agebreak = Value
-                SaveData()
-            end
-        })
-
-        gAgeBreakUI:AddDivider()
-        gAgeBreakUI:AddButton({
-            Text = "<font color='#00FF04'>♻️ Reload Teams</font>",
-            Func = function()
-                UpdatePetData()
-            end
-        })
-
-
-        gAgeBreakUI:AddSpacer(200)
-    end
-    ----------------------------------------------
-    -------- ===== End Age Break
-    ----------------------------------------------
-
 
 
 
@@ -31100,6 +31766,18 @@ local function MEventsUi()
                 SaveDataOther()
             end
         })
+
+        gFallEvent:AddDivider()
+        gFallEvent:AddToggle("nyDailyEvent", {
+            Text = "🔄 New Year DailyEvent",
+            Default = FOtherSettings.newyear_dailyclaim,
+            Tooltip = "If enabled auto claims new year event.",
+            Callback = function(Value)
+                FOtherSettings.newyear_dailyclaim = Value
+                SaveDataOther()
+            end
+        })
+
         gFallEvent:AddDivider()
         gFallEvent:AddToggle("tEventFall", {
             Text = "⚡ " .. event_name1,
@@ -33935,11 +34613,21 @@ function SettingsUi()
         Tooltip = "If enabled shows fruit names",
         Callback = function(Value)
             FOtherSettings.show_better_fruitnames = Value
+
+
             SaveDataOther()
         end
     })
 
-
+    GroupBoxOtherSettings:AddToggle("removevisualswater", {
+        Text = "⚡Remove Weather/Visuals",
+        Default = FOtherSettings.remove_visuals_weather,
+        Tooltip = "Removes weather and other visuals. Must rejoin to take affect.",
+        Callback = function(Value)
+            FOtherSettings.remove_visuals_weather = Value
+            SaveDataOther()
+        end
+    })
 
 
     --======== WEbhook #webhook
@@ -36847,35 +37535,32 @@ end
 
 
 _Helper.activepets_cache_ui = {}
+
+
 _Helper.MakeActivePetUi = function()
     local lines = {}
     local activels = GameDataManager.Inventory.GetEquippedPets()
-    local now = os.time() -- Get the current time
+    local now = os.time()
 
-    -- 1. Create a set of currently active pet UUIDs for quick lookup
+    -- 1. Create a set of currently active pet UUIDs
     local current_pet_uuids = {}
     for _, uuid in ipairs(activels) do
         current_pet_uuids[uuid] = true
     end
 
-    -- Helper function (from original code)
+    -- Helper function (kept as is)
     local get_skillcd = function(puuid)
         local skill_text = ""
         for _uuid, pet_info in pairs(Varz.cooldown_pets) do
-            if _uuid ~= puuid then
-                continue
-            end
+            if _uuid ~= puuid then continue end
             for _, dx in ipairs(pet_info) do
                 local Name = dx.Name
                 local Passive = dx.Passive
                 local Time = dx.Time
-                if not Time or not Name then
-                    continue
-                end
-
+                if not Time or not Name then continue end
+                local small_skil = _Helper.ShortNameNoDots(Passive, 4)
                 local skillcd = _Helper.fmt_time(Time)
-                local skillx = string.format('%s:<font color="#A6FF00">%s</font>', Passive, skillcd)
-
+                local skillx = string.format('%s:<font color="#A6FF00">%s</font>', small_skil, skillcd)
                 skill_text = skill_text .. " " .. skillx
             end
         end
@@ -36885,9 +37570,7 @@ _Helper.MakeActivePetUi = function()
     -- 2. Update cache with ALL currently active pets
     for _, uuid in ipairs(activels) do
         local _petData = GetPetDataByUUID(uuid)
-        if not _petData then
-            continue
-        end
+        if not _petData then continue end
 
         local PetData = _petData.PetData
         local PetType = _petData.PetType or "Unknown"
@@ -36896,71 +37579,103 @@ _Helper.MakeActivePetUi = function()
         local BaseWeight = PetData.BaseWeight or 0
         local real_weight = GetRealPetWeight(BaseWeight, 1)
 
-
         local skill_info = get_skillcd(uuid)
 
-        -- Rich text for pet line (from original)
+        local level_colour
+        if Level >= 100 then
+            level_colour = "#FFD700"
+        elseif Level >= 50 then
+            level_colour = "#66BB6A"
+        else
+            level_colour = "#FF1100"
+        end
+
+        local level_display = string.format('<font color="%s">Lv.%d</font>', level_colour, Level)
+
         local pet_info_string = string.format(
-            '<stroke th="1" joins="round" sizing="fixed" color="#FFFFFF"><font color="#E800FF">[%.2fKG]</font></stroke> <font color="#00FFFF">Lv.%d</font> ' ..
-            '<font color="#FFFFFF">%s(%s)</font> ' ..
-            '%s',
+            '<stroke th="1" joins="round" sizing="fixed" color="#000000"><font color="#E800FF">[%.2fKG]</font></stroke> ' ..
+            '<stroke th="0.9" joins="round" sizing="fixed" color="#000000">%s <font color="#FFFFFF">%s</font> ' ..
+            '%s</stroke>',
             real_weight,
-            Level,
-            _Helper.ShortName(PetType, 5),
-            Name,
+            level_display,
+            _Helper.ShortNameNoDots(PetType, 9),
             skill_info
         )
 
-        -- Add or update the pet in the cache
+        -- [CHANGE]: Storing Level and Name in cache for sorting later
         _Helper.activepets_cache_ui[uuid] = {
-            info = pet_info_string, -- Store the formatted string
-            removed_at = nil        -- Mark as active (or re-active)
+            info = pet_info_string,
+            removed_at = nil,
+            sort_level = Level, -- Saved for sort
+            sort_name = PetType -- Saved for sort
         }
     end
 
     -- 3. Mark any cached pets that are no longer active
     for uuid, cache_entry in pairs(_Helper.activepets_cache_ui) do
         if not current_pet_uuids[uuid] then
-            -- This pet is in our cache but NOT in the active list
             if not cache_entry.removed_at then
-                -- Mark it as removed for the first time
                 cache_entry.removed_at = now
             end
         end
     end
 
-    -- 4. Build the final `lines` array and identify pets to purge
+    -- 4. Build list, Handle Sorting, and Identify pets to purge
     local uuids_to_remove = {}
+    local sorting_list = {} -- Temporary table for sorting
 
     for uuid, cache_entry in pairs(_Helper.activepets_cache_ui) do
+        local final_string = ""
+        local should_show = false
+
         if cache_entry.removed_at then
-            -- This pet is marked as removed
+            -- Pet is being removed
             if (now - cache_entry.removed_at) > 2 then
-                -- It's been over 4 seconds, mark for full removal
                 table.insert(uuids_to_remove, uuid)
             else
-                -- It's in the 4-second window, show it as gray
-                local gray_pet_info = string.format('<font color="#FF2A00">%s</font>', cache_entry.info)
-                table.insert(lines, gray_pet_info)
+                -- Fading out (Gray)
+                final_string = string.format('<font color="#FF2A00">%s</font>', cache_entry.info)
+                should_show = true
             end
         else
-            -- This pet is active, add it normally
-            local gray_pet_info = string.format('<font color="#FF2A00">%s</font>', cache_entry.info)
-            if current_pet_uuids[uuid] then
-                gray_pet_info = string.format('%s', cache_entry.info)
+            -- Pet is active (Normal)
+            final_string = cache_entry.info
+            should_show = true
+            -- Apply gray if logic dictates (copied from your logic, though usually active is not gray)
+            if not current_pet_uuids[uuid] then
+                final_string = string.format('<font color="#FF2A00">%s</font>', cache_entry.info)
             end
-            table.insert(lines, gray_pet_info)
+        end
+
+        if should_show then
+            table.insert(sorting_list, {
+                str = final_string,
+                lvl = cache_entry.sort_level or 0,
+                name = cache_entry.sort_name or ""
+            })
         end
     end
 
-    -- 5. Purge old pets from the cache
+    -- [CHANGE]: Apply the Sort (Level High->Low, then Name A->Z)
+    table.sort(sorting_list, function(a, b)
+        if a.lvl ~= b.lvl then
+            return a.lvl > b.lvl -- Highest Level first
+        end
+        return a.name < b.name   -- Alphabetical second
+    end)
+
+    -- Insert sorted strings into final lines
+    for _, item in ipairs(sorting_list) do
+        table.insert(lines, item.str)
+    end
+
+    -- 5. Purge old pets
     for _, uuid in ipairs(uuids_to_remove) do
         _Helper.activepets_cache_ui[uuid] = nil
     end
 
     return lines
 end
-
 
 if GameDataManager.ui_task_slower then
     task.cancel(GameDataManager.ui_task_slower)
@@ -37280,7 +37995,7 @@ Varz.lock_enhance = true
 -- #enhnace
 Varz.GetFruitToFavAbuseNew = function()
     local ls = {}
-    local max_fruits = 1 -- Amount to test at once
+    local max_fruits = 3 -- Amount to test at once
 
     -- check if we have any fruit
     local countbackpack = InventoryManager.GetFruitCount()
@@ -37334,8 +38049,13 @@ _Helper.EnhanceFavFaster = function()
     local succes, fail = pcall(function()
         local ls = Varz.GetFruitToFavAbuseNew()
 
+        for index, value in ipairs(ls) do
+            MakeFruitsFavSingle(value)
+            task.wait(0.2)
+        end
+
         if ls and #ls > 0 then
-            MakeFruitsFav(ls)
+            --MakeFruitsFav(ls)
             -- task.wait(0.3) -- Optional: slight delay to ensure server registers fav
             --MakeFruitsFav(ls)
         end
@@ -37358,14 +38078,13 @@ end
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
         -- local delay = math.random(0.5, 0.5)
-        task.wait(0.33)
+        task.wait(0.9)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
         --     Varz.enhancer_locked = Varz.enhancer_locked - 1
         --     continue
         -- end
-
 
         if not FSettings.fav_fruit_enhancer or not FSettings.is_running then
             task.wait(2)
@@ -37379,7 +38098,7 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
 
         if Varz.hatch_state == Varz.HATCH_STATES.EGG_PHASE then
             pcall(function()
-                MakeFruitsFav(Varz.GetPetEnhanceTargets())
+                -- MakeFruitsFav(Varz.GetPetEnhanceTargets())
             end)
         end
 
@@ -37400,8 +38119,8 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
         end
 
         pcall(function()
-            ---MakeFruitsFav(Varz.GetPetEnhanceTargets())
             _Helper.EnhanceFavFaster()
+            MakeFruitsFav(Varz.GetPetEnhanceTargets())
         end)
     end
 end)
@@ -37592,7 +38311,7 @@ Varz.SendHpstats = function(payload)
     -- If the code failed to run (e.g. invalid URL or no internet)
     if success then
         local data = _S.HttpService:JSONDecode(result)
-        _Helper.JsonPrint(data)
+        --_Helper.JsonPrint(data)
         if data.invalidp then
             -- print("Invalid data detected")
             Varz.is_pro = false
