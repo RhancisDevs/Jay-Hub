@@ -2,7 +2,6 @@ if game.PlaceId == 126884695634066 then
     game:GetService("ReplicatedStorage").GameEvents.TradeWorld.TravelToTradeWorld:FireServer()
 else
 local Players = game:GetService("Players")
-local PathfindingService = game:GetService("PathfindingService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,6 +9,7 @@ local TextChatService = game:GetService("TextChatService")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local DataService = require(ReplicatedStorage.Modules.DataService)
 
 getgenv().webhook_Url = getgenv().webhook_Url or ""
 getgenv().boothSkin = getgenv().boothSkin or "Default"
@@ -39,13 +39,11 @@ local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local hrp = character:WaitForChild("HumanoidRootPart")
 
 local MOVE_SPEED_ESTIMATE = 16
-local MAX_PATH_RETRIES = 3
 local MAX_PAGES = 10
 local MAX_TELEPORT_RETRIES = 15
 local COUNTRY_RETRY_LIMIT = 5
 local COUNTRY_RETRY_DELAY = 5
 
-local StoredIds = {}
 local visitedJobIds = {}
 local total_earn = 0
 local teleportFails = 0
@@ -58,7 +56,6 @@ local automationThread = nil
 
 local recentPurchases = {}
 local hopTimeoutTick = tick() + getgenv().slidingHopSeconds
-local noStockNotified = false
 
 local TradeBoothSkinRegistry = require(
 	ReplicatedStorage.Data.TradeBoothSkinRegistry
@@ -71,6 +68,18 @@ for skinName in pairs(TradeBoothSkinRegistry) do
 end
 
 table.sort(skinOptions)
+
+local PetList = require(
+	ReplicatedStorage.Data.PetRegistry.PetList
+)
+
+local petsOptions = {}
+
+for petName in pairs(PetList) do
+	table.insert(petsOptions, petName)
+end
+
+table.sort(petsOptions)
 
 local function safeNotify(opts)
     if type(Fluent) == "table" and type(Fluent.Notify) == "function" then
@@ -209,46 +218,77 @@ TeleportService.TeleportInitFailed:Connect(function(_, result)
     end
 end)
 
-local function moveToCFrame(cf)
-    if not cf then return false end
-    local targetPos = (typeof(cf)=="CFrame") and cf.Position or cf
-    local retries = 0
-    while retries < MAX_PATH_RETRIES do
-        local ok, path = pcall(function()
-            local p = PathfindingService:CreatePath({AgentRadius=2,AgentHeight=5,AgentCanJump=true,MinSmoothDistance=0})
-            p:Compute(targetPos)
-            return p
-        end)
-        if not ok or not path or path.Status ~= Enum.PathStatus.Success then
-            retries += 1
-            task.wait(0.5)
-        else
-            for _, wp in ipairs(path:GetWaypoints()) do
-                if not hrp or not hrp.Parent then return false end
-                local dest = wp.Position
-                if wp.Action == Enum.PathWaypointAction.Jump then dest = dest + Vector3.new(0,3,0) end
-                local dist = (hrp.Position - dest).Magnitude
-                local t = math.max(0.1, dist / MOVE_SPEED_ESTIMATE)
-                local tw = TweenService:Create(hrp, TweenInfo.new(t, Enum.EasingStyle.Linear), {CFrame = CFrame.new(dest)})
-                tw:Play()
-                pcall(function() tw.Completed:Wait() end)
-                task.wait(0.02)
-            end
-            local fdist = (hrp.Position - targetPos).Magnitude
-            if fdist > 2 then
-                local t2 = math.max(0.1, fdist / MOVE_SPEED_ESTIMATE)
-                local tw2 = TweenService:Create(hrp, TweenInfo.new(t2, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos + Vector3.new(0,2,0))})
-                tw2:Play()
-                pcall(function() tw2.Completed:Wait() end)
-            end
-            return true
+local function getUserBigData()
+    local ok, data = pcall(function()
+        return DataService:GetData()
+    end)
+    if not ok or not data then
+        return nil
+    end
+    return data
+end
+
+local function getListedPetUUIDMap()
+    local bigData = getUserBigData()
+    if not bigData then
+        return {}, 0
+    end
+
+    local tradeData = bigData.TradeData
+    if not tradeData or not tradeData.Listings then
+        return {}, 0
+    end
+
+    local listedPets = {}
+    local count = 0
+
+    for _, listingData in pairs(tradeData.Listings) do
+        if listingData.ItemId then
+            listedPets[tostring(listingData.ItemId)] = true
+            count += 1
         end
     end
-    if character.PrimaryPart then
-        pcall(function() character:SetPrimaryPartCFrame(CFrame.new(targetPos + Vector3.new(0,2,0))) end)
+
+    return listedPets, count
+end
+
+local function moveToCFrame(cf)
+    if not cf then return false end
+    if not hrp or not hrp.Parent then return false end
+
+    local targetPos = (typeof(cf) == "CFrame") and cf.Position or cf
+    local startPos = hrp.Position
+    local distance = (startPos - targetPos).Magnitude
+
+    if distance < 2 then
         return true
     end
-    return false
+
+    local travelTime = math.max(0.1, distance / MOVE_SPEED_ESTIMATE)
+
+    local tween = TweenService:Create(
+        hrp,
+        TweenInfo.new(travelTime, Enum.EasingStyle.Linear),
+        { CFrame = CFrame.new(targetPos + Vector3.new(0, 2, 0)) }
+    )
+
+    local completed = false
+    tween.Completed:Connect(function()
+        completed = true
+    end)
+
+    tween:Play()
+
+    local timeout = tick() + travelTime + 2
+    while not completed and tick() < timeout do
+        if not hrp or not hrp.Parent then
+            tween:Cancel()
+            return false
+        end
+        task.wait(0.05)
+    end
+
+    return completed
 end
 
 local function findUnclaimedBooth()
@@ -308,14 +348,12 @@ local function findOwnedBooth()
     local name2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
 
     for _, booth in ipairs(booths:GetChildren()) do
-        local skin = booth:FindFirstChild(getgenv().boothSkin)
-        if skin then
-            local sign = skin:FindFirstChild("Sign")
-            local gui = sign and sign:FindFirstChild("SurfaceGui")
-            local label = gui and gui:FindFirstChild("TextLabel")
-
-            if label and (label.Text == name1 or label.Text == name2) then
-                return booth
+        for _, d in ipairs(booth:GetDescendants()) do
+            if d:IsA("TextLabel") and (d.Text == name1 or d.Text == name2) then
+                local sign = d:FindFirstAncestor("Sign")
+                if sign then
+                    return booth
+                end
             end
         end
     end
@@ -336,20 +374,11 @@ local function autoListItemsIfNeeded(knownBooth)
         return
     end
 
-    local DataServiceModule
-    pcall(function()
-        DataServiceModule = require(ReplicatedStorage.Modules.DataService)
-    end)
+    local soldOutNotified = false
 
     local function getPetData(id)
-        if not DataServiceModule then
-            return nil
-        end
-
-        local ok, data = pcall(function()
-            return DataServiceModule:GetData()
-        end)
-        if not ok or not data then
+        local data = getUserBigData()
+        if not data then
             return nil
         end
 
@@ -361,74 +390,12 @@ local function autoListItemsIfNeeded(knownBooth)
         return base and base[id] or nil
     end
 
-    local function findPlayerBoothExact()
-        local tw = workspace:FindFirstChild("TradeWorld")
-        if not tw then
-            return nil
-        end
-
-        local booths = tw:FindFirstChild("Booths")
-        if not booths then
-            return nil
-        end
-
-        local n1 = "@" .. LocalPlayer.Name .. "'s Booth"
-        local n2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
-
-        for _, b in ipairs(booths:GetChildren()) do
-            local skin = b:FindFirstChild(getgenv().boothSkin)
-            if skin then
-                local sign = skin:FindFirstChild("Sign")
-                local sg = sign and sign:FindFirstChild("SurfaceGui")
-                local tl = sg and sg:FindFirstChild("TextLabel")
-                if tl and (tl.Text == n1 or tl.Text == n2) then
-                    return b
-                end
-            end
-        end
-
-        return nil
-    end
-
-    local function waitForPlayerBooth(maxWait)
-        local t0 = tick()
-        while tick() - t0 < (maxWait or 10) do
-            if knownBooth and knownBooth.Parent then
-                return knownBooth
-            end
-
-            local found = findPlayerBoothExact()
-            if found then
-                return found
-            end
-
-            task.wait(0.5)
-        end
-        return nil
-    end
-
     task.spawn(function()
         local backpack = LocalPlayer:WaitForChild("Backpack")
 
         while getgenv().autoList do
-            local booth = waitForPlayerBooth(10)
-            if not booth then
-                task.wait(3)
-                continue
-            end
-
-            local dyn = booth:FindFirstChild("DynamicInstances")
-            local dynNames = {}
-            local dynCount = 0
-
-            if dyn then
-                for _, child in ipairs(dyn:GetChildren()) do
-                    dynNames[tostring(child.Name)] = true
-                end
-                dynCount = #dyn:GetChildren()
-            end
-
-            if dynCount >= 50 then
+            local listedPets, listedCount = getListedPetUUIDMap()
+            if listedCount >= 50 then
                 break
             end
 
@@ -449,7 +416,7 @@ local function autoListItemsIfNeeded(knownBooth)
                 end
 
                 local uuid = tool:GetAttribute("PET_UUID")
-                if not uuid or dynNames[tostring(uuid)] then
+                if not uuid or listedPets[tostring(uuid)] then
                     continue
                 end
 
@@ -479,7 +446,6 @@ local function autoListItemsIfNeeded(knownBooth)
                 end
 
                 local passesKG = true
-
                 if kgValue and kgValue > 0 then
                     if kgMode == "Above" then
                         passesKG = petKG >= kgValue
@@ -498,45 +464,39 @@ local function autoListItemsIfNeeded(knownBooth)
             end
 
             if #eligible == 0 then
-                if getgenv().notifyWhenOutOfStock and not noStockNotified then
-                    sendWebhook({
-                        embeds = {{
-                            title = "⚠️ No more items to list",
-                            color = 16753920,
-                            fields = {
-                                { name = "👤 Player", value = LocalPlayer.Name, inline = true },
-                                { name = "⏳ Date and Time", value = getTime(), inline = true }
-                            },
-                            footer = { text = "Made with ❤️ by Jay Hub" }
-                        }}
-                    })
-
-                    safeNotify({
-                        Title = "Jay Hub - Auto Bot",
-                        Content = "No more eligible items to list",
-                        Duration = 6
-                    })
-
-                    noStockNotified = true
-                end
                 break
             end
-
-            noStockNotified = false
-            local anyListed = false
 
             for _, pet in ipairs(eligible) do
                 if not getgenv().autoList then
                     break
                 end
 
-                local boothNow = waitForPlayerBooth(3)
-                if not boothNow then
+                local _, countNow = getListedPetUUIDMap()
+
+                if countNow == 0 and not soldOutNotified and getgenv().notifyWhenOutOfStock then
+                    sendWebhook({
+                        embeds = {{
+                            title = "✅ All items sold out",
+                            color = 65280,
+                            fields = {
+                                { name = "👤 Player", value = LocalPlayer.Name, inline = true },
+                                { name = "⏳ Date and Time", value = getTime(), inline = true }
+                            }
+                        }}
+                    })
+
+                    safeNotify({
+                        Title = "Jay Hub - Auto Bot",
+                        Content = "All listed items have been sold out",
+                        Duration = 6
+                    })
+
+                    soldOutNotified = true
                     break
                 end
 
-                local dynNow = boothNow:FindFirstChild("DynamicInstances")
-                if dynNow and #dynNow:GetChildren() == 50 then
+                if countNow >= 50 then
                     break
                 end
 
@@ -544,19 +504,14 @@ local function autoListItemsIfNeeded(knownBooth)
                     createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
                 end)
 
-                anyListed = true
                 task.wait(5)
-            end
-
-            if not anyListed then
-                break
             end
 
             task.wait(2)
         end
     end)
 end
-    
+
 local _cachedChatChannel = nil
 local function getChatChannel()
     if _cachedChatChannel and _cachedChatChannel.Parent then return _cachedChatChannel end
@@ -876,7 +831,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako | 1.4.0",
+    Title = "Jay Hub | Auto Lako | 1.5.4",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
@@ -903,30 +858,14 @@ local Minimizer = Fluent:CreateMinimizer({
 })
 
 local main_tab = Window:AddTab({ Title = "Main", Icon = "home" })
+local list_tab = Window:AddTab({ Title = "List Config", Icon = "text-align-justify" })
+local chat_tab = Window:AddTab({ Title = "Chat Config", Icon = "message-circle" })
 local server_tab = Window:AddTab({ Title = "Server", Icon = "server" })
 local webhook_tab = Window:AddTab({ Title = "Webhook", Icon = "bell" })
 local settings_tab = Window:AddTab({ Title = "Settings", Icon = "settings" })
 Window:SelectTab(1)
 
-local petsOptions = {
-    "Mimic Octopus",
-    "Capybara",
-    "Peacock",
-    "Diamond Panther",
-    "Ruby Squid",
-    "Brontosaurus",
-    "Seal",
-    "Headless Horseman",
-    "Spider",
-    "Kitsune",
-    "French Fry Ferret",
-	"Yeti",
-	"Ice Golem",
-	"Disco Bee",
-	"Butterfly"
-}
-
-local ddPets = main_tab:AddDropdown("PetsToList", {
+local ddPets = list_tab:AddDropdown("PetsToList", {
     Title = "Pets To List",
     Description = "Select one or more pets to auto-list.",
     Values = petsOptions,
@@ -957,7 +896,7 @@ ddSkin:OnChanged(function(val)
     getgenv().boothSkin = tostring(val)
 end)
 
-local inpMessage = main_tab:AddInput("ChatMessage", {
+local inpMessage = chat_tab:AddInput("ChatMessage", {
     Title = "Message",
     Description = "Chat spam message",
     Default = getgenv().message or "",
@@ -968,14 +907,14 @@ inpMessage:OnChanged(function(val)
     getgenv().message = tostring(val)
 end)
 
-local inpPrice = main_tab:AddInput("PriceForPet", {
+local inpPrice = list_tab:AddInput("PriceForPet", {
     Title = "Price for Pet",
     Description = "Price to set for auto listing",
     Default = tostring(getgenv().priceForPetList),
     Placeholder = "40"
 })
 
-local inpKG = main_tab:AddInput("KGFilterValue", {
+local inpKG = list_tab:AddInput("KGFilterValue", {
     Title = "KG Filter",
     Description = "Minimum / Maximum KG threshold",
     Default = "2",
@@ -988,7 +927,7 @@ inpKG:OnChanged(function(val)
     getgenv().kgFilterValue = n
 end)
 
-local ddKGMode = main_tab:AddDropdown("KGFilterMode", {
+local ddKGMode = list_tab:AddDropdown("KGFilterMode", {
     Title = "KG Mode",
     Description = "List pets Above or Below KG value",
     Values = { "Above", "Below" },
@@ -1004,7 +943,7 @@ inpPrice:OnChanged(function(val)
     if n then getgenv().priceForPetList = n end
 end)
 
-local toggleAutoChat = main_tab:AddToggle("AutoChat", {
+local toggleAutoChat = chat_tab:AddToggle("AutoChat", {
     Title = "Auto Chat",
     Description = "Enable/disable chat spam",
     Default = getgenv().autoChat
@@ -1019,7 +958,7 @@ toggleAutoChat:OnChanged(function(state)
     end
 end)
 
-local inpAutoChatDelay = main_tab:AddInput("AutoChatDelay", {
+local inpAutoChatDelay = chat_tab:AddInput("AutoChatDelay", {
     Title = "Auto Chat Delay",
     Description = "Delay between chat messages in seconds",
     Default = tostring(getgenv().autoChatDelay),
@@ -1033,7 +972,7 @@ inpAutoChatDelay:OnChanged(function(val)
     end
 end)
 
-local toggleAutoThanks = main_tab:AddToggle("AutoThanks", {
+local toggleAutoThanks = chat_tab:AddToggle("AutoThanks", {
     Title = "Auto Thank You",
     Description = "Send thank you after\nsomeone buy your item",
     Default = getgenv().autoThanks
@@ -1086,6 +1025,56 @@ end)
 
 
 server_tab:AddButton({ Title = "Server Hop", Description = "Teleport to other server", Callback = function() serverHop() end })
+
+local toggleAutoUnlist = main_tab:AddToggle("AutoUnlist", {
+    Title = "Auto Unlist",
+    Description = "Enable/disable auto unlisting",
+    Default = false
+})
+
+toggleAutoUnlist:OnChanged(function(state)
+    getgenv().autoUnlist = state
+
+    if not state then
+        return
+    end
+
+    task.spawn(function()
+        local RemoveListing =
+            ReplicatedStorage.GameEvents.TradeEvents.Booths.RemoveListing
+
+        while getgenv().autoUnlist do
+            local bigData = getUserBigData()
+
+            if bigData and bigData.TradeData and bigData.TradeData.Listings then
+                local hasListings = false
+
+                for listingId in pairs(bigData.TradeData.Listings) do
+                    if not getgenv().autoUnlist then
+                        break
+                    end
+
+                    hasListings = true
+                    local uuid = tostring(listingId):gsub("[{}]", "")
+
+                    pcall(function()
+                        RemoveListing:InvokeServer(uuid)
+                    end)
+
+                    task.wait(0.25)
+                end
+
+                if not hasListings then
+                    task.wait(3)
+                end
+            else
+                task.wait(3)
+            end
+
+            task.wait(1)
+        end
+    end)
+end)
 
 local toggle_start = main_tab:AddToggle("AutoLako", {
     Title = "Auto Lako",
@@ -1243,11 +1232,13 @@ InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
 
+local save_config_file_name = "Auto_Lako_" .. LocalPlayer.UserId .. "_" .. LocalPlayer.Name .. ".json"
+
 InterfaceManager:SetFolder("JayHub")
-SaveManager:SetFolder("JayHub/Script-Game")
+SaveManager:SetFolder("JayHub/" .. save_config_file_name)
 InterfaceManager:BuildInterfaceSection(settings_tab)
 SaveManager:BuildConfigSection(settings_tab)
-
+	
 Fluent:Notify({
     Title = "Jay Hub - Paid Scripts",
     Content = "Jay Hub has been loaded.",
