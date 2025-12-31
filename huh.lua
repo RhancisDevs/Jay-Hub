@@ -339,7 +339,7 @@ local function findOwnedBooth()
     return nil
 end
 
-local function autoListItemsIfNeeded(knownBooth)
+local function autoList()
     if not getgenv().autoList then
         return
     end
@@ -373,8 +373,10 @@ local function autoListItemsIfNeeded(knownBooth)
 
         while getgenv().autoList do
             local listedPets, listedCount = getListedPetUUIDMap()
+
             if listedCount >= 50 then
-                break
+                task.wait(2)
+                continue
             end
 
             local eligible = {}
@@ -405,7 +407,6 @@ local function autoListItemsIfNeeded(knownBooth)
 
                 local kgValue = getgenv().kgFilterValue
                 local kgMode = getgenv().kgFilterMode
-
                 if kgMode and not kgValue then
                     continue
                 end
@@ -452,6 +453,10 @@ local function autoListItemsIfNeeded(knownBooth)
 
                 local _, countNow = getListedPetUUIDMap()
 
+                if countNow >= 50 then
+                    break
+                end
+
                 if countNow == 0 and not soldOutNotified and getgenv().notifyWhenOutOfStock then
                     sendWebhook({
                         embeds = {{
@@ -471,11 +476,6 @@ local function autoListItemsIfNeeded(knownBooth)
                     })
 
                     soldOutNotified = true
-                    break
-                end
-
-                if countNow >= 50 then
-                    break
                 end
 
                 pcall(function()
@@ -489,7 +489,7 @@ local function autoListItemsIfNeeded(knownBooth)
         end
     end)
 end
-
+	
 local _cachedChatChannel = nil
 local function getChatChannel()
     if _cachedChatChannel and _cachedChatChannel.Parent then return _cachedChatChannel end
@@ -1144,7 +1144,7 @@ toggle_start:OnChanged(function(active)
 
             if getgenv().autoList and automationRunning then
                 pcall(function()
-                    autoListItemsIfNeeded(booth)
+                    autoList()
                 end)
             end
 
