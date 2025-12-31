@@ -352,7 +352,7 @@ local function autoList()
         return
     end
 
-    local soldOutNotified = false
+    local stoppedPermanently = false
 
     local function getPetData(id)
         local data = getUserBigData()
@@ -371,11 +371,11 @@ local function autoList()
     task.spawn(function()
         local backpack = LocalPlayer:WaitForChild("Backpack")
 
-        while getgenv().autoList do
-            local listedPets, listedCount = getListedPetUUIDMap()
+        while getgenv().autoList and not stoppedPermanently do
+            local listedPets, countNow = getListedPetUUIDMap()
 
-            if listedCount >= 50 then
-                task.wait(2)
+            if countNow >= 50 then
+                task.wait(0.25)
                 continue
             end
 
@@ -383,7 +383,7 @@ local function autoList()
 
             for _, tool in ipairs(backpack:GetChildren()) do
                 if not getgenv().autoList then
-                    break
+                    return
                 end
                 if not tool or not tool.GetAttribute then
                     continue
@@ -405,12 +405,6 @@ local function autoList()
                     continue
                 end
 
-                local kgValue = getgenv().kgFilterValue
-                local kgMode = getgenv().kgFilterMode
-                if kgMode and not kgValue then
-                    continue
-                end
-
                 local petType = petData.PetType
                 local rawKG = petData.PetData and petData.PetData.BaseWeight
                 local petKG = rawKG and tonumber(
@@ -424,68 +418,42 @@ local function autoList()
                     continue
                 end
 
-                local passesKG = true
+                local kgValue = getgenv().kgFilterValue
+                local kgMode = getgenv().kgFilterMode
                 if kgValue and kgValue > 0 then
-                    if kgMode == "Above" then
-                        passesKG = petKG >= kgValue
-                    elseif kgMode == "Below" then
-                        passesKG = petKG <= kgValue
+                    if kgMode == "Above" and petKG < kgValue then
+                        continue
+                    elseif kgMode == "Below" and petKG > kgValue then
+                        continue
                     end
                 end
 
-                if passesKG then
-                    table.insert(eligible, {
-                        uuid = tostring(uuid),
-                        petType = petType,
-                        kg = petKG
-                    })
-                end
+                table.insert(eligible, tostring(uuid))
             end
 
             if #eligible == 0 then
+                stoppedPermanently = true
                 break
             end
 
-            for _, pet in ipairs(eligible) do
+            for _, uuid in ipairs(eligible) do
                 if not getgenv().autoList then
-                    break
+                    return
                 end
 
-                local _, countNow = getListedPetUUIDMap()
-
-                if countNow >= 50 then
+                local _, currentCount = getListedPetUUIDMap()
+                if currentCount >= 50 then
                     break
-                end
-
-                if countNow == 0 and not soldOutNotified and getgenv().notifyWhenOutOfStock then
-                    sendWebhook({
-                        embeds = {{
-                            title = "✅ All items sold out",
-                            color = 65280,
-                            fields = {
-                                { name = "👤 Player", value = LocalPlayer.Name, inline = true },
-                                { name = "⏳ Date and Time", value = getTime(), inline = true }
-                            }
-                        }}
-                    })
-
-                    safeNotify({
-                        Title = "Jay Hub - Auto Bot",
-                        Content = "All listed items have been sold out",
-                        Duration = 6
-                    })
-
-                    soldOutNotified = true
                 end
 
                 pcall(function()
-                    createRem:InvokeServer("Pet", pet.uuid, getgenv().priceForPetList)
+                    createRem:InvokeServer("Pet", uuid, getgenv().priceForPetList)
                 end)
 
                 task.wait(5)
             end
 
-            task.wait(2)
+            task.wait(0.25)
         end
     end)
 end
@@ -809,7 +777,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako | 1.5.5",
+    Title = "Jay Hub | Auto Lako | 1.5.6",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
