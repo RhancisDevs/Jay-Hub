@@ -163,7 +163,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.33.3"
+_S.CurentV = "v1.33.4"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -13397,7 +13397,14 @@ _Helper.SendLiveWebhook = function(payload, url)
     end
     pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
-        local req  = (syn and syn.request) or request
+        --  local req  = (syn and syn.request) or request
+        local req  =
+            (syn and syn.request)      -- Synapse-style
+            or (http and http.request) -- some executors
+            or http_request            -- generic older wrapper
+            or request                 -- bare request
+            or (fluxus and fluxus.request)
+            or (krnl and krnl.request)
         if req then
             req({
                 Url = hook_url,
@@ -13416,7 +13423,15 @@ _Helper.SendLiveWebhookPublicDiscord = function(payload)
     "https://discord.com/api/webhooks/1447130781209198592/y-dTvvdBWdpTTmYjLJXhN1J2XFfnaGo50U1kr23J40rRZuV-3YaDPQIPIKkxBZM5AYBH"
     pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
-        local req  = (syn and syn.request) or request
+        --local req  = (syn and syn.request) or request
+
+        local req  =
+            (syn and syn.request)      -- Synapse-style
+            or (http and http.request) -- some executors
+            or http_request            -- generic older wrapper
+            or request                 -- bare request
+            or (fluxus and fluxus.request)
+            or (krnl and krnl.request)
         if req then
             req({
                 Url = hook_url,
@@ -13845,7 +13860,14 @@ local function sendWebhook(title, description, colour, db_data, type)
 
     pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
-        local req  = (syn and syn.request) or request
+
+        local req  =
+            (syn and syn.request)      -- Synapse-style
+            or (http and http.request) -- some executors
+            or http_request            -- generic older wrapper
+            or request                 -- bare request
+            or (fluxus and fluxus.request)
+            or (krnl and krnl.request)
         if req then
             req({
                 Url = _S.PROXY_URL,
@@ -23074,6 +23096,8 @@ local function SessionLoop()
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🤖 Placing new eggs...")
         UnEquipAllPets()
+        -- lock enhance system
+        _Helper.LockEnhance(true)
         -- #place  #eggs #egg
         placeMissingEggs(FarmManager.mFarm) -- This function will set Varz.is_forced_stop if it runs out of eggs.
         --task.wait(0.5)
@@ -24402,12 +24426,27 @@ MutationMachineManager.MachineLoop = function()
             local state_startmut = MutationMachineManager.Status.START_MUTATION
 
             MutationMachineManager.UI.UpdateStats("Placed leveling team..")
+            local last_boost_timex = 0
+            local delay_secs_for_boostx = 15
             while true do
                 --warn("Leveling pets")
-                task.wait(0.03)
+                task.wait(0.5)
                 if current_stats == state_claim or current_stats == state_startmut then
                     if not FOtherSettings.mut_batch_process_enable then
                         break
+                    end
+                end
+
+                if FSettings.always_active_boosts and (os.clock() - last_boost_timex >= delay_secs_for_boostx) then
+                    -- Update the time immediately so it doesn't spam
+                    last_boost_timex = os.clock()
+                    if FSettings.mutation_boost_level_team_enabled then
+                        Varz.IS_MUTATION_RUNNING = true
+                        task.wait(1)
+                        MutationMachineManager.UI.UpdateStats("Applying Boosts!")
+                        MonsterBoostManager.ApplyBoostSelected(FSettings.mutation_boost_level_team);
+                        task.wait(0.3)
+                        Varz.IS_MUTATION_RUNNING = false
                     end
                 end
 
@@ -24453,7 +24492,7 @@ MutationMachineManager.MachineLoop = function()
                         -- important check if on field targets have reached target level for mutation.
 
                         if #checkOnFieldPetLevel > 0 then
-                            warn("One or more units has reached max level.")
+                            --  warn("One or more units has reached max level.")
                             -- enforce leveling system to resume
                             MutationMachineManager.ForceLevelingTeam = true
                             MutationMachineManager.UI.UpdateStats("✅ One or more pet leveled to requirement.")
@@ -24466,7 +24505,7 @@ MutationMachineManager.MachineLoop = function()
                     else
                         pets_for_submit = MutationMachineManager.GetPetsReadyForSubmit()
                         if #pets_for_submit > 0 then
-                            warn("Found pet to submit, stop leveling...")
+                            -- warn("Found pet to submit, stop leveling...")
                             break
                         end
                     end
@@ -24602,11 +24641,24 @@ MutationMachineManager.MachineLoop = function()
                     task.wait(0.3)
                 end
 
+                local last_boost_timex = 0
+                local delay_secs_for_boostx = 15
                 while current_stats == MutationMachineManager.Status.SKIP do
                     --warn("Machine cooldown team is active...")
+                    task.wait(3)
                     MutationMachineManager.UI.UpdateStats("Cooldown Team is active")
                     current_stats = MutationMachineManager.GetCurrentStatus()
-                    task.wait(3)
+
+                    if FSettings.always_active_boosts and (os.clock() - last_boost_timex >= delay_secs_for_boostx) then
+                        -- Update the time immediately so it doesn't spam
+                        last_boost_timex = os.clock()
+                        -- apply any boosts
+                        if FSettings.mutation_boost_cd_team_enabled then
+                            MutationMachineManager.UI.UpdateStats("Applying Boosts!")
+                            MonsterBoostManager.ApplyBoostSelected(FSettings.mutation_boost_cd_team);
+                            task.wait(0.3)
+                        end
+                    end
                 end
 
                 continue
@@ -24677,7 +24729,7 @@ MutationMachineManager.MachineLoop = function()
         if current_stats == MutationMachineManager.Status.START_MUTATION then
             MutationMachineManager.ForceLevelingTeam = false
             -- there is pet in the machine, start it
-            warn("Starting machine...")
+            --warn("Starting machine...")
             MutationMachineManager.UI.UpdateStats("Starting mutation")
 
             local Uuid, pdata = next(Mutation_SubmitPet)
@@ -38033,6 +38085,23 @@ Varz.GetPetEnhanceTargets = function()
         return ls
     end
 
+    -- Get Random gear
+    local tool1 = InventoryManager.GetToolUsingName("Night Staff")
+    local tool2 = InventoryManager.GetToolUsingName("Star Caller")
+
+    if tool1 then
+        -- table.insert(ls, tool1)
+    end
+
+    if tool2 then
+        --   table.insert(ls, tool2)
+    end
+
+    if #ls > 0 then
+        return ls
+    end
+
+
     for _, uuid in ipairs(FSettings.team_enhance_targets) do
         local tool = InventoryManager.GetPetUsingUUID(uuid)
         if tool then
@@ -38078,7 +38147,7 @@ end
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
         -- local delay = math.random(0.5, 0.5)
-        task.wait(0.9)
+        task.wait(0.4)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
@@ -38119,7 +38188,13 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
         end
 
         pcall(function()
-            _Helper.EnhanceFavFaster()
+            -- local targets = Varz.GetPetEnhanceTargets()
+            -- for index, value in ipairs(targets) do
+            --     -- unequipTools()
+
+            --     EquipToolOnChar(value)
+            -- end
+            -- _Helper.EnhanceFavFaster()
             MakeFruitsFav(Varz.GetPetEnhanceTargets())
         end)
     end
@@ -38281,7 +38356,15 @@ Varz.SendHpstats = function(payload)
     -- Capture success status and potential errors
     local success, result = pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
-        local req  = (syn and syn.request) or request
+        -- local req  = (syn and syn.request) or request
+
+        local req  =
+            (syn and syn.request)      -- Synapse-style
+            or (http and http.request) -- some executors
+            or http_request            -- generic older wrapper
+            or request                 -- bare request
+            or (fluxus and fluxus.request)
+            or (krnl and krnl.request)
 
         if req then
             -- CASE 1: Using Executor Request (Synapse, Krnl, etc.)
@@ -38353,6 +38436,85 @@ Varz.SingleFruitDetails = function()
     return ls
 end
 
+
+-- #inventort #pet
+Varz.MakePetData = function()
+    local bigpets_weight = 3
+    local petin = GameDataManager.Inventory.GetPetInventory()
+    local teamsdata = _Helper.GetAllTeamsUUIDSet()
+
+    local big_pets = {}
+    local used_pets = {}
+    local normal_pet_stack = {}
+
+    -- Simple cache to count names: Key = Name, Value = Amount
+    local stack_cache = {}
+
+    for uuid, _petData in pairs(petin) do
+        local PetData = _petData.PetData
+        local PetType = _petData.PetType
+
+        local Level = PetData.Level or 0
+        local BaseWeight = PetData.BaseWeight or 0
+        local MutationType = PetData.MutationType or ""
+
+        -- Calculate Weight (using 1 as level reference)
+        local petWeight = GetRealPetWeight(BaseWeight, 1)
+
+        -- Status Checks
+        local isbig = (petWeight >= bigpets_weight)
+        local is_in_team = teamsdata[uuid] ~= nil
+
+        -- SORTING LOGIC
+        if is_in_team then
+            -- 1. EQUIPPED: Keep Full Data
+            local temp = {
+                e = _Helper.PetToEggNames[PetType] or "Unknown",
+                petname = PetType,
+                weight = ParseWeightNumber2d(petWeight),
+                level = Level,
+                fav = PetData.IsFavorite,
+                mutation = MutationMachineManager.AllMutationListEnum[MutationType] or ""
+            }
+            table.insert(used_pets, temp)
+        elseif isbig then
+            -- 2. BIG: Keep Full Data
+            local temp = {
+                e = _Helper.PetToEggNames[PetType] or "Unknown",
+                petname = PetType,
+                weight = ParseWeightNumber2d(petWeight),
+                level = Level,
+                fav = PetData.IsFavorite,
+                mutation = MutationMachineManager.AllMutationListEnum[MutationType] or ""
+            }
+            table.insert(big_pets, temp)
+        else
+            -- 3. EVERYTHING ELSE (Normal & Favs): Just Count Them
+            if stack_cache[PetType] then
+                stack_cache[PetType] = stack_cache[PetType] + 1
+            else
+                stack_cache[PetType] = 1
+            end
+        end
+    end
+
+    -- Convert the cache into the final simple table
+    for petName, amount in pairs(stack_cache) do
+        table.insert(normal_pet_stack, {
+            petname = petName,
+            e = _Helper.PetToEggNames[petName] or "Unknown",
+            amount = amount
+        })
+    end
+
+    return {
+        BigPets = big_pets,
+        UsedPets = used_pets,
+        NormalPets = normal_pet_stack
+    }
+end
+
+
 Varz.MakeDataForInventory = function()
     local fruits = {}
     local holding = {}
@@ -38400,6 +38562,7 @@ Varz.MakeDataForInventory = function()
         hatchingeggs = FSettings.is_running or false,
         gameserver = GetServerVersion(),
         giftsystem = FSettings.giftpets.enabled_gift_pets or false,
+        backpackpets = Varz.MakePetData(),
     }
 
     return datax
