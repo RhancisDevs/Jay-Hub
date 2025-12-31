@@ -809,7 +809,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako | 1.5.4",
+    Title = "Jay Hub | Auto Lako | 1.5.5",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
