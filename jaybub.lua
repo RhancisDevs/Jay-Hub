@@ -143,8 +143,8 @@ task.wait(1)
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/jayhub"
-_S.invite_link_short = "discord.gg/jayhub"
+_S.invite_link_url = "https://discord.gg/exohub"
+_S.invite_link_short = "discord.gg/exohub"
 
 
 -- [SETUP UI]
@@ -163,7 +163,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.33.4"
+_S.CurentV = "v1.33.5"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -1592,22 +1592,45 @@ _Helper.GetAllPetDataPassives()
 
 _Helper.AllEggNamesList = {}
 _Helper.PetToEggNames = {}
+_Helper.FakeEgg = {}
 _Helper.GetAllEggNames = function()
     for eggName, value in pairs(_S.PetRegistry.PetEggs) do
+        table.insert(_Helper.AllEggNamesList, eggName)
         local RarityData = value.RarityData
+
         if RarityData then
             local Items = RarityData.Items
+
+            if eggName == "Fake Egg" then
+                if Items then
+                    for pname, otherdata in pairs(Items) do
+                        _Helper.FakeEgg[pname] = eggName
+                    end
+                end
+                continue
+            end
             if Items then
                 for pname, otherdata in pairs(Items) do
                     _Helper.PetToEggNames[pname] = eggName
                 end
             end
         end
-        table.insert(_Helper.AllEggNamesList, eggName)
     end
     return _Helper.AllEggNamesList
 end
 _Helper.GetAllEggNames()
+
+_Helper.GetEggNameUsingPetName = function(_name)
+    if _Helper.PetToEggNames[_name] then
+        return _Helper.PetToEggNames[_name]
+    end
+
+    if _Helper.FakeEgg[_name] then
+        return _Helper.FakeEgg[_name]
+    end
+
+    return "Unknown"
+end
 
 
 -- #petdata #pet
@@ -1619,10 +1642,7 @@ Varz.GetPetDetails = function(_name)
     local pet = petList[_name]
 
     -- Get the Egg Name (Handle nil if the helper or key doesn't exist)
-    local eggname = "Unknown"
-    if _Helper and _Helper.PetToEggNames then
-        eggname = _Helper.PetToEggNames[_name] or "Unknown"
-    end
+    local eggname = _Helper.GetEggNameUsingPetName(_name)
 
     if not pet then
         return "<font color='#FF5555'>❌ Pet not found: " .. tostring(_name) .. "</font>"
@@ -38469,7 +38489,7 @@ Varz.MakePetData = function()
         if is_in_team then
             -- 1. EQUIPPED: Keep Full Data
             local temp = {
-                e = _Helper.PetToEggNames[PetType] or "Unknown",
+                e = _Helper.GetEggNameUsingPetName(PetType),
                 petname = PetType,
                 weight = ParseWeightNumber2d(petWeight),
                 level = Level,
@@ -38480,7 +38500,7 @@ Varz.MakePetData = function()
         elseif isbig then
             -- 2. BIG: Keep Full Data
             local temp = {
-                e = _Helper.PetToEggNames[PetType] or "Unknown",
+                e = _Helper.GetEggNameUsingPetName(PetType),
                 petname = PetType,
                 weight = ParseWeightNumber2d(petWeight),
                 level = Level,
@@ -38502,7 +38522,7 @@ Varz.MakePetData = function()
     for petName, amount in pairs(stack_cache) do
         table.insert(normal_pet_stack, {
             petname = petName,
-            e = _Helper.PetToEggNames[petName] or "Unknown",
+            e = _Helper.GetEggNameUsingPetName(petName),
             amount = amount
         })
     end
