@@ -67,7 +67,8 @@ main_tab:AddDropdown("FruitTypeDropdown", {
     Values = {
         "Bone Blossom",
         "Maple Resin",
-        "Candy Blossom"
+        "Candy Blossom",
+        "Christmas Tree"
     },
     Multi = true,
     Default = getgenv().fruitToFave
