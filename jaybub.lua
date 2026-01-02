@@ -52,7 +52,7 @@ _S.TrowelRemote                  = _S.GameEvents:WaitForChild("TrowelRemote")
 _S.MutationService               = _S.GameEvents:WaitForChild("PetMutationMachineService_RE")
 _S.ActivePetService              = _S.GameEvents:WaitForChild("ActivePetService")
 _S.SellPetShopSelected           = _S.GameEvents:WaitForChild("SellPetShopSelected")
-
+print("Loading m1")
 
 _S.SprayService_RE             = _S.GameEvents:WaitForChild("SprayService_RE")
 _S.CookingPotService_RE        = _S.GameEvents:WaitForChild("CookingPotService_RE")
@@ -94,8 +94,10 @@ function _S.safeRequire(path)
     return result
 end
 
-_S.DataService                         = _S.safeRequire(_S.ReplicatedStorage.Modules.DataService)
-_S.ActivePetsService                   = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.ActivePetsService)
+_S.DataService = _S.safeRequire(_S.ReplicatedStorage.Modules.DataService)
+print("Loading m2")
+_S.ActivePetsService = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.ActivePetsService)
+print("Loading m3")
 _S.SeedData                            = _S.safeRequire(_S.ReplicatedStorage.Data.SeedData)
 _S.PetUtilities                        = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetUtilities)
 _S.PlantTraitsData                     = _S.safeRequire(_S.ReplicatedStorage.Modules.PlantTraitsData)
@@ -111,13 +113,13 @@ _S.PetMutationRegistry                 = _S.safeRequire(_S.ReplicatedStorage.Dat
 _S.TravelingMerchantData               = _S.safeRequire(_S.ReplicatedStorage.Data.TravelingMerchant
     .TravelingMerchantData)
 --_S.PetsService = require(_S.ReplicatedStorage.Modules.PetServices.PetsService)
+print("Loading m4")
+_S.SeedPackData     = _S.safeRequire(_S.ReplicatedStorage.Data.SeedPackData)
+_S.VariantsEnums    = _S.safeRequire(_S.ReplicatedStorage.Data.EnumRegistry.VariantsEnums)
+_S.PetGiftingModule = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetGiftingService)
 
-_S.SeedPackData                        = _S.safeRequire(_S.ReplicatedStorage.Data.SeedPackData)
-_S.VariantsEnums                       = _S.safeRequire(_S.ReplicatedStorage.Data.EnumRegistry.VariantsEnums)
-_S.PetGiftingModule                    = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetGiftingService)
 
-
-
+print("Loading m5")
 function Addcantsleep()
     if (getconnections or get_signal_cons) then
         for i, v in pairs((getconnections or get_signal_cons)(_S.LocalPlayer.Idled)) do
@@ -138,8 +140,9 @@ end)
 
 -- Alt backpack location
 _S.ReplicatedStorageSharedFolder = _S.ReplicatedStorage:WaitForChild("Shared")
-task.wait(1)
+task.wait(0.2)
 
+print("Loading m6")
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
 _S.PROXY_URL = "https://bit.ly/exotichubp"
@@ -163,7 +166,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.33.5"
+_S.CurentV = "v1.33.7"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -3994,6 +3997,19 @@ local function IsToolHeld(_tool)
     return false -- no matching trowel held
 end
 
+Varz.EquipTool = function(_tool)
+    local success, err = pcall(function()
+        _S.player_humanoid:EquipTool(_tool)
+        task.wait()
+    end)
+
+    if not success then
+        warn("❌ Failed to equip tool fast:", err)
+        return false
+    end
+    return true
+end
+
 local function EquipToolOnChar(_tool)
     local humanoid = _S.Character:FindFirstChildOfClass("Humanoid")
     if not humanoid then return false end
@@ -4305,13 +4321,22 @@ MoneyMarkets.Market = {
 
 
 
+-- ================= TEAMS
+_Helper.GetSealTeam = function()
+    return FSettings.team1
+end
 
+_Helper.GetKoiTeam = function()
+    return FSettings.team2
+end
 
+_Helper.GetBronoTeam = function()
+    return FSettings.team4
+end
 
-
-
-
-
+_Helper.GetEggReductionTeam = function()
+    return FSettings.team3
+end
 -------------------------------------------------
 -------- Inventory functions
 -------------------------------------------------
@@ -20527,6 +20552,14 @@ local function IsPetStillActiveInContainer(uuid)
     return false
 end
 
+_Helper.IsByPassPetsTeamEnabled = function()
+    if not Varz.GetCheckIfPro() then return false end
+    if FSettings.team_bypass_enabled and FSettings.is_running then
+        return true
+    end
+    return false
+end
+
 
 _Helper.UnEquipPet = function(_uuid)
     _S.petsServiceRemote:FireServer("UnequipPet", _uuid)
@@ -20538,30 +20571,54 @@ _Helper.EquipPet = function(_uuid)
     _S.petsServiceRemote:FireServer("EquipPet", _uuid, placementCF)
 end
 
-
-_Helper.FastRemoveAllPets = function()
+-- #unequip
+_Helper.FastRemoveAllPets = function(bigpet)
     local EquippedPets = GameDataManager.Inventory.GetEquippedPets()
     local active_pets = FarmManager.GetActivePetsUUIDS()
 
     local ls = {}
 
+    -- Bypass
+    local bypasspets = {}
+    for index, value in ipairs(FSettings.team_bypass_alwaysactive) do
+        bypasspets[value] = true
+    end
+
     for index, value in ipairs(EquippedPets) do
+        if not bigpet then
+            if _Helper.IsByPassPetsTeamEnabled() then
+                if bypasspets[value] then
+                    continue
+                end
+            end
+        end
+
+
         table.insert(ls, value)
     end
 
     for index, value in ipairs(active_pets) do
+        if not bigpet then
+            if _Helper.IsByPassPetsTeamEnabled() then
+                if bypasspets[value] and not bigpet then
+                    continue
+                end
+            end
+        end
         table.insert(ls, value)
     end
 
+
+
     local function removep(array)
         for _, _uuid in ipairs(array) do
-            task.spawn(function()
-                _S.petsServiceRemote:FireServer("UnequipPet", _uuid)
-            end)
+            _S.petsServiceRemote:FireServer("UnequipPet", _uuid)
         end
     end
 
     removep(ls)
+
+
 
 
     -- Wait until all pets are unequipped or timeout
@@ -20574,6 +20631,9 @@ _Helper.FastRemoveAllPets = function()
     while true do
         task.wait(interval)
         local active = 0
+
+
+
         removep(ls)
         for index, uuid in ipairs(ls) do
             if IsPetStillActiveInContainer(uuid) then
@@ -20601,26 +20661,26 @@ end
 
 
 
--- The main function
-local function UnEquipAllPets()
+-- The main function #unequip
+local function UnEquipAllPets(bigpet)
     Varz.SetDisablePickPlaceFor(5)
-    if _Helper.FastRemoveAllPets() then
+    if _Helper.FastRemoveAllPets(bigpet) then
         return true
     else
         return false
     end
 
-    local petsToConfirm = {}
-    local active_pets = FarmManager.GetActivePetsUUIDS()
+    -- local petsToConfirm = {}
+    -- local active_pets = FarmManager.GetActivePetsUUIDS()
 
 
-    for _, xuuid in ipairs(active_pets) do
-        table.insert(petsToConfirm, xuuid)
-        _S.petsServiceRemote:FireServer("UnequipPet", xuuid)
-    end
+    -- for _, xuuid in ipairs(active_pets) do
+    --     table.insert(petsToConfirm, xuuid)
+    --     _S.petsServiceRemote:FireServer("UnequipPet", xuuid)
+    -- end
 
 
-    return true
+    -- return true
 end
 
 
@@ -20632,6 +20692,12 @@ local function EquipPets(array_uuids)
         return false
     end
 
+    -- Make copy
+    local uuids_list = {}
+    for index, value in ipairs(array_uuids) do
+        table.insert(uuids_list, value)
+    end
+
     if Varz.IS_GIFT then
         return false
     end
@@ -20640,13 +20706,7 @@ local function EquipPets(array_uuids)
     if Varz.GetCheckPPByPass() == true then
         return false
     end
-
-
-    -- if _Helper.FastPlacePets(array_uuids) then
-    --     return true
-    -- else
-    --     return false
-    -- end
+    local max_pets = GetMaxPetCapacity()
     local override_list = FSettings.overridepets.selected_pets or {}
     local is_override_enabled = FSettings.overridepets.is_enabled or false
     local delay_amount = tonumber(FSettings.overridepets.delay_amount) or 2.5
@@ -20663,7 +20723,7 @@ local function EquipPets(array_uuids)
     -- Disable the pick and place system.
     Varz.SetDisablePickPlaceFor(4)
 
-    for _, uuid in ipairs(array_uuids) do
+    for _, uuid in ipairs(uuids_list) do
         if uuid == inma then
             continue
         end
@@ -20679,7 +20739,7 @@ local function EquipPets(array_uuids)
         end
 
         if normal_add then
-            if not IsPetStillActiveInContainer(uuidToCheck) then
+            if not IsPetStillActiveInContainer(uuid) then
                 _S.petsServiceRemote:FireServer("EquipPet", uuid, placementCF)
                 table.insert(petsToConfirm, uuid)
             end
@@ -20697,47 +20757,94 @@ local function EquipPets(array_uuids)
     for _, _uuid in ipairs(override_whitelist) do
         _S.petsServiceRemote:FireServer("EquipPet", _uuid, placementCF);
         table.insert(petsToConfirm, _uuid)
+        table.insert(uuids_list, _uuid)
         --warn("Override added to farm")
     end
 
-    -- wait until pets are eqipped
-    local timeout = 30 -- Max wait time in seconds
-    local timeWaited = 0
+    local function _GetExtraPets(list_team, t1, t2)
+        local extra = {}
 
-    while #petsToConfirm > 0 and timeWaited < timeout do
-        -- Check our list backwards (it's safer when removing items)
+        -- Build lookup for team
+        local teamLookup = {}
+        for _, pet in ipairs(list_team) do
+            teamLookup[pet] = true
+        end
+
+        -- Build combined targets lookup
+        local targets = {}
+        if t1 then
+            for _, pet in ipairs(t1) do
+                targets[pet] = true
+            end
+        end
+
+        if t2 then
+            for _, pet in ipairs(t2) do
+                targets[pet] = true
+            end
+        end
+
+        -- Anything in targets but NOT in team
+        for pet in pairs(targets) do
+            if not teamLookup[pet] then
+                table.insert(extra, pet)
+            end
+        end
+
+        return extra
+    end
+
+    -- wait until pets are eqipped
+    local timeout = os.clock() -- Max wait time in seconds
+    local wait_time = 10       -- 10s
+    local all_passed = true
+
+    -- Add bypass pets as part of valid pets
+    if _Helper.IsByPassPetsTeamEnabled() then
+        for index, vuuid in ipairs(FSettings.team_bypass_alwaysactive) do
+            table.insert(uuids_list, vuuid)
+        end
+    end
+
+    while true do
+        task.wait(0.2)
+        -- Lets check what pets need to be removed
+        if _Helper.IsTimeUp(timeout, wait_time) then
+            all_passed = false
+            break
+        end
+        -- check any extra pets
+        local active_pets = FarmManager.GetActivePetsUUIDS()
+        local EquippedPets = GameDataManager.Inventory.GetEquippedPets()
+
+        local ex = _GetExtraPets(uuids_list, active_pets, EquippedPets)
+
+        for index, value in ipairs(ex) do
+            _Helper.UnEquipPet(value)
+        end
+
+
         for i = #petsToConfirm, 1, -1 do
-            local uuidToCheck = petsToConfirm[i]
-            if IsPetStillActiveInContainer(uuidToCheck) == true then
-                -- yes pet is active
+            local puuid = petsToConfirm[i]
+            if IsPetStillActiveInContainer(puuid) then
                 table.remove(petsToConfirm, i)
+            else
+                if #EquippedPets >= max_pets then
+                else
+                    _S.petsServiceRemote:FireServer("EquipPet", puuid, placementCF)
+                end
             end
         end
 
         if Varz.IS_GIFT then
             return false
         end
-
-        if #petsToConfirm > 0 then
-            -- if not all pets are on the map then wait
-            task.wait(0.1)
-            timeWaited = timeWaited + 0.1
+        if #petsToConfirm == 0 then
+            all_passed = true
+            break
         end
     end
-
-    -- STEP 3: Report the final result
-    if #petsToConfirm == 0 then
-        --print("✅ Success! All pets were confirmed as equipped.")
-        return true
-    else
-        -- failed to equip all pets, must restart flow and log a warning with time and
-        -- warn("⚠️ Timeout! Could not confirm equip for " .. #petsToConfirm .. " pets.")
-        for _, remainingUUID in ipairs(petsToConfirm) do
-            print(" - Still waiting on UUID: " .. remainingUUID)
-        end
-    end
-
-    return false
+    return all_passed
 end
 
 
@@ -21554,11 +21661,31 @@ end
 --print("Delete all farms plants");
 --DeleteAllPlantsFolder()
 --task.wait(0.2);
+_Helper.spider_count = 0
 _Helper.PetEffectsToName = function(_data)
     if _data == "SpiderWebFX" then
         return "Spider Webs"
     end
     return _data
+end
+
+_Helper.DeleteAllWebs = function()
+    local effectNames = { ["SpiderWebFX"] = true }
+
+    for _, child in ipairs(_S.Workspace:GetChildren()) do
+        if child:IsA("Folder") or child:IsA("Part") then
+            if effectNames[child.Name] then
+                child:Destroy()
+            end
+        end
+    end
+    for _, child in ipairs(_S.ReplicatedStorage.BenchmarkTest:GetChildren()) do
+        if child:IsA("Folder") or child:IsA("Part") then
+            if effectNames[child.Name] then
+                child:Destroy()
+            end
+        end
+    end
 end
 
 _Helper.CountEffectsByPets = function()
@@ -21593,6 +21720,10 @@ _Helper.CountEffectsByPets = function()
 
     for name, count in pairs(counts) do
         if count > 0 then
+            if name == "SpiderWebFX" then
+                _Helper.spider_count = count
+            end
+
             local emoji = name == "SpiderWebFX" and "🕸️" or "🩸"
             table.insert(lines,
                 string.format(
@@ -21950,6 +22081,17 @@ TaskManager.HatcherTeamOverrider = function()
         return "empty"
     end
 
+
+    _Helper.spider_count = 0
+
+    local s, a = pcall(function()
+        _Helper.DeleteAllWebs()
+    end)
+
+    if not s then
+        warn("error: ", a)
+    end
+
     -- Start process
     local inserted_pets = {}
     local free_slots = capacity - #main_team
@@ -21975,6 +22117,11 @@ TaskManager.HatcherTeamOverrider = function()
     while true do
         Varz.DisablePickPlace = false
         current_waited = current_waited + 1
+
+        if _Helper.spider_count and _Helper.spider_count >= 6 then
+            ui("♻️ Spider ready end.")
+            break
+        end
 
         -- cycle through icons
         local iconIndex = ((current_waited - 1) % #timeIcons) + 1
@@ -22793,7 +22940,7 @@ local function SessionLoop()
             -- Team 4 is big size pet team
             if FSettings.disable_team4 == false then
                 Varz.SetDisablePickPlaceFor(4)
-                if UnEquipAllPets() == false then
+                if UnEquipAllPets(true) == false then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
 
                     task.wait(3 + _Helper.GetSafePing())
@@ -25291,6 +25438,12 @@ Varz.ProUi = function()
     local gPetData = UIProTab:AddRightGroupbox("<b><font color='#266ED9'>Pet Data</font></b>",
         "book-search")
 
+
+
+
+
+
+
     -- ===============================================
     --- #PetData #petinfo
     -- ===============================================
@@ -25641,7 +25794,7 @@ Varz.ProUi = function()
     ----------------------------------------------
 
     -- ===============================================
-    --- Enhance options 🔥 #enhance
+    --- Enhance options 🔥 #enhance #enhancepro #pro
     -- ===============================================
 
     if gEnhancepro then
@@ -25692,7 +25845,7 @@ Varz.ProUi = function()
             end)
 
 
-            gEnhancepro:AddLabel({
+            local lbl_epro = gEnhancepro:AddLabel({
                 Text = "<b>💡 <font color='#8EEA8E'>Enhancer Pro</font></b>\n" ..
                     "<font color='#FFD65A'>Click start to start the system</font> " ..
                     "<font color='#FF6B6B'>Enhancer must be enabled for <font color='#FF0099'>Enhancer Pro</font> to work</font>",
@@ -25704,6 +25857,7 @@ Varz.ProUi = function()
                 DoesWrap = true
             })
 
+            UI_LABELS.lbl_enhancerpro1:SetVisible(false)
 
             local startenhancerpro = gEnhancepro:AddButton({
                 Text = "🟢 Start E-PRO",
@@ -25766,6 +25920,9 @@ Varz.ProUi = function()
                 end,
             })
 
+            startenhancerpro:SetVisible(false)
+            stopenhancerpro:SetVisible(false)
+            lbl_epro:SetVisible(false)
 
 
 
@@ -27870,7 +28027,7 @@ Varz.PetTeamsUi = function()
 
     local PetOverridesGroup = TeamsTab:AddRightGroupbox("Pet Overrides", "atom")
 
-    -- local gActivePets = TeamsTab:AddLeftGroupbox("♻️ Active Pets", "redo-2")
+    local gActivePets = TeamsTab:AddLeftGroupbox("🔋 <font color='#59FF00'>Sticky Pets</font>", "redo-2")
 
     local gMutationOverRides = TeamsTab:AddLeftGroupbox("🧬 Pet <font color='#FF0084'>Mutations</font>", "boxes")
 
@@ -27956,24 +28113,24 @@ Varz.PetTeamsUi = function()
 
 
     --======================================
-    -- Always active pets #active
+    -- Always active pets #active #sticky
     --======================================
     if gActivePets then
         -- These pets always stay on the farm
         gActivePets:AddLabel({
-            Text =
-            "⚠️ Any pets selected here will not be picked up by unequip system. Only works in hatching.",
+            Text = "⚠️ Pets selected here will be ignored by the unequip system. This only applies during hatching.",
             DoesWrap = true
         })
-
+        local max_sticky = 2
+        local max_cap = GetMaxPetCapacity()
         local GetText_ActivePets = function()
             local current_selected = #FSettings.team_bypass_alwaysactive
-            local max_allowed = GetMaxPetCapacity()
+            local max_allowed = max_sticky
 
             local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
 
             local txt = string.format(
-                '<font color="#00FF3C"><b>🟢Active Pets</b></font> ' ..
+                '<font color="#00FF3C"><b>Sticky Pets</b></font> ' ..
                 '<font color="#DDDDDD">[</font>' ..
                 '<font color="%s"><b>%d</b></font>' ..
                 '<font color="#FFFFFF">/</font>' ..
@@ -28010,7 +28167,7 @@ Varz.PetTeamsUi = function()
                     -- loop ends
                 end
 
-                local max_allowed = GetMaxPetCapacity()
+                local max_allowed = max_sticky
                 local count_vals = #tmp_tbl
                 if count_vals > max_allowed then
                     UI_Dropdown.dd_bypass_teamsactive:SetValue(ConvertUUIDToPetNamesPairs(FSettings
@@ -28024,18 +28181,41 @@ Varz.PetTeamsUi = function()
             end
         })
 
-
-        local togglegActivePets = gActivePets:AddToggle("togglegActivePets", {
+        local togglegActivePets
+        togglegActivePets = gActivePets:AddToggle("togglegStickyPets", {
             Text =
-            "Enable Active Pets",
+            "Enable Sticky Pets",
             Default = FSettings.team_bypass_enabled,
             Tooltip =
             "When enabled pets selected here are ignored by unequip system.",
+            DisabledTooltip = "Premium feature!",
             Callback = function(Value)
+                if Value then
+                    if #_Helper.GetSealTeam() >= max_cap then
+                        Library:Notify(
+                            "❌ Seal team has no room! Please remove amount (selected in your sticky pets, if you selected 2, remove 2) of pets from your Seal team!",
+                            5)
+                        togglegActivePets:SetValue(false)
+                        return
+                    end
+
+                    if #_Helper.GetKoiTeam() >= max_cap then
+                        Library:Notify(
+                            "❌ Koi team has no room! Please  amount (selected in your sticky pets, if you selected 2, remove 2) pets from your Koi team!",
+                            5)
+                        togglegActivePets:SetValue(false)
+                        return
+                    end
+                end
+
                 FSettings.team_bypass_enabled = Value
                 SaveData()
             end
         })
+
+        if not Varz.GetCheckIfPro() then
+            togglegActivePets:SetDisabled(true)
+        end
     end
 
 
@@ -37664,10 +37844,24 @@ _Helper.MakeActivePetUi = function()
 
         local level_display = string.format('<font color="%s">Lv.%d</font>', level_colour, Level)
 
+        local sticky_pets = {}
+        if _Helper.IsByPassPetsTeamEnabled() then
+            for index, value in ipairs(FSettings.team_bypass_alwaysactive) do
+                sticky_pets[value] = true
+            end
+        end
+
+        local color_kg = "#E800FF"
+
+        if sticky_pets[uuid] then
+            color_kg = "#00F51E"
+        end
+
         local pet_info_string = string.format(
-            '<stroke th="1" joins="round" sizing="fixed" color="#000000"><font color="#E800FF">[%.2fKG]</font></stroke> ' ..
+            '<stroke th="1" joins="round" sizing="fixed" color="#000000"><font color="%s">[%.2fKG]</font></stroke> ' ..
             '<stroke th="0.9" joins="round" sizing="fixed" color="#000000">%s <font color="#FFFFFF">%s</font> ' ..
             '%s</stroke>',
+            color_kg,
             real_weight,
             level_display,
             _Helper.ShortNameNoDots(PetType, 9),
@@ -37711,6 +37905,7 @@ _Helper.MakeActivePetUi = function()
             end
         else
             -- Pet is active (Normal)
+
             final_string = cache_entry.info
             should_show = true
             -- Apply gray if logic dictates (copied from your logic, though usually active is not gray)
@@ -38097,7 +38292,27 @@ Varz.GetFruitToFavAbuseNew = function()
 
     return ls
 end
+Varz.cache_t = {}
+Varz.GetAllToolsBg = function()
+    local _name = "Sprinkler"
+    for index, tool in ipairs(_S.Backpack:GetChildren()) do
+        local toolname = tool.Name
+        if string.find(toolname, _name, 1, true) then
+            table.insert(Varz.cache_t, tool)
+            continue
+        end
+        -- local Seed = tool:GetAttribute("Seed")
+        -- if Seed then continue end
+        -- local PetType = tool:GetAttribute("PetType")
+        -- if PetType then continue end
+        -- local h = tool:GetAttribute("PetType")
+        -- if h then continue end
+        -- table.insert(Varz.cache_t, tool)
+    end
+    return Varz.cache_t
+end
 
+-- #gear
 Varz.GetPetEnhanceTargets = function()
     local ls = {}
 
@@ -38105,16 +38320,10 @@ Varz.GetPetEnhanceTargets = function()
         return ls
     end
 
-    -- Get Random gear
-    local tool1 = InventoryManager.GetToolUsingName("Night Staff")
-    local tool2 = InventoryManager.GetToolUsingName("Star Caller")
-
-    if tool1 then
-        -- table.insert(ls, tool1)
-    end
-
-    if tool2 then
-        --   table.insert(ls, tool2)
+    if #Varz.cache_t > 0 then
+        return Varz.cache_t
+    else
+        return Varz.GetAllToolsBg()
     end
 
     if #ls > 0 then
@@ -38167,7 +38376,7 @@ end
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
         -- local delay = math.random(0.5, 0.5)
-        task.wait(0.4)
+        task.wait(0.3)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
@@ -38211,11 +38420,15 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             -- local targets = Varz.GetPetEnhanceTargets()
             -- for index, value in ipairs(targets) do
             --     -- unequipTools()
-
-            --     EquipToolOnChar(value)
+            --     if Varz.lock_enhance == true then
+            --         break
+            --     end
+            --     task.wait(0.2)
+            --     -- MakeFruitsFavSingle(value)
+            --     Varz.EquipTool(value)
             -- end
-            -- _Helper.EnhanceFavFaster()
-            MakeFruitsFav(Varz.GetPetEnhanceTargets())
+            _Helper.EnhanceFavFaster()
+            -- MakeFruitsFav(Varz.GetPetEnhanceTargets())
         end)
     end
 end)
