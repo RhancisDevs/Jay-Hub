@@ -325,13 +325,17 @@ local function findOwnedBooth()
     local name1 = "@" .. LocalPlayer.Name .. "'s Booth"
     local name2 = "@" .. (LocalPlayer.DisplayName or "") .. "'s Booth"
 
-    for _, booth in ipairs(booths:GetChildren()) do
-        for _, d in ipairs(booth:GetDescendants()) do
-            if d:IsA("TextLabel") and (d.Text == name1 or d.Text == name2) then
-                local sign = d:FindFirstAncestor("Sign")
-                if sign then
-                    return booth
+    for _, descendant in ipairs(booths:GetDescendants()) do
+        if descendant.Name == "Sign" then
+            local gui = descendant:FindFirstChild("SurfaceGui")
+            local label = gui and gui:FindFirstChild("TextLabel")
+
+            if label and (label.Text == name1 or label.Text == name2) then
+                local booth = descendant
+                while booth and booth.Parent ~= booths do
+                    booth = booth.Parent
                 end
+                return booth
             end
         end
     end
@@ -1171,7 +1175,6 @@ toggle_start:OnChanged(function(active)
         })
     end
 end)
-
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
