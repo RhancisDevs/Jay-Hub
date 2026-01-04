@@ -781,7 +781,7 @@ local function stopChatLoop()
 end
 
 local Window = Fluent:CreateWindow({
-    Title = "Jay Hub | Auto Lako | 1.5.6",
+    Title = "Jay Hub | Auto Lako | 1.5.9",
     SubTitle = "by Jay Devs",
     Icon = "code",
     TabWidth = 180,
@@ -1038,12 +1038,16 @@ toggle_start:OnChanged(function(active)
         automationRunning = true
 
         automationThread = task.spawn(function()
-            local booth
+            local booth = nil
+            local verified = false
+            local startTick = tick()
+
             booth = findOwnedBooth()
+
             if booth then
                 safeNotify({
                     Title = "Jay Hub - Auto Bot",
-                    Content = "Already claim a booth. Teleporting...",
+                    Content = "Already claimed a booth!",
                     Duration = 4
                 })
             else
@@ -1053,8 +1057,8 @@ toggle_start:OnChanged(function(active)
                     Duration = 4
                 })
 
-                booth = findUnclaimedBooth()
-                if not booth then
+                local unclaimed = findUnclaimedBooth()
+                if not unclaimed then
                     safeNotify({
                         Title = "Jay Hub - Auto Bot",
                         Content = "No unclaimed booths found.",
@@ -1066,39 +1070,37 @@ toggle_start:OnChanged(function(active)
                 end
 
                 runEquipBoothSkin()
+                pcall(function()
+                    claimBooth(unclaimed)
+                end)
+            end
 
-                local ok = claimBooth(booth)
-                if not ok then
-                    safeNotify({
-                        Title = "Jay Hub - Auto Bot",
-                        Content = "Claim failed.",
-                        Duration = 6
-                    })
-                    automationRunning = false
-                    toggle_start:Set(false)
-                    return
+            while tick() - startTick <= 15 do
+                if not automationRunning then return end
+
+                local owned = findOwnedBooth()
+                if owned then
+                    local cf = boothCFrameFromModel(owned)
+                    if cf then
+                        moveToCFrame(cf)
+                        task.wait(0.5)
+
+                        local dist = (hrp.Position - cf.Position).Magnitude
+                        if dist <= 10 then
+                            booth = owned
+                            verified = true
+                            break
+                        end
+                    end
                 end
+
+                task.wait(0.5)
             end
 
-            task.wait(1)
-
-            local cf = boothCFrameFromModel(booth)
-            if not cf then
+            if not verified then
                 safeNotify({
                     Title = "Jay Hub - Auto Bot",
-                    Content = "Cannot determine booth position.",
-                    Duration = 6
-                })
-                automationRunning = false
-                toggle_start:Set(false)
-                return
-            end
-
-            local moved = moveToCFrame(cf)
-            if not moved then
-                safeNotify({
-                    Title = "Jay Hub - Auto Bot",
-                    Content = "Failed to move.",
+                    Content = "Failed to secure booth or teleport.",
                     Duration = 6
                 })
                 automationRunning = false
@@ -1108,7 +1110,7 @@ toggle_start:OnChanged(function(active)
 
             safeNotify({
                 Title = "Jay Hub - Auto Bot",
-                Content = "Arrived at booth. Starting lako",
+                Content = "Booth secured. Starting Auto Lako.",
                 Duration = 4
             })
 
@@ -1152,7 +1154,6 @@ toggle_start:OnChanged(function(active)
                         Duration = 4
                     })
                 end
-            else
             end
 
             automationRunning = false
@@ -1175,7 +1176,7 @@ toggle_start:OnChanged(function(active)
         })
     end
 end)
-
+	
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
