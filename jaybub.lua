@@ -23,6 +23,7 @@ _S.TeleportService               = game:GetService("TeleportService")
 _S.Players                       = game:GetService("Players")
 _S.RunService                    = game:GetService("RunService")
 _S.MarketplaceService            = game:GetService("MarketplaceService")
+_S.Modules                       = _S.ReplicatedStorage:WaitForChild("Modules")
 
 -- Local player and character
 _S.LocalPlayer                   = _S.Players.LocalPlayer
@@ -96,7 +97,20 @@ end
 
 _S.DataService = _S.safeRequire(_S.ReplicatedStorage.Modules.DataService)
 print("Loading m2")
-_S.ActivePetsService = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.ActivePetsService)
+_S.mod_load = {
+    LoadAllModules = function()
+        local moduleFolder = _S.Modules
+        local PetServices = moduleFolder:FindFirstChild("PetServices")
+        if PetServices then
+            -- All PetServices stuff
+            local ActivePetsService = PetServices:FindFirstChild("ActivePetsService")
+            if ActivePetsService then
+                _S.ActivePetsService = ActivePetsService
+            end
+        end
+    end
+}
+_S.mod_load.LoadAllModules()
 print("Loading m3")
 _S.SeedData                            = _S.safeRequire(_S.ReplicatedStorage.Data.SeedData)
 _S.PetUtilities                        = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetUtilities)
@@ -114,10 +128,10 @@ _S.TravelingMerchantData               = _S.safeRequire(_S.ReplicatedStorage.Dat
     .TravelingMerchantData)
 --_S.PetsService = require(_S.ReplicatedStorage.Modules.PetServices.PetsService)
 print("Loading m4")
-_S.SeedPackData     = _S.safeRequire(_S.ReplicatedStorage.Data.SeedPackData)
-_S.VariantsEnums    = _S.safeRequire(_S.ReplicatedStorage.Data.EnumRegistry.VariantsEnums)
-_S.PetGiftingModule = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetGiftingService)
-
+_S.SeedPackData        = _S.safeRequire(_S.ReplicatedStorage.Data.SeedPackData)
+_S.VariantsEnums       = _S.safeRequire(_S.ReplicatedStorage.Data.EnumRegistry.VariantsEnums)
+_S.PetGiftingModule    = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetGiftingService)
+_S.CalculatePlantValue = _S.safeRequire(_S.ReplicatedStorage.Modules.CalculatePlantValue)
 
 print("Loading m5")
 function Addcantsleep()
@@ -166,7 +180,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.33.7"
+_S.CurentV = "v1.34.9"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -368,6 +382,9 @@ local UI_Dropdown = {
     dropdown_claimpet_team = nil,
 
     customteams_team1 = nil,
+    customteams_team2 = nil,
+    customteams_team3 = nil,
+    customteams_team4 = nil,
     dd_reduction_teamfirst = nil,
     dd_reduction_teamafter = nil,
     dd_enhance_targets = nil,
@@ -492,6 +509,7 @@ local FOtherSettings = {
     newyear_dailyclaim                         = false,
     is_fall_questline_auto                     = false,
     is_fall_questline_reroll                   = false,
+    is_fall_questline_spin                     = false,
     is_playerstats_running                     = true,
     hatch_rare_withbigsizetm                   = false,
     web_api_key                                = "",
@@ -590,16 +608,25 @@ local FSessionDx = {
     },
     timerecording = {},
     oldtest = {},
+    fruitesp = {
+        show_mutations = false,
+        show_esp = false,
+        enable_esp = false,
+        plants_list = {},
+    },
 }
 
 -- Save and other settings
 local FSettings = {
+    max_web_count = 7,
     giftpets = {
         allow_pet_list = {},
         allow_mutation_list = {},
         custom_pets_list = {},
         allow_player_targets = {},
         enabled_gift_pets = false,
+        enabled_auto_trade = false,
+        trade_auto_accept = false,
         allow_fav = false,
         min_age = 1,
         max_age = 2,
@@ -608,6 +635,7 @@ local FSettings = {
         custom_mode = false,
         delay_between_gift = 9.9,
     },
+    sellallunfav = true,
     remove_farms = false,
     is_pc_mode = false,
     fast_ascen = false,
@@ -623,6 +651,24 @@ local FSettings = {
     fav_fruit_enhance_sell = false,
     is_running_custom_teams = false,
     customteams_team1 = {},
+    customteams_team2 = {},
+    customteams_team3 = {},
+    customteams_team4 = {},
+    customteams_boost_teamunits = {},
+    customteams_boosts = {},
+    customteams_boosts_enabled = {},
+
+    customteams_team1_delay = 30,
+
+    customteams_team2_enabled = false,
+    customteams_team2_delay = 30,
+
+    customteams_team3_enabled = false,
+    customteams_team3_delay = 30,
+
+    customteams_team4_enabled = false,
+    customteams_team4_delay = 30,
+
     pause_systems = false,
     disable_event_notify_button = false,
     auto_claim_season_points = false,
@@ -844,6 +890,21 @@ local FSettings = {
         -- Premium Christmas Egg | Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
         -- Premium Winter Egg
         -- Premium New Year's Egg
+        ["Rainbow Premium Carnival Egg"] = {
+            ["Rainbow Show Pony"] = false,
+            ["Rainbow Performer Seal"] = false,
+            ["Rainbow Bear on Bike"] = false,
+            ["Rainbow Unicycle Monkey"] = false,
+            ["Rainbow Carnival Elephant"] = false
+        },
+
+        ["Carnival Egg"] = {
+            ["Bear on Bike"] = true,
+            ["Unicycle Monkey"] = true,
+            ["Carnival Elephant"] = false,
+            ["Show Pony"] = true,
+            ["Performer Seal"] = true
+        },
 
         --Rainbow Premium New Year's Egg
         ["Rainbow Premium New Year's Egg"] = {
@@ -1061,6 +1122,9 @@ local FSettings = {
     },
 
     eggs_to_place_array = {
+        ["Carnival Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 180, 60) },                    -- Carnival gold / orange
+        ["Premium Carnival Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(255, 70, 120) },            -- Premium pink/red
+        ["Rainbow Premium Carnival Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(120, 180, 255) },   -- Rainbow sky blue
         ["New Year's Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 215, 100) },                 -- Festive gold
         ["Premium New Year's Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(255, 120, 120) },         -- Premium red
         ["Rainbow Premium New Year's Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(160, 120, 255) }, -- Premium rainbow purple
@@ -1293,17 +1357,11 @@ end
 
 
 _Helper.IsPrivateServer = function()
-    -- Check 1: Standard VIP or Reserved Servers always have a PrivateServerId
-    if game.PrivateServerId ~= "" and game.PrivateServerId ~= nil then
-        return true
+    if game.PrivateServerId == "" then
+        return false -- not a private server
+    else
+        return true  -- private server
     end
-
-    -- Check 2: Fallback for older VIP servers (OwnerID is not 0)
-    if game.PrivateServerOwnerId ~= 0 and game.PrivateServerOwnerId ~= nil then
-        return true
-    end
-
-    return false
 end
 
 
@@ -1462,6 +1520,37 @@ Varz.GetMinsToSecs = function(_mins)
 end
 
 
+
+-- #format
+_Helper.formatShecklesNumber = function(n)
+    n = tonumber(n)
+    if not n then return "0" end
+
+    local suffixes = { "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc" }
+
+    local absVal = math.abs(n)
+    if absVal < 1000 then
+        return string.format("%.2f", n) -- or just tostring(math.floor(n)) for integers
+    end
+
+    local log10 = math.log10(absVal)
+
+    local index = math.floor(log10 / 3)
+
+    if index > #suffixes then
+        return string.format("%.2e", n)
+    end
+
+    local divisor = 10 ^ (index * 3)
+    local scaled = n / divisor
+
+    -- Return formatted string (%.2f means 2 decimal places)
+    return string.format("%.2f%s", scaled, suffixes[index])
+end
+
+
+
+
 _Helper.GetProgressLeft = function(progressString)
     if not progressString or type(progressString) ~= "string" then
         return 0, 0, 0
@@ -1585,17 +1674,202 @@ end
 
 -- ==== Load pet list
 _Helper.AllPetPassiveData = {}
+_Helper.PetDataAll = {}
 _Helper.GetAllPetDataPassives = function()
     for key, value in pairs(_S.PetList) do
         local pv = value.Passives or {}
         _Helper.AllPetPassiveData[key] = pv
+        _Helper.PetDataAll[key] = value
     end
 end
 _Helper.GetAllPetDataPassives()
 
+_Helper.GetPetPassivesTable = function(_name)
+    return _Helper.AllPetPassiveData[_name]
+end
+
+_Helper.GetPetDataInfo = function(_petname)
+    return _Helper.PetDataAll[_petname]
+end
+
+-- #egg #eggnames
 _Helper.AllEggNamesList = {}
 _Helper.PetToEggNames = {}
 _Helper.FakeEgg = {}
+_Helper.EggNameToPet = {}
+_Helper.PassiveBio = {}
+
+
+
+
+
+
+_Helper.CompilePassiveBiox = function(petName, data, petLevel)
+    if not data or not data.Description then return "No description available." end
+
+    -- 1. DEFINE UTILITY FUNCTIONS FOR FORMATTING
+    local function FormatColonTime(seconds)
+        if not seconds then return "0:00" end
+        local m = math.floor(seconds / 60)
+        local s = math.floor(seconds % 60)
+        return string.format("%d:%02d", m, s)
+    end
+
+    local function Round(num, numDecimalPlaces)
+        local mult = 10 ^ (numDecimalPlaces or 2)
+        return math.floor(num * mult + 0.5) / mult
+    end
+
+    local desc = data.Description
+    local states = data.States or {}
+    local currentLevel = petLevel or 1 -- Default to Level 1 stats
+
+    -- Replace placeholders like <Cooldown> or <Chance>
+    local processedDesc = desc:gsub("<([%w_]+)>", function(statKey)
+        local stateData = states[statKey]
+
+        -- If state doesn't exist, keep the tag (e.g. <Unknown>)
+        if not stateData then return "<" .. statKey .. ">" end
+
+        -- Calculate Dynamic Value: Base + (Scale * Level)
+        -- Note: Adjust (currentLevel) to (currentLevel - 1) if stats start strictly at Base
+        local val = (stateData.Base or 0) + ((stateData.Scale or 0) * currentLevel)
+
+        -- Apply Limits (Min/Max)
+        -- If scaling is positive, Max is the ceiling.
+        if stateData.Scale and stateData.Scale > 0 and stateData.Max then
+            val = math.min(val, stateData.Max)
+        end
+        -- If scaling is negative (cooldown reduction), Min is the floor.
+        if stateData.Scale and stateData.Scale < 0 and stateData.Min then
+            val = math.max(val, stateData.Min)
+        end
+
+        -- Apply Formatters
+        if stateData.Formatter == "ColonTime" then
+            return FormatColonTime(val)
+        elseif stateData.Formatter == "Percentage" then
+            -- Usually 0.5 becomes 50%
+            return Round(val * 100, 1)
+        elseif stateData.Formatter == "NoPrecision" then
+            return math.floor(val)
+        else
+            -- Standard number formatting
+            return Round(val, 2)
+        end
+    end)
+
+    return processedDesc
+end
+
+_Helper.CompilePassiveBio = function(petName, data, petLevel)
+    if not data or not data.Description then return "No description available." end
+
+    -- 1. DEFINE UTILITY FUNCTIONS
+    local function Round(num, numDecimalPlaces)
+        local mult = 10 ^ (numDecimalPlaces or 2)
+        return math.floor(num * mult + 0.5) / mult
+    end
+
+    local function FormatColonTime(seconds)
+        if not seconds then return "0:00" end
+        local absSeconds = math.abs(seconds)
+        local m = math.floor(absSeconds / 60)
+        local s = math.floor(absSeconds % 60)
+        local sign = seconds < 0 and "-" or ""
+        return string.format("%s%d:%02d", sign, m, s)
+    end
+
+    local function FormatValueByType(val, formatter)
+        if not val then return "nil" end
+        if formatter == "ColonTime" then
+            return FormatColonTime(val)
+        elseif formatter == "Percentage" then
+            return Round(val * 100, 1) .. "%"
+        elseif formatter == "NoPrecision" then
+            return math.floor(val)
+        else
+            return Round(val, 2)
+        end
+    end
+
+    local desc = data.Description
+    local states = data.States or {}
+    local currentLevel = petLevel or 1
+
+    -- 2. GENERATE MAIN BIO
+    local processedDesc = desc:gsub("<([%w_]+)>", function(statKey)
+        local stateData = states[statKey]
+        if not stateData then return "<" .. statKey .. ">" end
+
+        -- Calculate Dynamic Value
+        local val = (stateData.Base or 0) + ((stateData.Scale or 0) * currentLevel)
+
+        -- Apply Limits (Min/Max) for the main text
+        if stateData.Scale and stateData.Scale > 0 and stateData.Max then
+            val = math.min(val, stateData.Max)
+        end
+        if stateData.Scale and stateData.Scale < 0 and stateData.Min then
+            val = math.max(val, stateData.Min)
+        end
+
+        -- Return formatted value for the bio text
+        local finalVal = FormatValueByType(val, stateData.Formatter)
+        if stateData.Formatter == "Percentage" then
+            return string.sub(finalVal, 1, -2)
+        end
+        return finalVal
+    end)
+
+    -- 3. GENERATE GEEK STUFF (Technical Stats)
+    local geekLines = {}
+    local keys = {}
+    for k in pairs(states) do table.insert(keys, k) end
+    table.sort(keys)
+
+    for _, statKey in ipairs(keys) do
+        local statData = states[statKey]
+        local parts = {}
+
+        if statData.Base then table.insert(parts, "Base: " .. FormatValueByType(statData.Base, statData.Formatter)) end
+        if statData.Scale and statData.Scale ~= 0 then
+            table.insert(parts,
+                "Scale: " .. FormatValueByType(statData.Scale, statData.Formatter))
+        end
+        if statData.Min then table.insert(parts, "Min: " .. FormatValueByType(statData.Min, statData.Formatter)) end
+        if statData.Max then table.insert(parts, "Max: " .. FormatValueByType(statData.Max, statData.Formatter)) end
+
+        if #parts > 0 then
+            table.insert(geekLines, string.format("<b>%s</b>: [%s]", statKey, table.concat(parts, " | ")))
+        end
+    end
+
+    -- 4. COMBINE EVERYTHING
+    -- Header (Pet Name)
+    local finalString = string.format("<b><font size='16'>%s</font></b>\n%s", petName, processedDesc)
+
+    -- Footer (Geek Stats)
+    if #geekLines > 0 then
+        local geekBlock = table.concat(geekLines, "\n")
+        finalString = finalString ..
+            "\n\n<font color='#AAAAAA' size='14'>-- Technical Stats --\n" .. geekBlock .. "</font>"
+    end
+
+    return finalString
+end
+
+
+
+_Helper.GetPassivePetData = function()
+    for key, val in pairs(_S.PetRegistry.PassiveRegistry) do
+        -- Compile the bio for Level 1 (or change 1 to any specific level)
+        local cleanBio = _Helper.CompilePassiveBio(key, val, 1)
+        _Helper.PassiveBio[key] = cleanBio
+    end
+end
+
+_Helper.GetPassivePetData()
+
 _Helper.GetAllEggNames = function()
     for eggName, value in pairs(_S.PetRegistry.PetEggs) do
         table.insert(_Helper.AllEggNamesList, eggName)
@@ -1613,9 +1887,23 @@ _Helper.GetAllEggNames = function()
                 continue
             end
             if Items then
+                local dx1 = {}
                 for pname, otherdata in pairs(Items) do
                     _Helper.PetToEggNames[pname] = eggName
+                    local ItemOdd = otherdata.ItemOdd or 0
+                    local pet = _Helper.GetPetDataInfo(pname)
+                    local peticon = ""
+                    if pet then
+                        peticon = pet.Icon
+                    end
+                    local d = {
+                        petname = pname,
+                        odds = ItemOdd,
+                        icon = peticon
+                    }
+                    table.insert(dx1, d)
                 end
+                _Helper.EggNameToPet[eggName] = dx1
             end
         end
     end
@@ -1635,14 +1923,112 @@ _Helper.GetEggNameUsingPetName = function(_name)
     return "Unknown"
 end
 
+-- #allpets #egg
+_Helper.GetAllPetsUsingEggNameUi = function(_eggname)
+    return _Helper.EggNameToPet[_eggname]
+end
+
+-- #passive #petdata
+_Helper.GetPassiveInfo = function(_name)
+    local ps = ""
+    local ps_d = _Helper.GetPetPassivesTable(_name)
+    if not ps_d then return "" end
+
+    local ps = "\n"
+    for index, value in ipairs(ps_d) do
+        local dx = _Helper.PassiveBio[value]
+        ps = "" .. ps .. dx .. "\n\n"
+    end
+
+    return ps
+end
+
+Varz.CopyEggDataString = function(eggName)
+    -- 1. GET DATA
+    local egg_pets = _Helper.GetAllPetsUsingEggNameUi(eggName)
+
+    if not egg_pets or #egg_pets == 0 then
+        return print("No data to copy for " .. eggName)
+    end
+
+    -- 2. BUILD THE STRING
+    local dataString = '["' .. eggName .. '"] = {'
+    local entries = {}
+    local icon_lines = {}
+
+    for _, item in ipairs(egg_pets) do
+        table.insert(entries, '["' .. item.petname .. '"] = true')
+        local rawIcon = item.icon or ""
+        local id = string.match(rawIcon, "%d+") or "0"
+        table.insert(icon_lines, item.petname .. ", " .. id)
+    end
+
+    -- 3. COMBINE EVERYTHING
+    dataString = dataString .. "\n    " .. table.concat(entries, ", ") .. "\n},"
+
+    -- B. CLEAN THE NAME (Update)
+    -- 1. Lowercase it ("AC's Egg" -> "ac's egg")
+    local clean = string.lower(eggName)
+    -- 2. Remove anything that IS NOT a letter, number, or space (Removes ' )
+    clean = clean:gsub("[^%w%s]", "")
+    -- 3. Replace spaces with underscores ("acs egg" -> "acs_egg")
+    clean = clean:gsub("%s+", "_")
+
+    dataString = dataString .. "\n\n" .. clean .. "\n" .. table.concat(icon_lines, "\n")
+
+    -- 4. COPY
+    if setclipboard then
+        setclipboard(dataString)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Data Copied!",
+            Text = "Formatted data for " .. eggName .. " copied.",
+            Duration = 3,
+        })
+    else
+        print(dataString)
+    end
+end
+
+-- #petdata #pet
+Varz.GetEggDetails = function(eggName)
+    -- 1. GET DATA
+    local egg_pets = _Helper.GetAllPetsUsingEggNameUi(eggName)
+
+    if not egg_pets or #egg_pets == 0 then
+        return "No data for this egg."
+    end
+
+    -- 2. HELPER (For Colors)
+    local function colorText(text, color)
+        return '<font color="' .. color .. '">' .. text .. '</font>'
+    end
+
+    -- 3. BUILD THE VIEW
+    local lines = {}
+
+    -- Header: Egg Name (Gold & Bold)
+    local title = "🥚 " .. string.upper(eggName)
+    table.insert(lines, "<b>" .. colorText(title, "#FFD700") .. "</b>")
+
+    -- Divider (Dark Grey)
+    table.insert(lines, colorText("----------------", "#444444"))
+
+    -- Body: The Pet List (White, Bullet Points)
+    for _, item in ipairs(egg_pets) do
+        -- Add a bullet point for each pet on a new line
+        local odds = item.odds
+        local petName = item.petname
+        local dname = string.format("%s %s%%", petName, odds)
+        table.insert(lines, colorText("• " .. dname, "#FFFFFF"))
+    end
+
+    -- 4. RETURN
+    return table.concat(lines, "\n")
+end
 
 -- #petdata #pet
 Varz.GetPetDetails = function(_name)
-    -- 1. SETUP & CHECKS
-    local petList = _S.PetRegistry and _S.PetRegistry.PetList
-    if not petList then return "Error: PetRegistry not found." end
-
-    local pet = petList[_name]
+    local pet = _Helper.GetPetDataInfo(_name)
 
     -- Get the Egg Name (Handle nil if the helper or key doesn't exist)
     local eggname = _Helper.GetEggNameUsingPetName(_name)
@@ -1719,6 +2105,9 @@ Varz.GetPetDetails = function(_name)
     if pet.DefaultHunger then
         table.insert(lines, colorText("• Max Hunger: ", C_LABEL) .. colorText(pet.DefaultHunger, C_VAL))
     end
+
+
+    table.insert(lines, _Helper.GetPassiveInfo(_name))
 
     -- 5. RETURN
     return table.concat(lines, "\n")
@@ -2263,6 +2652,7 @@ end
 --======= END Shops
 
 local list_mutations = {}
+Varz.AllFruitMutations = {}
 
 local function GetKeyMutListUsingDir(ls)
     local _data = {}
@@ -2295,6 +2685,7 @@ Varz.GetAllMutations = function()
         --FOtherSettings.mutation_whitelist[mutationName] = false
         --FOtherSettings.mutation_blacklist[mutationName] = false
         list_mutations[mutationName] = false
+        Varz.AllFruitMutations[mutationName] = true
     end
 
     -- list_mutations["Sliver"] = false
@@ -2605,9 +2996,14 @@ end
 --  these are pets. its only used to detect if we found and rare pet.
 
 Varz.rare_pets = {
+    ["Carnival Elephant"] = true,
+    ["Rainbow Show Pony"] = true,
+    ["Rainbow Performer Seal"] = true,
+    ["Rainbow Bear on Bike"] = true,
+    ["Rainbow Unicycle Monkey"] = true,
+    ["Rainbow Carnival Elephant"] = true,
 
     ["New Year's Dragon"] = true,
-
     ["Rainbow New Year's Bird"] = true,
     ["Rainbow Firework Sprite"] = true,
     ["Rainbow Celebration Puppy"] = true,
@@ -5374,8 +5770,8 @@ InventoryManager.GetEggUsingNameNew = function(_name)
     -- First check equipped tool (more accurate)
     local equipped = _S.Character and _S.Character:FindFirstChildOfClass("Tool")
     if equipped and InventoryManager.IsEggTool(equipped) then
-        local eggname = equipped:GetAttribute("h")
-        if eggname and string.find(eggname, _name, 1, true) then
+        local eggname = equipped:GetAttribute("h") or "-"
+        if eggname == _name then
             return equipped
         end
     end
@@ -5383,9 +5779,9 @@ InventoryManager.GetEggUsingNameNew = function(_name)
     -- Then scan backpack
     for _, item in ipairs(_S.Backpack:GetChildren()) do
         if InventoryManager.IsEggTool(item) then
-            local eggname = item:GetAttribute("h")
+            local eggname = item:GetAttribute("h") or "-"
 
-            if eggname and string.find(eggname, _name, 1, true) then
+            if eggname == _name then
                 return item
             end
         end
@@ -7051,7 +7447,7 @@ _FruitCollectorMachine.PlaceSeedSmart = function(_seedName, _amount)
     -- Save the current CFrame
     local originalCFrame = hrp.CFrame
     Varz.IS_SEEDING = true
-    task.wait(2.5)
+    task.wait(0.3)
 
     local anyplaced = false
     if InventoryManager.IsToolHeldAny() then
@@ -7074,7 +7470,7 @@ _FruitCollectorMachine.PlaceSeedSmart = function(_seedName, _amount)
             break
         end
 
-        task.wait(0.8)
+        task.wait(0.1)
         if Varz.IS_HATCHING then
             break
         end
@@ -7264,6 +7660,34 @@ _FruitCollectorMachine.GetFruitVariant = function(_fruit)
 
     return Variant
 end
+
+
+_FruitCollectorMachine.GetFruitWeight = function(_fruit)
+    local successv, varresult = pcall(function()
+        return _fruit.Weight.Value
+    end)
+
+    local vv = 0
+    if successv then
+        vv = varresult
+    end
+
+    return vv
+end
+
+_FruitCollectorMachine.GetFruitItemSeed = function(_fruit)
+    local successv, varresult = pcall(function()
+        return _fruit.Item_Seed.Value
+    end)
+
+    local vv = 0
+    if successv then
+        vv = varresult
+    end
+
+    return vv
+end
+
 
 _FruitCollectorMachine.IsFruitReadyToCollect = function(_fruit, bypassready)
     -- Check to see if this fruit is ready for collection or is it still growing.
@@ -9132,6 +9556,74 @@ ShovelManager.Plant = {
     end,
 }
 
+
+-- #sell
+Varz.SellFruitsToVendor = function()
+    -- teleport
+    local hrp = _S.Character:WaitForChild("HumanoidRootPart")
+    -- Save the current CFrame
+    local originalCFrame = hrp.CFrame
+    local targetCFrame = _Helper.Vector3ToCFrame(Varz.TeleportLocations.GetLocationSellShopV3())
+
+    TeleportPlayerToCFrame(targetCFrame)
+    _Helper.SafeFruitsProccess()
+    task.wait(2)
+    _S.Sell_Inventory:FireServer()
+    -- use sell list here
+    task.wait(3)
+    -- tp back
+    TeleportPlayerToCFrame(originalCFrame)
+    --print("Unfav")
+    Varz.backpack_full = false
+    task.wait(0.4)
+end
+
+Varz.SellFruitsToVendorWithRangeCheck = function()
+    local hrp = _S.Character:FindFirstChild("HumanoidRootPart")
+    print("Check1")
+    if not hrp then return end
+
+    print("check2")
+
+    -- 1. Get Shop Location
+    local shopPos = Varz.TeleportLocations.GetLocationSellShopV3()
+
+    -- 2. Check Distance (Magnitude)
+    local distance = (hrp.Position - shopPos).Magnitude
+    local maxRange = 9 -- Adjust this range if needed
+
+    if distance <= maxRange then
+        print("already near")
+        -- == ALREADY AT SHOP ==
+        -- Just sell, no teleporting needed
+        -- _Helper.SafeFruitsProccess()
+        --task.wait(0.5)
+        _S.Sell_Inventory:FireServer()
+        _S.Sell_Inventory:FireServer()
+        -- Reset variable
+        Varz.backpack_full = false
+        task.wait(0.2)
+    else
+        -- == TOO FAR AWAY ==
+        -- Teleport logic
+        print("too far")
+        local originalCFrame = hrp.CFrame
+        local targetCFrame = _Helper.Vector3ToCFrame(shopPos)
+
+        TeleportPlayerToCFrame(targetCFrame)
+        -- _Helper.SafeFruitsProccess()
+        task.wait(1)
+        _S.Sell_Inventory:FireServer()
+        _S.Sell_Inventory:FireServer()
+        task.wait(1)
+        -- Teleport back
+        TeleportPlayerToCFrame(originalCFrame)
+        Varz.backpack_full = false
+        task.wait(0.4)
+    end
+
+    print("Sold")
+end
 
 
 
@@ -11315,7 +11807,6 @@ PetMutation.mut = {
         return tbl_pets
     end,
 
-
     GetPetsRequireMaxLevelX = function()
         local tbl_pets = {}
         local all_passed = true
@@ -12166,7 +12657,7 @@ end
 -- CosmeticCrate #
 
 
-CraftManager.SetRecipeUsingName = function(benchName)
+CraftManager.SetRecipeUsingName = function(benchName, noDelay)
     local rlist = FSettings.allcraft.receipe_data[benchName]
     if not rlist then return false end
     for _name, val in pairs(rlist) do
@@ -12286,7 +12777,10 @@ CraftManager.SetRecipeUsingName = function(benchName)
         if #required_items > 0 then
             --warn("We have items start craft")
             CraftManager.CreateRecipeWorkbenchUsingName(benchName, _name)
-            task.wait(1.5)
+            if not noDelay then
+                task.wait(1.5)
+            end
+
 
             for index, xdb in ipairs(required_items) do
                 local xItemType = xdb.ItemType
@@ -12299,7 +12793,9 @@ CraftManager.SetRecipeUsingName = function(benchName)
                 if xItemType == "Pet" then
                     -- manual submit pets
                     Varz.IS_CRAFTING = true
-                    task.wait(1.3)
+                    if not noDelay then
+                        task.wait(1.5)
+                    end
                     local pettool = InventoryManager.GetPetUsingNameForCraft(ItemName)
                     if pettool then
                         unequipTools()
@@ -12314,7 +12810,9 @@ CraftManager.SetRecipeUsingName = function(benchName)
                 end
 
                 --print("submit " .. tostring(index) .. " - " .. _S.HttpService:JSONEncode(xdb))
-                task.wait(0.5)
+                if not noDelay then
+                    task.wait(0.5)
+                end
             end
             CraftManager.Current_Recipe_Name = _name
             --print("Current Recipe: " .. _name)
@@ -13013,6 +13511,9 @@ _Helper.GetAllTeamsUUIDSet = function()
         FSettings.agebreak.dup_team,
 
         FSettings.customteams_team1,
+        FSettings.customteams_team2,
+        FSettings.customteams_team3,
+        FSettings.customteams_team4,
 
         FSettings.allcraft.team_claim,
         FSettings.allcraft.team_idle,
@@ -13048,6 +13549,8 @@ _Helper.GetAllTeamsUUIDSet = function()
 
     return keypair
 end
+
+
 
 
 
@@ -13202,6 +13705,43 @@ TaskManager.GiftSystem = {
 
         return ls
     end
+}
+
+-- #trade
+TaskManager.TradeSystem = {
+    IsTradeActive = function()
+        local ui = _S.PlayerGui:FindFirstChild("TradingUI")
+        if ui and ui.Enabled == true then
+            return true
+        end
+        return false
+    end,
+    MyAddedItemsCount = function()
+        local success, result = pcall(function()
+            local count = 0
+            local p = _S.PlayerGui.TradingUI.LiveTrade.MyPlr.ScrollingFrame
+
+            for _, item in ipairs(p:GetChildren()) do
+                if item:IsA("ImageButton") and item.Name == "ItemTemplate" then
+                    count = count + 1
+                end
+            end
+
+            return count
+        end)
+
+        -- If the code ran successfully, return the count.
+        if success then
+            return result
+        end
+
+        return 0
+    end,
+    AddPetItem = function(_uuid)
+        pcall(function()
+            local AddItem = _S.ReplicatedStorage.GameEvents.TradeEvents.AddItem:FireServer("Pet", _uuid)
+        end)
+    end,
 }
 
 
@@ -14135,10 +14675,27 @@ _Helper.RefreshPetData = function()
         UI_Dropdown.dd_bypass_teamsactive:SetValue(teamactive, surpassCallback)
     end
 
-    if UI_Dropdown.customteams_team1 then
+    if UI_Dropdown.customteams_team1 and UI_Dropdown.customteams_team2 and UI_Dropdown.customteams_team3 and UI_Dropdown.customteams_team4 then
         local customteams_t1 = ConvertUUIDToPetNamesPairs(FSettings.customteams_team1)
-        UI_Dropdown.customteams_team1:SetValues(pcache);
+        local customteams_t2 = ConvertUUIDToPetNamesPairs(FSettings.customteams_team2)
+        local customteams_t3 = ConvertUUIDToPetNamesPairs(FSettings.customteams_team3)
+        local customteams_t4 = ConvertUUIDToPetNamesPairs(FSettings.customteams_team4)
+
+        local c1_sorted = _Helper.GetSortedList(pcache, customteams_t1)
+        UI_Dropdown.customteams_team1:SetValues(c1_sorted);
         UI_Dropdown.customteams_team1:SetValue(customteams_t1, surpassCallback)
+
+        local c2_sorted = _Helper.GetSortedList(pcache, customteams_t2)
+        UI_Dropdown.customteams_team2:SetValues(c2_sorted);
+        UI_Dropdown.customteams_team2:SetValue(customteams_t2, surpassCallback)
+
+        local c3_sorted = _Helper.GetSortedList(pcache, customteams_t3)
+        UI_Dropdown.customteams_team3:SetValues(c3_sorted);
+        UI_Dropdown.customteams_team3:SetValue(customteams_t3, surpassCallback)
+
+        local c4_sorted = _Helper.GetSortedList(pcache, customteams_t4)
+        UI_Dropdown.customteams_team4:SetValues(c4_sorted);
+        UI_Dropdown.customteams_team4:SetValue(customteams_t4, surpassCallback)
     end
 
     -- #age
@@ -16502,6 +17059,65 @@ GameDataManager.Inventory = {
 }
 --GameDataManager.Inventory.GetEggsData()
 
+
+-- ===============
+-- HATCHING #hatch
+-- ===============
+GameDataManager.Hatch = {
+
+    GetRecommended = function(validpets)
+        local addedPets = {}
+        local pets = GameDataManager.Inventory.GetPetInventory()
+
+        for uuid, _petData in pairs(pets) do
+            local PetType = _petData.PetType
+
+            if validpets[PetType] then
+                local PetData = _petData.PetData
+                local BaseWeight = PetData.BaseWeight
+                local real_weight = GetRealPetWeight(BaseWeight, 1)
+
+                local dx = {
+                    pet_uuid = uuid,
+                    pet_weight = real_weight
+                }
+
+                table.insert(addedPets, dx)
+            end
+        end
+
+        -- Sort by weight (Heavy -> Light)
+        table.sort(addedPets, function(a, b)
+            return a.pet_weight > b.pet_weight
+        end)
+
+        local max_cap = GetMaxPetCapacity()
+        local recommendedTeam = {}
+
+        local count = math.min(max_cap, #addedPets)
+
+        for i = 1, count do
+            -- CHANGE: Insert only the UUID string, not the whole object
+            table.insert(recommendedTeam, addedPets[i].pet_uuid)
+        end
+
+        return recommendedTeam
+    end,
+
+    GetPetsUsingNames = function(list)
+        return GameDataManager.Hatch.GetRecommended(list)
+    end,
+
+    GetRecommendedKoiTeam = function()
+        local required_pet = { ["Koi"] = true }
+        return GameDataManager.Hatch.GetRecommended(required_pet)
+    end,
+
+    GetRecommendedSealTeam = function()
+        local required_pet = { ["Seal"] = true }
+        return GameDataManager.Hatch.GetRecommended(required_pet)
+    end
+}
 
 VulnManager.GetPlayerPetDataSnapshot = function()
     local ok, result = pcall(function()
@@ -19417,6 +20033,221 @@ end
 
 
 
+
+-----------------------------------------------
+--=============== QUESTS ================== #quest
+-----------------------------------------------
+TaskManager.Quests = {
+
+    QuestAutoSpin = function()
+        pcall(function()
+            game:GetService("ReplicatedStorage").GameEvents.GardenGame.Spin:FireServer()
+        end)
+    end,
+
+    ClaimQuestReward = function(containerid, questid)
+        pcall(function()
+            game:GetService("ReplicatedStorage").GameEvents.Quests.Claim:FireServer(containerid, questid)
+        end)
+    end,
+
+    GetQuestContainerGardenGames = function()
+        -- 1. Get the Main Game Data
+        local mainData = VulnManager.GetBigDataUsingKey("GardenGames")
+
+        -- Check if mainData exists AND if the Quests table exists inside it
+        if not mainData or not mainData.Quests then
+            warn("Failed to find  table.")
+            return nil
+        end
+
+        local containerID = mainData.Quests.CurrentQuestContainer
+
+        -- Safety Check: Ensure we actually found an ID string
+        if not containerID then
+            warn("No CurrentQuestContainer ID found.")
+            return nil
+        end
+
+        -- 2. Get the Container Database
+        local allContainers = VulnManager.GetBigDataUsingKey("QuestContainers")
+
+        -- CRITICAL SAFETY CHECK: Ensure this table actually loaded
+        if not allContainers then
+            warn("Failed to load 'QuestContainers' database.")
+            return nil
+        end
+
+        -- 3. Retrieve the specific quest
+        local currentQuests = allContainers[containerID]
+
+        if currentQuests then
+            return currentQuests, containerID -- Return the data so you can use it!
+        else
+            warn("Quest ID " .. tostring(containerID) .. " not found in QuestContainers.")
+            return nil
+        end
+    end,
+
+    GetQuestsTodo = function()
+        local visual = '<font size="16" color="#FFD700"><b>📜 Current Tasks</b></font>\n'
+        local quests, containerID = TaskManager.Quests.GetQuestContainerGardenGames()
+        if not quests then return nil, visual end -- nothing todo
+        local qdata = {}
+        for i, quest in ipairs(quests.Quests) do
+            -- 1. Get the Action (e.g., Plant, Harvest)
+            local action = quest.Type or "Unknown"
+            if action == "Unknown" then
+                continue
+            end
+
+            -- 2. Get the Item (e.g., Bamboo, Carrot)
+            -- We check if 'Arguments' exists and has a value, otherwise leave it empty
+            local targetItem = ""
+            if quest.Arguments and quest.Arguments[1] then
+                targetItem = quest.Arguments[1]
+            end
+
+            -- 3. Get the Numbers (Current / Target)
+            local progress = quest.Progress or 0
+            local target = quest.Target or 0
+            local isDone = quest.Completed
+            local isClaimed = quest.Claimed
+            local questId = quest.Id or "-"
+
+            local needed_x = target - progress
+
+            if not isClaimed then
+                TaskManager.Quests.ClaimQuestReward(containerID, questId)
+            end
+
+            -- 3. Visual Formatting
+            local line = ""
+
+            if isDone then
+                -- == COMPLETED STYLE (Green with Checkmark) ==
+                line = string.format(
+                    '✅ <font color="#E6E6E6"><s><b>%s</b> %s</s></font>',
+                    action,
+                    targetItem
+                )
+            else
+                -- == ACTIVE STYLE (Your original code) ==
+                line = string.format(
+                    '⏳ <font color="#00FFFF"><b>%s</b></font> <font color="#FFA500">%s</font>: <font color="#DDDDDD">%s/%s</font>',
+                    action,
+                    targetItem,
+                    progress,
+                    target
+
+                )
+            end
+
+            visual = visual .. line .. "\n"
+
+
+            -- Only print if not done (optional, remove 'if' to see all)
+            if not isDone then
+                local dx = {
+                    action = action,
+                    target_item = targetItem,
+                    current_amount = progress,
+                    target_amount = target,
+                    needed = needed_x
+                }
+                table.insert(qdata, dx)
+                --print(string.format("Task %d: %s %s (%d/%d)", i, action, targetItem, progress, target))
+            end
+        end
+
+        return qdata, visual
+    end,
+
+    ActionPlant = function(plant, amount)
+        local seed_tool = InventoryManager.GetSeedUsingName(plant)
+        if not seed_tool then return false end
+
+        if Varz.is_garden_full_seed then
+            -- Garden is full
+            -- -- Inform the fruit collector to collect the plants we plant with watering cans
+            -- if _FruitCollectorMachine.HasPlantByName(plant) then
+            --     _FruitCollectorMachine.HarvestFruitsUsingNames({ plant }, 5)
+            --     task.wait(2)
+            -- end
+            -- warn("Garden is full")
+            EventQuestsManager.UpdateStatsInfo("⚠️ Garden is full, unable to place a seed. Waiting...")
+            task.wait(2)
+            return false
+        end
+
+        local seedp = _FruitCollectorMachine.PlaceSeedSmart(plant, amount)
+
+        return seedp
+    end,
+
+    ActionHarvest = function(_name, amount)
+        if not _FruitCollectorMachine.HasPlantByName(_name) then
+            local am = amount
+            if Varz.IsSingleHarvest(_name) then
+                local current_onfarm = FarmManager.GetPlantCountBySeed(_name)
+                local needed = amount - current_onfarm
+                am = needed
+            else
+                am = 9
+            end
+            return TaskManager.Quests.ActionPlant(_name, am)
+        end
+
+        local configx = {
+            amount = amount,
+            batch_mode = false,
+        }
+        local fruit_list = {}
+        fruit_list[_name] = true
+
+        local _c = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(fruit_list, configx)
+        task.wait(1)
+        return true
+    end,
+
+    ActionEarnSheckles = function()
+        local configx = {
+            amount = 20,
+            random = true,
+        }
+        local fruit_list = {}
+        local _c = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(fruit_list, configx)
+        task.wait(1)
+        -- sell them
+        Varz.SellFruitsToVendorWithRangeCheck()
+        task.wait(1)
+        return true
+    end,
+    HarvestSingle = function()
+        local configx = {
+            amount = 50,
+        }
+        local fruit_list = {}
+        fruit_list["Carrot"] = true
+        fruit_list["Bamboo"] = true
+        fruit_list["Mushroom"] = true
+        fruit_list["Buttercup"] = true
+
+        local _c = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(fruit_list, configx)
+    end
+
+}
+
+
+
+
+
+
+
+
+
+
+
 -- ========== Track abuse #error
 _S.LogService = game:GetService("LogService")
 
@@ -19599,6 +20430,7 @@ _Helper.PlaceEggsForHatching = function()
 
     UPDATE_LABELS_FUNC.UpdateSetLblStats("🥚 Trying to place new eggs.")
 
+
     -- CONFIGURATION: Select your shape here ("circle", "square", "heart", "random")
     local selected_shape = "random"
 
@@ -19637,6 +20469,11 @@ _Helper.PlaceEggsForHatching = function()
         return true
     end
 
+    local usefastplace = false
+    if user_defined_max_eggs == user_max_egg then
+        usefastplace = true
+    end
+
     local max_time = os.clock()
     while true do
         task.wait(0.1)
@@ -19652,10 +20489,11 @@ _Helper.PlaceEggsForHatching = function()
             break
         end
 
-        EquipToolOnChar(tool)
+        local _toolx = EquipToolOnChar(tool)
+
 
         while true do
-            task.wait(0.1)
+            task.wait(0.05)
             if _Helper.IsTimeUp(max_time, 10) then break end
             if not tool or not tool.Parent then break end
 
@@ -19668,11 +20506,21 @@ _Helper.PlaceEggsForHatching = function()
             if not IsToolHeld(tool) then
                 unequipTools()
                 task.wait(0.2)
-                if not EquipToolOnChar(tool) then break end
+                if not EquipToolOnChar(tool) then
+                    break
+                end
             end
 
             local placePos = table.remove(availablePositions, 1)
-            _S.PetEggService:FireServer("CreateEgg", placePos)
+            if usefastplace then
+                task.spawn(function()
+                    _S.PetEggService:FireServer("CreateEgg", placePos)
+                end)
+                continue
+            else
+                _S.PetEggService:FireServer("CreateEgg", placePos)
+            end
+
 
             local wait_amount = os.clock()
             while true do
@@ -19808,15 +20656,17 @@ local function placeMissingEggs(myFarm)
 
         if IsToolHeld(eggToolToEquip) then
             if FSettings.is_test == false then
-                _S.PetEggService:FireServer("CreateEgg", placePos)
-                if FSettings.hatch_slow_mode then
-                    task.wait(0.5)
+                if faster_place then
+                    task.spawn(function()
+                        _S.PetEggService:FireServer("CreateEgg", placePos)
+                    end)
+                    continue
+                else
+                    _S.PetEggService:FireServer("CreateEgg", placePos)
+                    if FSettings.hatch_slow_mode then
+                        task.wait(0.5)
+                    end
                 end
-
-                if not faster_place then
-                    task.wait(0.1)
-                end
-                task.wait(0.2)
             end
         else
             if not EquipToolOnChar(eggToolToEquip) then
@@ -19889,6 +20739,7 @@ _Helper.FavoritePetsNewFaster = function(_keypair_array)
     for muuid, _ in pairs(_keypair_array) do
         hatched_pets_uuids[muuid] = true
     end
+    local teamslist = _Helper.GetAllTeamsUUIDSet()
 
 
     for _, toolx in ipairs(new_pets_hatched_list) do
@@ -19989,6 +20840,10 @@ _Helper.FavoritePetsNewFaster = function(_keypair_array)
             requires_fav = true
         end
 
+        if teamslist[uuid] then
+            requires_fav = true
+        end
+
         if requires_fav then
             table.insert(petsToFav, tool)
         end
@@ -20022,9 +20877,8 @@ _Helper.FavoritePetsNew = function(_keypair_array)
     -- new pets tracking
     for muuid, _ in pairs(_keypair_array) do
         hatched_pets_uuids[muuid] = true
-        print(muuid)
+        -- print(muuid)
     end
-
 
 
     for _, toolx in ipairs(new_pets_hatched_list) do
@@ -20378,12 +21232,12 @@ local function SellAllPetsUnFavorite()
     --print("Sell All UnFav Process...")
     UPDATE_LABELS_FUNC.UpdateSetLblStats("💰 Sell All UnFav Process...")
     if FSettings.is_test == false then
-        for i = 1, 2, 1 do
-            task.spawn(function()
-                _S.SellAllPetsRemote:FireServer();
-            end)
-        end
-        --_S.SellAllPetsRemote:FireServer();
+        -- for i = 1, 2, 1 do
+        --     task.spawn(function()
+        --         _S.SellAllPetsRemote:FireServer();
+        --     end)
+        -- end
+        _S.SellAllPetsRemote:FireServer();
     end
 
     if FSettings.hatch_slow_mode then
@@ -20755,7 +21609,9 @@ local function EquipPets(array_uuids)
     end
 
     for _, _uuid in ipairs(override_whitelist) do
-        _S.petsServiceRemote:FireServer("EquipPet", _uuid, placementCF);
+        task.spawn(function()
+            _S.petsServiceRemote:FireServer("EquipPet", _uuid, placementCF);
+        end)
         table.insert(petsToConfirm, _uuid)
         table.insert(uuids_list, _uuid)
         --warn("Override added to farm")
@@ -21286,25 +22142,6 @@ end
 
 -- #sell
 
-Varz.SellFruitsToVendor = function()
-    -- teleport
-    local hrp = _S.Character:WaitForChild("HumanoidRootPart")
-    -- Save the current CFrame
-    local originalCFrame = hrp.CFrame
-    local targetCFrame = _Helper.Vector3ToCFrame(Varz.TeleportLocations.GetLocationSellShopV3())
-
-    TeleportPlayerToCFrame(targetCFrame)
-    _Helper.SafeFruitsProccess()
-    task.wait(2)
-    _S.Sell_Inventory:FireServer()
-    -- use sell list here
-    task.wait(3)
-    -- tp back
-    TeleportPlayerToCFrame(originalCFrame)
-    --print("Unfav")
-    Varz.backpack_full = false
-    task.wait(0.4)
-end
 Varz.GetAllFruitsToSell = function()
     --print("get fruits")
     local fav_list        = {}
@@ -21364,31 +22201,10 @@ Varz.GetAllFruitsToSell = function()
         end
     end
 
-    task.wait(0.4)
-    --print("Make fav")
-    MakeFruitsFav(fav_list) -- fav fruits
-    task.wait(1.2)
-    --print("Selling all fruits...")
-
-    -- teleport
-    local hrp = _S.Character:WaitForChild("HumanoidRootPart")
-    -- Save the current CFrame
-    local originalCFrame = hrp.CFrame
-    local targetCFrame = _Helper.Vector3ToCFrame(Varz.TeleportLocations.GetLocationSellShopV3())
-
-    TeleportPlayerToCFrame(targetCFrame)
-    _Helper.SafeFruitsProccess()
-    task.wait(2)
-    _S.Sell_Inventory:FireServer()
-    -- use sell list here
-    task.wait(2)
+    MakeFruitsFav(fav_list)
+    task.wait(0.3)
+    Varz.SellFruitsToVendorWithRangeCheck()
     MakeFruitsFav(fav_list) -- call again to unfav fruits after selling
-    task.wait(1)
-    -- tp back
-    TeleportPlayerToCFrame(originalCFrame)
-    --print("Unfav")
-    Varz.backpack_full = false
-    task.wait(0.4)
 end
 
 
@@ -21597,18 +22413,18 @@ end)
 if not Varz.Backpack_autosell_timerbased then
     Varz.Backpack_autosell_timerbased = task.spawn(function()
         while true do
+            task.wait(1)
             -- Pause
             if Varz.IsPaused() then
                 task.wait(math.random(2, 5))
                 continue
             end
-            task.wait(1)
+
             if FOtherSettings.auto_sell_backpack_time then
                 local tx = FOtherSettings.auto_sell_backpack_every
                 task.wait(tx)
                 if FOtherSettings.auto_sell_backpack_time then
                     Varz.GetAllFruitsToSell()
-                    task.wait(1)
                 end
             end
         end
@@ -21616,32 +22432,26 @@ if not Varz.Backpack_autosell_timerbased then
 end
 
 
-if not _G.fruitcollectionL then
-    _G.fruitcollectionL = task.spawn(function()
-        while true do
-            -- Pause
-            if Varz.IsPaused() then
-                task.wait(math.random(2, 5))
-                continue
-            end
-            task.wait(3)
 
-            if Varz.backpack_full and FOtherSettings.auto_sellbackpack then
-                Varz.GetAllFruitsToSell()
-                task.wait(2)
-            end
-
-
-            if Varz.backpack_full then
-                -- LabelUpdateCollectFruitStats("⚠️ Backpack is full...");
-                task.wait(7)
-                Varz.backpack_full = false
-                continue
-            end
+task.spawn(function()
+    while true do
+        -- Pause
+        task.wait(0.5)
+        if Varz.IsPaused() then
+            task.wait(math.random(2, 5))
+            continue
         end
-    end)
-end
 
+        if not FOtherSettings.auto_sellbackpack then
+            task.wait(math.random(2, 5))
+            continue
+        end
+
+        if Varz.backpack_full then
+            Varz.GetAllFruitsToSell()
+        end
+    end
+end)
 
 
 -- rejoins the server to restart all over again.
@@ -22039,7 +22849,7 @@ end)
 
 
 
-
+-- #9pets
 TaskManager.HatcherTeamOverrider = function()
     local is_enabled = FSettings.team_reduction_enabled_teams or false
     if not is_enabled then
@@ -22114,11 +22924,13 @@ TaskManager.HatcherTeamOverrider = function()
     local current_waited = 0
     local timeIcons = { "🕒", "🕓", "🕔", "🕞", "🕟", "🕠", "🕡" }
 
+    local max_web_count = tonumber(FSettings.max_web_count) or 7
+
     while true do
         Varz.DisablePickPlace = false
         current_waited = current_waited + 1
 
-        if _Helper.spider_count and _Helper.spider_count >= 6 then
+        if _Helper.spider_count and _Helper.spider_count >= max_web_count then
             ui("♻️ Spider ready end.")
             break
         end
@@ -22151,10 +22963,12 @@ TaskManager.HatcherTeamOverrider = function()
 
         -- Up to 5 seconds: wait until fully removed
         local waitsecs = os.clock()
+        local max_waitd = 5
         while true do
             task.wait(0.1)
-            _Helper.UnEquipPet(uuid) -- second attempt for safety
-            if (os.clock() - waitsecs) > 5 then
+            _Helper.UnEquipPet(uuid)
+
+            if _Helper.IsTimeUp(waitsecs, max_waitd) then
                 break
             end
 
@@ -22165,9 +22979,9 @@ TaskManager.HatcherTeamOverrider = function()
     end
 
     ui("ℹ️ Removed team phase one")
-    task.wait(0.3)
+    task.wait(0.1)
 
-    ui("⚡ Placing final phase team. please wait...")
+    ui("⚡Placing final phase team. please wait...")
     -- Phase 3 — place the final pets
     local final_count = 0
     for _, uuid in ipairs(phase_two_team) do
@@ -22227,13 +23041,13 @@ Varz.AnalyzeRNG = function(history)
     end
 
     -- Decision Logic
-    if net_profit >= 2 then
+    if net_profit >= 7 then
         return {
             action = "CONTINUE",
             score = 100,
             reason = "Stable Profit (" .. net_profit .. ")"
         }
-    elseif net_profit > -3 then
+    elseif net_profit > -5 then
         -- Covers: -4, -3, -2, -1, 0, 1, 2
         return {
             action = "LOWER_AMOUNT",
@@ -22349,6 +23163,13 @@ task.spawn(function()
             continue
         end
 
+        -- kill loop
+        if FSettings.nice_fruit then
+            FSettings.nice_fruit = false
+            SaveData()
+            break
+        end
+
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
             ui_text("🟡 Enhance Pro: Data is loading.")
@@ -22432,6 +23253,7 @@ task.spawn(function()
     end
 end)
 
+
 _Helper.GetUltraMode = function()
     if Varz.GetCheckIfPro() then
         return FSettings.hatch_ultramode;
@@ -22458,9 +23280,67 @@ _Helper.LockEnhance = function(val)
 end
 
 
-_Helper.HatchModeFastSell = function()
-    return true
+_Helper.IsSellAllUnFav = function()
+    return FSettings.sellallunfav
 end
+
+
+
+
+-- ======== advanced
+_Helper.AddTeamRubyWithKoi = function()
+    local ruby = { ["Ruby Squid"] = true }
+    local koi = { ["Koi"] = true }
+
+    local list_ruby = GameDataManager.Hatch.GetPetsUsingNames(ruby)
+    local koi = GameDataManager.Hatch.GetPetsUsingNames(koi)
+
+    local cap = GetMaxPetCapacity()
+    local teamx = {}
+    local count = 0
+    for index, uuid in ipairs(koi) do
+        table.insert(teamx, uuid)
+        count = count + 1
+        break
+    end
+    for index, uuid in ipairs(list_ruby) do
+        table.insert(teamx, uuid)
+        count = count + 1
+        if count >= cap then
+            break
+        end
+    end
+
+    local eq = EquipPets(teamx)
+    return eq
+end
+_Helper.AddTeamRubyWithSeal = function()
+    local ruby = { ["Ruby Squid"] = true }
+    local koi = { ["Seal"] = true }
+
+    local list_ruby = GameDataManager.Hatch.GetPetsUsingNames(ruby)
+    local koi = GameDataManager.Hatch.GetPetsUsingNames(koi)
+
+    local cap = GetMaxPetCapacity()
+    local teamx = {}
+    local count = 0
+    for index, uuid in ipairs(koi) do
+        table.insert(teamx, uuid)
+        count = count + 1
+        break
+    end
+    for index, uuid in ipairs(list_ruby) do
+        table.insert(teamx, uuid)
+        count = count + 1
+        if count >= cap then
+            break
+        end
+    end
+
+    local eq = EquipPets(teamx)
+    return eq
+end
+
 
 
 -- #hatch
@@ -22553,6 +23433,7 @@ local function SessionLoop()
                     Varz.DisablePickPlace = false
                     Varz.SetDisablePickPlaceFor(0)
                     task.wait(0.2 + _Helper.GetSafePing())
+                    -- #9pets
                     local status_ad = TaskManager.HatcherTeamOverrider()
                 end)
 
@@ -22569,15 +23450,15 @@ local function SessionLoop()
 
         -- #fast
         if _Helper.GetFastHatchMode() then
-            if _Helper.GetUltraMode() then
-                task.wait(0.1 + _Helper.GetSafePing())
-            else
-                task.wait(0.2 + _Helper.GetSafePing())
-            end
+            -- if _Helper.GetUltraMode() then
+            --     task.wait(0.1 + _Helper.GetSafePing())
+            -- else
+            --     task.wait(0.2 + _Helper.GetSafePing())
+            -- end
         elseif FSettings.hatch_slow_mode then
             task.wait(9.2 + _Helper.GetSafePing())
         else
-            task.wait(1.5 + _Helper.GetSafePing())
+            task.wait(0.5 + _Helper.GetSafePing())
         end
 
         Varz.IS_HATCHING = false
@@ -22726,17 +23607,18 @@ local function SessionLoop()
         if GetCountEggsOnFarm() == 0 then
             print("No Eggs on farm detected, place and restart.")
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🤖 No eggs on farm. Placing new eggs...")
+
             -- #place  #eggs #egg
             task.spawn(function()
                 local sx, fx = pcall(function()
-                    _Helper.PlaceEggsForHatching()
+                    placeMissingEggs(FarmManager.mFarm)
                 end)
 
                 if not sx then
                     warn("Fail:", fx);
                 end
             end)
-            task.wait(1 + _Helper.GetSafePing())
+            task.wait(0.2 + _Helper.GetSafePing())
             continue
         end
 
@@ -22758,15 +23640,15 @@ local function SessionLoop()
             --task.wait(5)
             -- #fast
             if _Helper.GetFastHatchMode() then
-                if _Helper.GetUltraMode() then
-                    task.wait(0.05 + _Helper.GetSafePing())
-                else
-                    task.wait(0.5 + _Helper.GetSafePing())
-                end
+                -- if _Helper.GetUltraMode() then
+                --     task.wait(0.05 + _Helper.GetSafePing())
+                -- else
+                --     task.wait(0.5 + _Helper.GetSafePing())
+                -- end
             elseif FSettings.hatch_slow_mode then
                 task.wait(12 + _Helper.GetSafePing())
             else
-                task.wait(2 + _Helper.GetSafePing())
+                task.wait(1 + _Helper.GetSafePing())
             end
         end
 
@@ -22781,7 +23663,7 @@ local function SessionLoop()
         --task.wait(0.5)
         -- #fast
         if _Helper.GetFastHatchMode() then
-            task.wait(0.1 + _Helper.GetSafePing())
+            -- task.wait(0.1 + _Helper.GetSafePing())
         elseif FSettings.hatch_slow_mode then
             task.wait(5 + _Helper.GetSafePing())
         else
@@ -22817,7 +23699,7 @@ local function SessionLoop()
 
 
 
-        --================= HATCH CYCLE =================
+        --================= HATCH CYCLE ================= #koi
         -- Place Hatching Team (Team 2)
         if FSettings.disable_team2 == false then
             if UnEquipAllPets() == false then
@@ -22828,6 +23710,26 @@ local function SessionLoop()
                 continue -- Restart the loop
             end
             task.wait(0.2 + _Helper.GetSafePing())
+
+
+            -- -- === Add buffer units
+            -- if FSettings.fav_fruit_enhancer then
+            --     local bunits = _Helper.AddTeamRubyWithKoi()
+            --     if not bunits then
+            --         UPDATE_LABELS_FUNC.UpdateSetLblStats(
+            --             "❌ [KOI Buffer] Team Failed to place. Missing team or pets. Restarting.")
+            --         task.wait(5 + _Helper.GetSafePing())
+            --         Varz.IS_HATCHING = false
+            --         continue -- Restart the loop
+            --     end
+            --     task.wait(3)
+
+            --     local removeteam = UnEquipAllPets()
+            --     task.wait(0.2 + _Helper.GetSafePing())
+            -- end
+
+            --== End Buffer
+
             UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing hatching team...")
             if not EquipPets(FSettings.team2) then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ [KOI] Team Failed to place. Missing team or pets. Restarting.")
@@ -22843,9 +23745,9 @@ local function SessionLoop()
         -- #fast
         if _Helper.GetFastHatchMode() then
             if _Helper.GetUltraMode() then
-                task.wait(0.05 + _Helper.GetSafePing())
+                task.wait(0.5 + _Helper.GetSafePing())
             else
-                task.wait(2.3 + _Helper.GetSafePing())
+                task.wait(2.5 + _Helper.GetSafePing())
             end
         elseif FSettings.hatch_slow_mode then
             task.wait(10 + _Helper.GetSafePing())
@@ -23096,8 +23998,8 @@ local function SessionLoop()
         end
 
 
-        --================= SELL CYCLE ================= #sell #fav
-        if not _Helper.HatchModeFastSell() then
+        --================= SELL CYCLE ================= #sell #fav #seal
+        if _Helper.IsSellAllUnFav() then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("❤️ Favouriting Pets...")
 
             if not _Helper.FavoritePetsNew(Varz.hatched_pets) then
@@ -23111,9 +24013,9 @@ local function SessionLoop()
             -- #fast
             if _Helper.GetFastHatchMode() then
                 if _Helper.GetUltraMode() then
-                    task.wait(0.05 + _Helper.GetSafePing())
+                    task.wait(2.05 + _Helper.GetSafePing())
                 else
-                    task.wait(0.3 + _Helper.GetSafePing())
+                    task.wait(2.3 + _Helper.GetSafePing())
                 end
             elseif FSettings.hatch_slow_mode then
                 task.wait(10 + _Helper.GetSafePing())
@@ -23155,6 +24057,28 @@ local function SessionLoop()
                     Varz.IS_HATCHING = false
                     continue -- Restart the loop
                 end
+
+
+                -- === Add buffer units
+                -- if FSettings.fav_fruit_enhancer then
+                --     local bunits = _Helper.AddTeamRubyWithSeal()
+                --     if not bunits then
+                --         UPDATE_LABELS_FUNC.UpdateSetLblStats(
+                --             "❌ [SEAL Buffer] Team Failed to place. Missing team or pets. Restarting.")
+                --         task.wait(5 + _Helper.GetSafePing())
+                --         Varz.IS_HATCHING = false
+                --         continue -- Restart the loop
+                --     end
+
+                --     local removeteam = UnEquipAllPets()
+                --     task.wait(0.2 + _Helper.GetSafePing())
+                -- end
+
+                --== End Buffer
+
+
+
+
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing selling team...")
                 if not EquipPets(FSettings.team1) then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats(
@@ -23184,6 +24108,7 @@ local function SessionLoop()
             if FSettings.hatch_boost_seal_enabled then
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Applying Boosts!")
                 MonsterBoostManager.ApplyBoostSelected(FSettings.hatch_boost_seal_team);
+                task.wait(0.3)
             end
 
             _Helper.UpdatePlayerStats()
@@ -23199,9 +24124,9 @@ local function SessionLoop()
                 task.wait(0.5 + _Helper.GetSafePing())
             end
 
-            if not _Helper.HatchModeFastSell() then
+            if _Helper.IsSellAllUnFav() then
                 if not failed_pet_detection then
-                    --  SellAllPetsUnFavorite()
+                    SellAllPetsUnFavorite()
                 else
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Unable to sell pets. Data issue detected. Skipping...")
                 end
@@ -23558,12 +24483,23 @@ PetMutation.GetExtraPetsAdded = function(stage)
     end
 end
 
+PetMutation.IsWantedMutationsAdded = function()
+    if next(FSettings.mut_system.wanted) == nil then
+        return false
+    end
+
+    if FSettings.mut_system.disable_horseman then
+        return true
+    end
+    return true
+end
+
 PetMutation.Loop = function()
     PetMutation.is_running = true
     while PetMutation.is_running do
         task.wait(0.3)
         Varz.IS_PET_MUTATION_RUNNING = false
-        if next(FSettings.mut_system.wanted) == nil then
+        if PetMutation.IsWantedMutationsAdded() == false then
             PetMutation.mut_ui.UpdateStats("🔴 No mutations selected.")
             continue
         end
@@ -24231,7 +25167,7 @@ PetMutation.Loop = function()
 
                 if is_mut_team_added and mflag ~= "mut" then
                     -- we done with mutation?
-                    PetMutation.mut_ui.UpdateStats("🔄 Switching mutation type...")
+                    PetMutation.mut_ui.UpdateStats("🔄 Switching to weight type...")
                     was_exit = true
                     task.wait(0.5)
                     break
@@ -24239,7 +25175,7 @@ PetMutation.Loop = function()
 
                 if is_weight_team_added and mflag ~= "weight" then
                     -- we done with mutation?
-                    PetMutation.mut_ui.UpdateStats("🔄 Switching mutation type...")
+                    PetMutation.mut_ui.UpdateStats("🔄 Switching to mutation type...")
                     was_exit = true
                     task.wait(0.5)
                     break
@@ -24393,58 +25329,180 @@ end
 
 ---=========== Custom Teams
 -- #teams
+
+GameDataManager.Teams = {
+    GetTeam1 = function()
+        return FSettings.customteams_team1
+    end,
+    GetTeam2 = function()
+        return FSettings.customteams_team2
+    end,
+    GetTeam3 = function()
+        return FSettings.customteams_team3
+    end,
+    GetTeam4 = function()
+        return FSettings.customteams_team4
+    end
+}
+
+
 TaskManager.TeamsUiUpdate = function(_txt)
     Varz.TEXT_TEAM_SYSTEM = _txt
 end
 TaskManager.StartTeamsLoop = function()
     local ui = TaskManager.TeamsUiUpdate
-    local teamtoplace = FSettings.customteams_team1
-    if #teamtoplace == 0 then
-        Library:Notify("Stopping system. No team selected.")
-        ui("Stopping system. No team selected.");
-        PetMutation.StopCustomTeams()
-        return
-    end
-    Varz.pickplace_disable_delay = 10
-    ui("[Team Running] Removing pets from farm.");
-    task.wait(3)
-
-    UnEquipAllPets()
-
-    ui("[Team Running] Placeing teams");
-    task.wait(0.3)
-
-    if not EquipPets(teamtoplace) then
-        local fmsg = "[Team Running] Failed to place team. Stopping"
-        ui(fmsg);
-        warn(fmsg)
-        PetMutation.StopCustomTeams()
-        task.wait(1)
-        return
-    end
-
     local keyx = "teamsystem_t1"
-    ui("[Team Running] Started");
-    task.wait(1)
-    _Helper.StartTimer(keyx)
+
+    -- Variables to track rotation
+    local current_index_pointer = 1
+    local last_equipped_index = nil
+
     while FSettings.is_running_custom_teams do
-        task.wait(1)
-        local timerzx = _Helper.GetTimerFormatted(keyx)
-        local disply_in = string.format("[Team Running] \n%s", timerzx)
-        ui(disply_in);
+        -- 1. READ SETTINGS
+        task.wait(0.1)
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            ui("🔴 [Teams] Waiting for farm data to load.")
+            task.wait(5 + _Helper.GetSafePing())
+            continue
+        end
+
+        if not Varz.GetCheckIfPro() then
+            ui("🔴 Teams is Premium feature. Stopped.")
+            task.wait(5)
+            break
+        end
+
+        local teams_config = {
+            [1] = {
+                name = "Team 1",
+                data = GameDataManager.Teams.GetTeam1(),
+                delay = FSettings.customteams_team1_delay,
+                enabled = true
+            },
+            [2] = {
+                name = "Team 2",
+                data = GameDataManager.Teams.GetTeam2(),
+                delay = FSettings.customteams_team2_delay,
+                enabled = FSettings.customteams_team2_enabled
+            },
+            [3] = {
+                name = "Team 3",
+                data = GameDataManager.Teams.GetTeam3(),
+                delay = FSettings.customteams_team3_delay,
+                enabled = FSettings.customteams_team3_enabled
+            },
+            [4] = {
+                name = "Team 4",
+                data = GameDataManager.Teams.GetTeam4(),
+                delay = FSettings.customteams_team4_delay,
+                enabled = FSettings.customteams_team4_enabled
+            }
+        }
+
+        -- 2. FIND NEXT ACTIVE TEAM
+        local selected_team = nil
+        local selected_index = 1
+
+        for i = 0, 3 do
+            local check_idx = ((current_index_pointer + i - 1) % 4) + 1
+            local team = teams_config[check_idx]
+
+            if team and team.enabled and team.data and #team.data > 0 then
+                selected_team = team
+                selected_index = check_idx
+                current_index_pointer = check_idx + 1
+                break
+            end
+        end
+
+        if not selected_team then
+            selected_team = teams_config[1]
+            selected_index = 1
+        end
+
+        -- 3. EQUIP LOGIC
+        if last_equipped_index ~= selected_index then
+            Varz.SetDisablePickPlaceFor(3)
+            ui(string.format("[Switching] Swapping to %s...", selected_team.name))
+
+            UnEquipAllPets()
+            task.wait(0.3)
+
+            if not EquipPets(selected_team.data) then
+                ui("[Error] Failed to equip " .. selected_team.name)
+                -- warn("Failed to equip team")
+                task.wait(2)
+                last_equipped_index = nil
+            else
+                last_equipped_index = selected_index
+                ui(string.format("[Team Active] %s equipped.", selected_team.name))
+                task.wait(1)
+            end
+        else
+            -- Even if we don't switch pets, we update UI to show new cycle started
+            ui(string.format("[Looping] Starting %s shift...", selected_team.name))
+        end
+
+        -- 4. TIMER RESET
+        -- We Stop and Start the timer here so it resets for this specific team's shift
+        _Helper.StopTimer(keyx)
+        _Helper.StartTimer(keyx)
+
+        -- 5. WAIT LOOP
+        local time_limit = selected_team.delay or 30
+        local elapsed = 0
+
+        local boost_time_old = os.clock()
+        local reboost = 9
+
+        while elapsed < time_limit and FSettings.is_running_custom_teams do
+            task.wait(1)
+            elapsed = elapsed + 1
+
+            if FSettings.customteams_boosts_enabled then
+                if _Helper.IsTimeUp(boost_time_old, reboost) then
+                    boost_time_old = os.clock()
+
+                    MonsterBoostManager.ApplyBoostSelectedWithPetNames(FSettings.customteams_boosts,
+                        FSettings.customteams_boost_teamunits)
+                    task.wait(0.3)
+                end
+            end
+
+
+            local current_run_time = _Helper.GetTimerFormatted(keyx)
+            local remaining = time_limit - elapsed
+
+            -- Display: Which team is running, how long it has been running, and when it ends
+            local display_str = string.format("[Running: %s]\nActive Time: %s\nSwitching in: %ds",
+                selected_team.name,
+                current_run_time,
+                remaining
+            )
+            ui(display_str)
+        end
     end
+
+    -- Cleanup
     _Helper.StopTimer(keyx)
     PetMutation.StopCustomTeams()
+    ui("System Stopped.")
 end
 
 
 
 
 PetMutation.StartCustomTeams = function()
+    if not Varz.GetCheckIfPro() then
+        Library:Notify("🔴 Unable to start Teams is Premium feature.")
+        return
+    end
     if custom_team_system_thread then
         Library:Notify("Already running")
         return
     end
+
 
     if main_thread or mutation_thread or petmut_thread then
         Library:Notify("Unable to start, other systems are active")
@@ -25016,7 +26074,7 @@ end
 
 
 --===================================================
---=========== GIFT SYSTEM #gift #giftloop
+--=========== GIFT SYSTEM #gift #giftloop #trade
 if TaskManager.gift_loops then
     task.cancel(TaskManager.gift_loops)
     TaskManager.gift_loops = nil
@@ -25045,6 +26103,11 @@ TaskManager.gift_loops = task.spawn(function()
             continue
         end
 
+        if _Helper.IsSellAllUnFav() and FSettings.is_running then
+            ui_text("🟡 Sell All Mode is active for hatching, unable to use gift feature.")
+            task.wait(3)
+            continue
+        end
 
         if Varz.IS_HATCHING then
             ui_text("🟡 Hatching")
@@ -25201,20 +26264,123 @@ end)
 
 
 
+-- #trade
+if TaskManager.tradex_loops then
+    task.cancel(TaskManager.tradex_loops)
+    TaskManager.tradex_loops = nil
+end
 
 
+TaskManager.tradex_loops = task.spawn(function()
+    while true do
+        Varz.IS_GIFT = false
+
+        task.wait(3)
+        local ui_text = TaskManager.GiftSystem.UpdateUiGiftSystem
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            ui_text("⏳ Waiting for farm to load.")
+            task.wait(5)
+            continue
+        end
 
 
+        if not FSettings.giftpets.enabled_auto_trade then
+            --ui_text("🔴 Not Enabled")
+            task.wait(2)
+            continue
+        end
+
+        local allowed_list = FSettings.giftpets.allow_pet_list or {}
+        if next(allowed_list) == nil then
+            ui_text("🔴 No pet types selected to send. Please select a pet type.")
+            task.wait(5)
+            continue
+        end
+
+        local pets = TaskManager.GiftSystem.GetAllPetsForGifting()
+
+        if #pets == 0 then
+            ui_text("❌ No pets to trade.")
+            task.wait(5)
+            continue
+        end
+
+        if not TaskManager.TradeSystem.IsTradeActive() then
+            --print("No trade")
+            task.wait(2)
+            continue
+        end
+
+        if TaskManager.TradeSystem.MyAddedItemsCount() >= 12 then
+            ui_text("🟡 Trade max items already added.")
+            task.wait(2)
+            continue
+        end
 
 
+        ui_text("🤖 Found pets: " .. #pets)
+
+        local delay = 0.3
+        local tries = 0
+        local max_added = 0
+        for index, datax in ipairs(pets) do
+            task.wait()
+            if max_added >= 12 then
+                break
+            end
+            local uuid = datax.pet_uuid
+            local pet_tool = datax.pet_tool
+            if not pet_tool then
+                continue
+            end
+
+            if not FSettings.giftpets.enabled_auto_trade then break end
+            if tries > 12 then
+                break
+            end
+
+            -- Varz.IS_GIFT = true
+            -- if InventoryManager.IsPetFav(pet_tool) then
+            --     ui_text("❤️ remove fav from pet. ")
+            --     if FSettings.giftpets.allow_fav then
+            --         -- ungift
+            --         MakeFruitsFavSingle(pet_tool)
+            --     else
+            --         ui_text("🤖 Unable to add fav pet - Setting not enabled to unfav ")
+            --         continue
+            --     end
+            -- end
+
+            local petNameS = pet_tool.Name or "Unknown"
+
+            --  ui_text("🤖 Adding pet: " .. petNameS .. " - Left:" .. #pets)
 
 
+            local success, res = pcall(function()
+                --print("Sending to  " .. targetPlayer.Name)
+                TaskManager.TradeSystem.AddPetItem(uuid)
+                max_added = max_added + 1
+                if Varz.target_max_inventory then
+                    Varz.target_max_inventory = false
+                    tries = 100 -- ends next cycle
+                end
+            end)
 
+            if not success then
+                warn("trade error: ", res)
+            end
 
+            --ui_text("+ Added trade item")
 
+            tries = tries + 1
+            task.wait(delay)
+            Varz.IS_GIFT = false
+        end
 
-
-
+        task.wait(0.5)
+    end
+end)
 
 
 
@@ -25398,7 +26564,7 @@ Varz.ProUi = function()
         Icon = "sparkles"
     })
 
-    local gGift = UIProTab:AddLeftGroupbox("💝 <font color='#FFB833'>Gifting</font> 💝", "gift")
+    local gGift = UIProTab:AddLeftGroupbox("💝 <font color='#FFB833'>Gifting / Trade</font> 🎟️", "gift")
 
     local title_horseman =
         "🎃 <stroke color='#FFD8A8' sizing='fixed' thickness='0.3' transparency='0.3' joins='round'>"
@@ -25441,8 +26607,485 @@ Varz.ProUi = function()
 
 
 
+    local gPetEggData = UIProTab:AddRightGroupbox("<b><font color='#266ED9'>Egg Data</font></b>",
+        "book-search")
 
 
+
+
+    local titlecustomteams =
+        "🔄 <stroke color='#000055' thickness='1.5' joins='round'>" ..
+        "<b><font color='#FFFFFF'>Custom</font> <font color='#F52727'>Teams</font></b>" ..
+        "</stroke>"
+
+    local gCustomTeams = UIProTab:AddLeftGroupbox(titlecustomteams)
+
+
+
+
+    ----------------------------------------------
+    -------- ===== Teams Systems  #teams
+    ----------------------------------------------
+
+    if gCustomTeams then
+        gCustomTeams:AddLabel({
+            Text =
+            "💡 Custom teams, can be used for some setups.",
+            DoesWrap = true
+        })
+
+        local GetText_CustomTeams1Text = function(team_data, num)
+            local current_selected = #team_data
+            local max_allowed = GetMaxPetCapacity()
+
+            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
+            local teamname = "Team " .. num
+            local teamcolor = _Helper.StringToColor3Light(teamname)
+
+            local txt = string.format(
+                '<font color="%s"><b>🤖 %s</b></font> ' ..
+                '<font color="#DDDDDD">[</font>' ..
+                '<font color="%s"><b>%d</b></font>' ..
+                '<font color="#FFFFFF">/</font>' ..
+                '<font color="#DDDDDD"><b>%d</b></font>' ..
+                '<font color="#DDDDDD">]</font>',
+                teamcolor,
+                teamname,
+                ratio_colour,
+                current_selected,
+                max_allowed
+            )
+            return txt
+        end
+
+
+        --- =========== Team 1
+        UI_Dropdown.customteams_team1 = gCustomTeams:AddDropdown("customteams_team1", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_CustomTeams1Text(FSettings.customteams_team1, 1),
+            Tooltip = "Select pets for this team.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        table.insert(tmp_tbl, _uuid)
+                    end
+                    -- loop ends
+                end
+
+
+                local max_allowed = GetMaxPetCapacity()
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.customteams_team1:SetValue(ConvertUUIDToPetNamesPairs(FSettings.customteams_team1))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.customteams_team1 = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.customteams_team1:SetText(GetText_CustomTeams1Text(FSettings.customteams_team1, 2))
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+        local InputTimer1 = gCustomTeams:AddInput("inputteamstimerx1", {
+            Text = "⏳<font color='#FF9E1F'>Switch Delay</font>",
+            Default = FSettings.customteams_team1_delay,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Placeholder = "1s",
+            Tooltip = "Delay before team is switched",
+            Callback = function(Value)
+                local num = ParseWeightNumber(Value)
+                if not num then return end
+                if num <= 0 then
+                    Library:Notify("⚠️ Enter a number above 0", 3)
+                    return
+                end
+                FSettings.customteams_team1_delay = num
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddDivider()
+        gCustomTeams:AddDivider()
+
+        --- =========== Team 2
+        UI_Dropdown.customteams_team2 = gCustomTeams:AddDropdown("customteams_team2", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_CustomTeams1Text(FSettings.customteams_team2, 2),
+            Tooltip = "Select pets for this team.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        table.insert(tmp_tbl, _uuid)
+                    end
+                    -- loop ends
+                end
+
+
+                local max_allowed = GetMaxPetCapacity()
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.customteams_team2:SetValue(ConvertUUIDToPetNamesPairs(FSettings.customteams_team2))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.customteams_team2 = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.customteams_team2:SetText(GetText_CustomTeams1Text(FSettings.customteams_team2, 2))
+                    --Library:Notify("Team Updated", 2)
+                end
+            end
+        })
+
+
+        local InputTimer2 = gCustomTeams:AddInput("inputteamstimer1", {
+            Text = "⏳<font color='#FF9E1F'>Switch Delay</font>",
+            Default = FSettings.customteams_team2_delay,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Placeholder = "1s",
+            Tooltip = "Delay before team is switched",
+            Callback = function(Value)
+                local num = ParseWeightNumber(Value)
+                if not num then return end
+                if num <= 0 then
+                    Library:Notify("⚠️ Enter a number above 0", 3)
+                    return
+                end
+                FSettings.customteams_team2_delay = num
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddToggle("cteam2enable", {
+            Text = "🔷 Enable Team 2",
+            Default = FSettings.customteams_team2_enabled,
+            Tooltip = "Enables team 2",
+            Callback = function(Value)
+                FSettings.customteams_team2_enabled = Value
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddDivider()
+        gCustomTeams:AddDivider()
+
+        --- =========== Team 3
+        UI_Dropdown.customteams_team3 = gCustomTeams:AddDropdown("customteams_team3", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_CustomTeams1Text(FSettings.customteams_team3, 3),
+            Tooltip = "Select pets for this team.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+
+                        table.insert(tmp_tbl, _uuid)
+                    end
+                    -- loop ends
+                end
+
+
+                local max_allowed = GetMaxPetCapacity()
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.customteams_team3:SetValue(ConvertUUIDToPetNamesPairs(FSettings.customteams_team3))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.customteams_team3 = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.customteams_team3:SetText(GetText_CustomTeams1Text(FSettings.customteams_team3, 3))
+                end
+            end
+        })
+
+
+        local InputTimer3 = gCustomTeams:AddInput("inputteamstimer2", {
+            Text = "⏳<font color='#FF9E1F'>Switch Delay</font>",
+            Default = FSettings.customteams_team3_delay,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Placeholder = "1s",
+            Tooltip = "Delay before team is switched",
+            Callback = function(Value)
+                local num = ParseWeightNumber(Value)
+                if not num then return end
+                if num <= 0 then
+                    Library:Notify("⚠️ Enter a number above 0", 3)
+                    return
+                end
+                FSettings.customteams_team3_delay = num
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddToggle("cteam3enable", {
+            Text = "🔷 Enable Team 3",
+            Default = FSettings.customteams_team3_enabled,
+            Tooltip = "Enables team 3",
+            Callback = function(Value)
+                FSettings.customteams_team3_enabled = Value
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddDivider()
+        gCustomTeams:AddDivider()
+
+        --- =========== Team 4
+        UI_Dropdown.customteams_team4 = gCustomTeams:AddDropdown("customteams_team4", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = GetText_CustomTeams1Text(FSettings.customteams_team4, 4),
+            Tooltip = "Select pets for this team.",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                local tmp_tbl = {}
+
+                for Value, Selected in pairs(Values) do
+                    if Selected then
+                        local _uuid = extractUUIDFromString(Value)
+                        table.insert(tmp_tbl, _uuid)
+                    end
+                    -- loop ends
+                end
+
+                local max_allowed = GetMaxPetCapacity()
+                local count_vals = #tmp_tbl
+                if count_vals > max_allowed then
+                    UI_Dropdown.customteams_team4:SetValue(ConvertUUIDToPetNamesPairs(FSettings.customteams_team4))
+                    Library:Notify("Team size maxed", 2)
+                else
+                    FSettings.customteams_team4 = tmp_tbl
+                    SaveData()
+                    UI_Dropdown.customteams_team4:SetText(GetText_CustomTeams1Text(FSettings.customteams_team4, 4))
+                end
+            end
+        })
+
+
+        local InputTimer4 = gCustomTeams:AddInput("inputteamstimer4", {
+            Text = "⏳<font color='#FF9E1F'>Switch Delay</font>",
+            Default = FSettings.customteams_team4_delay,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Placeholder = "1s",
+            Tooltip = "Delay before team is switched",
+            Callback = function(Value)
+                local num = ParseWeightNumber(Value)
+                if not num then return end
+                if num <= 0 then
+                    Library:Notify("⚠️ Enter a number above 0", 3)
+                    return
+                end
+                FSettings.customteams_team4_delay = num
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddToggle("cteam3enable", {
+            Text = "🔷 Enable Team 4",
+            Default = FSettings.customteams_team3_enabled,
+            Tooltip = "Enables team 4",
+            Callback = function(Value)
+                FSettings.customteams_team3_enabled = Value
+                SaveData()
+            end
+        })
+
+
+        gCustomTeams:AddDivider()
+
+        local teamboosts = gCustomTeams:AddDropdown("_ddBoostMutpetteamwlteams", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🤖 Boost Selected Pets",
+            Tooltip = "Select pets to target, if nothing is selected then it applies to all active pets",
+            Callback = function(Values)
+                if Values == nil then
+                    return
+                end
+                FSettings.customteams_boost_teamunits = Values
+                SaveData()
+            end
+        })
+
+        teamboosts:SetValues(Varz.all_pets_names_list)
+        teamboosts:SetValue(FSettings.customteams_boost_teamunits)
+
+
+        -- Boosts for this team
+        local _ddBoostleveling1 = gCustomTeams:AddDropdown("_ddBoostlevelingcustom", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 6,
+            Text = "💊 Pet Boosts",
+            Tooltip = "Boosts are applied to all teams",
+            Callback = function(Values)
+                FSettings.customteams_boosts = Values
+                SaveData()
+            end
+        })
+
+        _ddBoostleveling1:SetValues(GetKeyValuesFromList(MonsterBoostManager.boosts_list))
+        _ddBoostleveling1:SetValue(FSettings.customteams_boosts)
+
+        gCustomTeams:AddToggle("boostleveltargetteamcustom", {
+            Text = "🚀 Enable Boosts",
+            Default = FSettings.customteams_boosts_enabled,
+            Tooltip = "If enabled boosts will be applied when team is placed and always",
+            Callback = function(Value)
+                FSettings.customteams_boosts_enabled = Value
+                SaveData()
+            end
+        })
+
+        gCustomTeams:AddButton({
+            Text = "🟢 Start Teams",
+            Func = function()
+                PetMutation.StartCustomTeams()
+            end
+        })
+
+        gCustomTeams:AddButton({
+            Text = "🔴 Stop Teams",
+            Func = function()
+                PetMutation.StopCustomTeams()
+            end
+        })
+
+        gCustomTeams:AddSpacer(100)
+    end
+
+    ----------------------------------------------
+    -------- ===== End Teams
+    ----------------------------------------------
+
+
+
+
+
+
+    -- ===============================================
+    --- #eggdata #petinfo #egg
+    -- ===============================================
+    local egg_data_array = ""
+    if gPetEggData then
+        if Varz.GetCheckIfPro() then
+            gPetEggData:AddLabel({
+                Text =
+                "💡Shows egg details",
+                DoesWrap = true
+            })
+
+            local lbl_petdataegg
+
+            local viewEggData = function(eggname)
+                local ftxt = Varz.GetEggDetails(eggname)
+                if lbl_petdataegg then
+                    lbl_petdataegg:SetText(ftxt)
+                end
+            end
+
+
+
+            local petdatadropdegg = gPetEggData:AddDropdown("petdatadropdegg", {
+                Values = {},
+                Default = {},
+                Multi = false,
+                Searchable = true,
+                MaxVisibleDropdownItems = 10,
+                Text = "🥚 Select Egg",
+                Callback = function(Values)
+                    if Values == nil then
+                        return
+                    end
+                    viewEggData(Values)
+                    egg_data_array = Values
+                    -- SaveData()
+                end
+            })
+
+            petdatadropdegg:SetValues(_Helper.AllEggNamesList)
+            petdatadropdegg:SetValue(egg_data_array)
+
+
+            lbl_petdataegg = gPetEggData:AddLabel({
+                Text = "",
+                DoesWrap = true
+            })
+
+
+            gPetEggData:AddButton({
+                Text = "<font color='#00FF04'>Copy</font>",
+                Func = function()
+                    Varz.CopyEggDataString(egg_data_array)
+                end
+            })
+        else
+            -- #pro
+            gPetEggData:AddLabel({
+                Text = Varz.GetProMessage(),
+                DoesWrap = true
+            })
+        end
+
+
+        gPetEggData:AddSpacer(50)
+    end
+
+    -- ===============================================
+    --- End #eggdata #pet
+    -- ===============================================
 
     -- ===============================================
     --- #PetData #petinfo
@@ -27465,8 +29108,6 @@ Varz.ProUi = function()
 
 
 
-
-
         --== Experiments section
         local function _GetTextTurboLevelInputText()
             local level = FSettings.mut_system.turbo_max_level
@@ -27518,7 +29159,6 @@ Varz.ProUi = function()
                 end
             end
         })
-
 
         gMutOnFarm:AddToggle("intelligentteams", {
             Text =
@@ -27693,7 +29333,7 @@ Varz.ProUi = function()
 
 
 
-    -- #gift #giftui
+    -- #gift #giftui #tradeui
     if gGift then
         gGift:AddToggle("autogift", {
             Text = "Auto Accept Gift",
@@ -27706,6 +29346,16 @@ Varz.ProUi = function()
         })
         gGift:AddDivider()
 
+        gGift:AddToggle("autogift", {
+            Text = "Auto Accept <font color='#F50072'>Trade</font>",
+            Default = FSettings.giftpets.trade_auto_accept,
+            Tooltip = "Auto accepts trade ticket requests.",
+            Callback = function(Value)
+                FSettings.giftpets.trade_auto_accept = Value
+                SaveData()
+            end
+        })
+        gGift:AddDivider()
 
         gGift:AddDivider()
 
@@ -27969,6 +29619,20 @@ Varz.ProUi = function()
             "When enabled it finds and keeps sending to selected targets",
             Callback = function(Value)
                 FSettings.giftpets.enabled_gift_pets = Value
+                SaveData()
+            end
+        })
+
+
+        gGift:AddDivider()
+        local toggleEnableGiftting = gGift:AddToggle("toggleEnableGiftting", {
+            Text =
+            "🎟️Enable TradeTicket",
+            Default = FSettings.giftpets.enabled_auto_trade,
+            Tooltip =
+            "When enabled it finds and adds pets following gift settings",
+            Callback = function(Value)
+                FSettings.giftpets.enabled_auto_trade = Value
                 SaveData()
             end
         })
@@ -28475,6 +30139,18 @@ Varz.PetTeamsUi = function()
         end
     })
 
+
+    OptionsGroup:AddDivider()
+
+    OptionsGroup:AddToggle("togglemodeautosell", {
+        Text = "💰<b>Sell All Mode</b>",
+        Default = FSettings.sellallunfav,
+        Tooltip = "If enabled, Hatching will use sell all.",
+        Callback = function(Value)
+            FSettings.sellallunfav = Value
+            SaveData()
+        end
+    })
     OptionsGroup:AddDivider()
 
     -- reload pet teams
@@ -28522,7 +30198,7 @@ Varz.PetTeamsUi = function()
 
     UpdateUITeamCount()
 
-    -- Team 1 , selling team
+    -- Team 1 , selling team #seal
     --- print("pets: ", _S.HttpService:JSONEncode(petCache));
     UI_LABELS.MultiDropdownSellTeam = GroupBoxSellingTeam:AddDropdown("dropdownSellTeam", {
         Values = GetPetsCacheAsTable(),
@@ -28551,6 +30227,30 @@ Varz.PetTeamsUi = function()
                 SaveData()
                 UpdateUITeamCount()
                 Library:Notify("Sell Team Updated", 2)
+            end
+        end
+    })
+
+
+    local btnSealAutoSelect = GroupBoxSellingTeam:AddButton({
+        Text = "✨ Auto Select",
+        Tooltip = "Auto selects best pets for this team!",
+        Func = function()
+            local sealteam = GameDataManager.Hatch.GetRecommendedSealTeam()
+            if #sealteam == 0 then
+                Library:Notify("❌ No pets found.", 3)
+            else
+                local newteamk = {}
+                for _, puuid in ipairs(sealteam) do
+                    table.insert(newteamk, puuid)
+                end
+                FSettings.team1 = newteamk
+                local teamkdata = ConvertUUIDToPetNamesPairs(FSettings.team1)
+                UI_LABELS.MultiDropdownSellTeam:SetValue(teamkdata, true)
+
+                SaveData()
+                UpdateUITeamCount()
+                Library:Notify("✅ Seal team updated!", 3)
             end
         end
     })
@@ -28654,10 +30354,10 @@ Varz.PetTeamsUi = function()
     --============================  TEAM 1 END
 
 
-    -- Team 2, hatching team
+    -- Team 2, hatching team [KOI] -- #koi
     UI_LABELS.MultiDropdownHatchTeam = GroupBoxHatchingTeam:AddDropdown("dropdownHatchTeam", {
         Values = GetPetsCacheAsTable(),
-        Default = {}, -- Default selected values for multi-select
+        Default = {},
         Multi = true,
         Searchable = true,
         MaxVisibleDropdownItems = 10,
@@ -28678,12 +30378,34 @@ Varz.PetTeamsUi = function()
             if count_vals > GetMaxPetCapacity() then
                 Library:Notify("Team size maxed", 2)
             else
-                warn("Saved Team 2 called")
-
                 FSettings.team2 = tmp_tbl
                 SaveData()
                 UpdateUITeamCount()
                 Library:Notify("Hatch Team Updated", 2)
+            end
+        end
+    })
+
+
+    local btnKoiAutoSelect = GroupBoxHatchingTeam:AddButton({
+        Text = "✨ Auto Select",
+        Tooltip = "Auto selects best pets for this team!",
+        Func = function()
+            local koiteam = GameDataManager.Hatch.GetRecommendedKoiTeam()
+            if #koiteam == 0 then
+                Library:Notify("❌ No pets found.", 3)
+            else
+                local newteamk = {}
+                for _, puuid in ipairs(koiteam) do
+                    table.insert(newteamk, puuid)
+                end
+                FSettings.team2 = newteamk
+                local teamkdata = ConvertUUIDToPetNamesPairs(FSettings.team2)
+                UI_LABELS.MultiDropdownHatchTeam:SetValue(teamkdata, true)
+
+                SaveData()
+                UpdateUITeamCount()
+                Library:Notify("✅ Koi team updated!", 3)
             end
         end
     })
@@ -29170,6 +30892,47 @@ Varz.PetTeamsUi = function()
             end
         })
         GroupBoxEggReductionTeam:AddDivider()
+
+
+        local function GetTextDelayWebTeams()
+            local level = FSettings.max_web_count or 7
+            local str = string.format(
+                "<b><font color='#00D67D'>⚠️ Max Webs</font></b><font color='#00FF9B'> x%s</font>", level)
+            return str
+        end
+        local inputmaxwebs
+        inputmaxwebs = GroupBoxEggReductionTeam:AddInput("inputmaxwebs", {
+            Text = GetTextDelayWebTeams(),
+            Default = FSettings.max_web_count,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = true,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 7",
+            Tooltip = "Enter max webs before the team switches.",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+
+                if not num or num <= 0 then
+                    Library:Notify("Invalid: " .. Value, 3)
+                    inputmaxwebs:SetValue(tostring(FSettings.max_web_count))
+                    return
+                end
+
+                if num > 0 then
+                    FSettings.max_web_count = num
+                    SaveData()
+                    inputmaxwebs:SetText(GetTextDelayWebTeams())
+                end
+            end
+        })
+        GroupBoxEggReductionTeam:AddDivider()
+
+
+
+
+
+
 
         GroupBoxEggReductionTeam:AddToggle("hatchingreductionteamsg", {
             Text = "♻️ Enable Teams",
@@ -29758,6 +31521,54 @@ local function M_UI_PLANTS()
     local gFruitShovel = UISellTab:AddRightGroupbox('🍉 Shovel Fruits', "chart-no-axes-column")
 
 
+    -- #esp #fruitesp
+    local gFruitEsp = UISellTab:AddLeftGroupbox('🌻 Fruit ESP', "chart-no-axes-column")
+
+    --====================================================
+    -- 🌻  fruits esp #esp
+    --====================================================
+
+    if gFruitEsp then
+        gFruitEsp:AddLabel({
+            Text = "Select fruits to show esp.",
+            DoesWrap = true
+        })
+        local dd_espflist = gFruitEsp:AddDropdown("dd_espflist", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Text = "🌴 Plants",
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                if newSelection == nil then return end
+                FSessionDx.fruitesp.plants_list = newSelection
+                SaveManager.SaveSessionSettings.SaveFile()
+            end
+        })
+
+        dd_espflist:SetValues(GetKeyValuesFromList(all_plants_list))
+        dd_espflist:SetValue(FSessionDx.fruitesp.plants_list)
+
+
+        gFruitEsp:AddToggle("enablefruitesp", {
+            Text = "⚡ Enable ESP",
+            Default = FSessionDx.fruitesp.enable_esp,
+            Tooltip = "Shows fruit esp and makes them smaller. Restart if you disable to restore.",
+            Callback = function(Value)
+                FSessionDx.fruitesp.enable_esp = Value
+                SaveManager.SaveSessionSettings.SaveFile()
+            end
+        })
+    end
+
+    --====================================================
+    -- end esp
+    --====================================================
+
+
+
+
     --====================================================
     -- 🍉 Shovel fruits #fruit #shovel
     --====================================================
@@ -29765,6 +31576,11 @@ local function M_UI_PLANTS()
         -- gFruitShovel:AddDivider()
         UI_LABELS.lbl_fruit_shovel_live = gFruitShovel:AddLabel({
             Text = "🔴 Not running",
+            DoesWrap = true -- Allows the text to span multiple lines if needed
+        })
+
+        gFruitShovel:AddLabel({
+            Text = "ℹ️ Weight filters are used from Fruit collection settings (Min, Max), change it there.",
             DoesWrap = true -- Allows the text to span multiple lines if needed
         })
 
@@ -30992,7 +32808,7 @@ local function MEventsUi()
     --local eventJungle = UIEventsTab:AddLeftGroupbox("🌴 <font color='#228B22'>Jungle Event</font> 🍂", "tree")
 
     local gFallEvent = UIEventsTab:AddLeftGroupbox(type_fruit_event_name, "snowflake")
-    --local FallQuestui = UIEventsTab:AddLeftGroupbox("🍂 <font color='#FFD700'>Fall Activities</font> 🌽", "tasks")
+    local gQuest = UIEventsTab:AddLeftGroupbox("🍂 <font color='#FFD700'>Quests</font> 🌽", "tasks")
     local GroupBoxAutoAscension = UIEventsTab:AddRightGroupbox("AutoAscension", "calendar-sync")
     local gPetMutationMachine = UIEventsTab:AddRightGroupbox("Pet Mutation Machine", "blocks")
 
@@ -31008,13 +32824,6 @@ local function MEventsUi()
     --local gTradeEvent = UIEventsTab:AddLeftGroupbox("💰 Trade Event", "store")
 
 
-
-    local titlecustomteams =
-        "🔄 <stroke color='#000055' thickness='1.5' joins='round'>" ..
-        "<b><font color='#FFFFFF'>Custom</font> <font color='#F52727'>Teams</font></b>" ..
-        "</stroke>"
-
-    local gCustomTeams = UIEventsTab:AddLeftGroupbox(titlecustomteams)
 
     ----------------------------------------------
     -------- ===== Trade event #trade
@@ -31074,100 +32883,6 @@ local function MEventsUi()
     -- END trade end
 
 
-
-
-    ----------------------------------------------
-    -------- ===== Teams Systems  #teams
-    ----------------------------------------------
-
-    if gCustomTeams then
-        gCustomTeams:AddLabel({
-            Text =
-            "💡 Custom teams, can be used for some setups.",
-            DoesWrap = true
-        })
-
-        local GetText_CustomTeams1Text = function()
-            local current_selected = #FSettings.customteams_team1
-            local max_allowed = GetMaxPetCapacity()
-
-            local ratio_colour = current_selected >= max_allowed and "#FF5555" or "#00FF99"
-
-            local txt = string.format(
-                '<font color="#00FF3C"><b>🤖 Team 1</b></font> ' ..
-                '<font color="#DDDDDD">[</font>' ..
-                '<font color="%s"><b>%d</b></font>' ..
-                '<font color="#FFFFFF">/</font>' ..
-                '<font color="#DDDDDD"><b>%d</b></font>' ..
-                '<font color="#DDDDDD">]</font>',
-                ratio_colour,
-                current_selected,
-                max_allowed
-            )
-            return txt
-        end
-
-
-        --- =========== Team 1
-
-        UI_Dropdown.customteams_team1 = gCustomTeams:AddDropdown("customteams_team1", {
-            Values = {},
-            Default = {},
-            Multi = true,
-            Searchable = true,
-            MaxVisibleDropdownItems = 10,
-            Text = GetText_CustomTeams1Text(),
-            Tooltip = "Select pets for this team.",
-            Callback = function(Values)
-                if Values == nil then
-                    return
-                end
-                local tmp_tbl = {}
-
-                for Value, Selected in pairs(Values) do
-                    if Selected then
-                        local _uuid = extractUUIDFromString(Value)
-
-                        table.insert(tmp_tbl, _uuid)
-                    end
-                    -- loop ends
-                end
-
-
-                local max_allowed = GetMaxPetCapacity()
-                local count_vals = #tmp_tbl
-                if count_vals > max_allowed then
-                    UI_Dropdown.customteams_team1:SetValue(ConvertUUIDToPetNamesPairs(FSettings.customteams_team1))
-                    Library:Notify("Team size maxed", 2)
-                else
-                    FSettings.customteams_team1 = tmp_tbl
-                    SaveData()
-                    UI_Dropdown.customteams_team1:SetText(GetText_CustomTeams1Text())
-                    --Library:Notify("Team Updated", 2)
-                end
-            end
-        })
-
-        gCustomTeams:AddButton({
-            Text = "🟢 Start Teams",
-            Func = function()
-                PetMutation.StartCustomTeams()
-            end
-        })
-
-        gCustomTeams:AddButton({
-            Text = "🔴 Stop Teams",
-            Func = function()
-                PetMutation.StopCustomTeams()
-            end
-        })
-
-        gCustomTeams:AddSpacer(100)
-    end
-
-    ----------------------------------------------
-    -------- ===== End Teams
-    ----------------------------------------------
 
 
 
@@ -32203,57 +33918,72 @@ local function MEventsUi()
 
 
     ---------------------------------------------------
-    -------- FALL Event Quest Line
+    -------- Quests ui #questui
     ---------------------------------------------------
-    if FallQuestui then
-        UI_LABELS.lbl_questline_status = FallQuestui:AddLabel({
+    if gQuest then
+        UI_LABELS.lbl_questline_status = gQuest:AddLabel({
             Text = "Not running",
             DoesWrap = true
         })
 
-        FallQuestui:AddDivider()
+        gQuest:AddDivider()
         -- info
-        UI_LABELS.lbl_questline_info = FallQuestui:AddLabel({
+        UI_LABELS.lbl_questline_info = gQuest:AddLabel({
             Text = "-",
             DoesWrap = true
         })
 
-        FallQuestui:AddDivider()
+        gQuest:AddDivider()
         -- info
-        FallQuestui:AddLabel({
+        gQuest:AddLabel({
             Text =
-            "ℹ️ Automatically performs most fall activities and pauses if any ongoing tasks are in progress, such as <font color='#00BFFF'>hatching</font>. <font color='#FFD700'>Skips items that require Ascension</font> and pauses <font color='#FF4500'>just before a hatch occurs</font> to avoid conflicts.",
+            "ℹ️ Automatically performs quests.",
             DoesWrap = true
         })
 
-        local max_reolldrop = FallQuestui:AddDropdown("max_reolldrop", {
-            Values = {},
-            Default = {},
-            Multi = false,
-            Text = "💰 Maximum Reroll Amount",
-            Tooltip = "Select the maximum amount to reroll during Fall activities",
-            Searchable = true,
-            MaxVisibleDropdownItems = 7,
-            Changed = function(newSelection)
-                if newSelection ~= nil then
-                    FOtherSettings.quest_recoll_max_cost = newSelection
-                end
+        -- local max_reolldrop = gQuest:AddDropdown("max_reolldrop", {
+        --     Values = {},
+        --     Default = {},
+        --     Multi = false,
+        --     Text = "💰 Maximum Reroll Amount",
+        --     Tooltip = "Select the maximum amount to reroll during Fall activities",
+        --     Searchable = true,
+        --     MaxVisibleDropdownItems = 7,
+        --     Changed = function(newSelection)
+        --         if newSelection ~= nil then
+        --             FOtherSettings.quest_recoll_max_cost = newSelection
+        --         end
+        --         SaveDataOther()
+        --     end
+        -- })
+
+
+        -- -- Populate
+        -- max_reolldrop:SetValues(EventQuestsManager.PriceListReroll)
+        -- max_reolldrop:SetValue(FOtherSettings.quest_recoll_max_cost)
+
+
+        gQuest:AddDivider()
+        --spin
+        local ftitle3 = "Auto Spin"
+        gQuest:AddToggle("enableautospintoggle", {
+            Text = "♻️ " .. ftitle3,
+            Default = FOtherSettings.is_fall_questline_spin,
+            Tooltip = "Auto Spin",
+            Callback = function(Value)
+                FOtherSettings.is_fall_questline_spin = Value
                 SaveDataOther()
+                Library:Notify(ftitle3 .. " " .. (Value and "Enabled" or "Disabled"), 2)
             end
         })
 
-
-        -- Populate
-        max_reolldrop:SetValues(EventQuestsManager.PriceListReroll)
-        max_reolldrop:SetValue(FOtherSettings.quest_recoll_max_cost)
-
-        FallQuestui:AddDivider()
+        gQuest:AddDivider()
         -- Enable or disable Fall market event
-        local ftitle1 = "Auto Fall Activity"
-        FallQuestui:AddToggle("enablequestlinetogglex", {
+        local ftitle1 = "Enable Quests"
+        gQuest:AddToggle("enablequestlinetogglex", {
             Text = "⚡ " .. ftitle1,
             Default = FOtherSettings.is_fall_questline_auto,
-            Tooltip = "Enable or disable automatic Fall activities",
+            Tooltip = "Enable or disable quests",
             Callback = function(Value)
                 FOtherSettings.is_fall_questline_auto = Value
                 SaveDataOther()
@@ -32261,27 +33991,22 @@ local function MEventsUi()
             end
         })
 
-        FallQuestui:AddDivider()
-        --reroll
-        local ftitle2 = "Auto Reroll"
-        FallQuestui:AddToggle("enableautoreolltoggle", {
-            Text = "⚡💰 " .. ftitle2,
-            Default = FOtherSettings.is_fall_questline_reroll,
-            Tooltip = "Auto Reroll activities",
-            Callback = function(Value)
-                FOtherSettings.is_fall_questline_reroll = Value
-                SaveDataOther()
-                Library:Notify(ftitle2 .. " " .. (Value and "Enabled" or "Disabled"), 2)
-            end
-        })
+        -- gQuest:AddDivider()
+        -- --reroll
+        -- local ftitle2 = "Auto Reroll"
+        -- gQuest:AddToggle("enableautoreolltoggle", {
+        --     Text = "⚡💰 " .. ftitle2,
+        --     Default = FOtherSettings.is_fall_questline_reroll,
+        --     Tooltip = "Auto Reroll activities",
+        --     Callback = function(Value)
+        --         FOtherSettings.is_fall_questline_reroll = Value
+        --         SaveDataOther()
+        --         Library:Notify(ftitle2 .. " " .. (Value and "Enabled" or "Disabled"), 2)
+        --     end
+        -- })
 
 
-        FallQuestui:AddDivider()
-        FallQuestui:AddDivider()
-        FallQuestui:AddDivider()
-        FallQuestui:AddDivider()
-        FallQuestui:AddDivider()
-        FallQuestui:AddDivider()
+        gQuest:AddSpacer(50)
     end
     ------------------------ Quest END
 
@@ -34005,7 +35730,7 @@ UiCollectionTab()
 
 
 
--- Create the UI for Selling backpack etc
+-- Create the UI for Selling backpack etc #sell
 local function MSellUI()
     -- Create the new "Mutations" Tab
     local UISellTab = Window:AddTab({
@@ -35609,6 +37334,96 @@ end)
 
 
 
+-- #quests #quest #questloop
+task.spawn(function()
+    while true do
+        task.wait(3)
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            task.wait(5)
+            continue
+        end
+
+        if not FOtherSettings.is_fall_questline_auto then
+            EventQuestsManager.UpdateStatsText(
+                "<font color='#FF0000'>🔴 Quests not enabled or running…</font>")
+            task.wait(1)
+            continue
+        end
+
+        EventQuestsManager.UpdateStatsText("🟢 Active and running…")
+
+        local tasks, visuals = TaskManager.Quests.GetQuestsTodo()
+        if not tasks then
+            EventQuestsManager.UpdateStatsInfo("⏳ Waiting for tasks...")
+            continue
+        end
+
+        if FOtherSettings.is_fall_questline_spin then
+            for i = 1, 2, 1 do
+                TaskManager.Quests.QuestAutoSpin()
+                task.wait(0.5)
+            end
+        end
+
+        -- harvest any
+        TaskManager.Quests.HarvestSingle()
+
+        EventQuestsManager.UpdateStatsInfo(visuals)
+
+        for _, item in ipairs(tasks) do
+            local action         = item.action
+            local current_amount = item.current_amount
+            local target_amount  = item.target_amount
+            local needed         = item.needed
+            local target_item    = item.target_item
+
+            if not FOtherSettings.is_fall_questline_auto then
+                break
+            end
+
+            if action == "EarnSheckles" then
+                local success, fail = pcall(function()
+                    return TaskManager.Quests.ActionEarnSheckles(target_item, needed)
+                end)
+
+                if not success then
+                    warn("Error" .. action .. ": ", fail)
+                end
+                task.wait(2)
+                continue
+            end
+
+            if action == "Plant" then
+                local success, fail = pcall(function()
+                    return TaskManager.Quests.ActionPlant(target_item, needed)
+                end)
+
+                if not success then
+                    warn("Error" .. action .. ": ", fail)
+                end
+                task.wait(2)
+                continue
+            end
+
+            if action == "Harvest" then
+                local success, fail = pcall(function()
+                    return TaskManager.Quests.ActionHarvest(target_item, needed)
+                end)
+
+                if not success then
+                    warn("Error" .. action .. ": ", fail)
+                end
+                task.wait(2)
+                continue
+            end
+        end
+    end
+end)
+
+
+
+
 -- Quest activity
 if not _G.EventsQuestLineLoop then
     _G.EventsQuestLineLoop = task.spawn(function()
@@ -35656,7 +37471,7 @@ if not _G.EventsQuestLineLoop then
 
 
             local questslist = EventQuestsManager.GetAvailableActivites()
-            _Helper.JsonPrint(questslist)
+            -- _Helper.JsonPrint(questslist)
             if not questslist then
                 -- reset
                 --warn("Invalid event")
@@ -36674,6 +38489,27 @@ if not _G.monsterlevels_task then
 end
 
 
+Varz.FastCraftCancel = function()
+    local bName = "GearEventWorkbench"
+    CraftManager.CancelWorkbenchUsingName(bName)
+    local current_step = CraftManager.GetWorkbenchStateUsingName(bName)
+    if current_step == nil then
+        return
+    end
+
+    if current_step == CraftManager.CraftStats.SELECT_RECIPE then
+        local success, result = pcall(function()
+            CraftManager.SetRecipeUsingName(bName, true)
+        end)
+
+        return
+    end
+
+    if current_step == CraftManager.CraftStats.START_CRAFTING then
+        -- Start crafting, press the submit button
+        CraftManager.CancelWorkbenchUsingName(bName)
+    end
+end
 
 -- #craft
 if TaskManager.craft_tasks_loop then
@@ -37134,11 +38970,12 @@ end
 TaskManager.seedeventtasker = task.spawn(function()
     while true do
         -- Pause
+        Varz.IS_SEEDING = false
         if Varz.IsPaused() then
             task.wait(math.random(2, 5))
             continue
         end
-        Varz.IS_SEEDING = false
+
         task.wait(5)
 
 
@@ -38014,7 +39851,7 @@ if not _G.service_ui_labelupdates then
                 table.insert(tbl_stats, Varz.TEXT_CRAFT_TEAMS)
             end
 
-            if FSettings.giftpets.enabled_gift_pets then
+            if FSettings.giftpets.enabled_gift_pets or FSettings.giftpets.enabled_auto_trade then
                 table.insert(tbl_stats, Varz.TEXT_GIFT)
             end
 
@@ -38348,12 +40185,12 @@ _Helper.EnhanceFavFaster = function()
         local ls = Varz.GetFruitToFavAbuseNew()
 
         for index, value in ipairs(ls) do
-            MakeFruitsFavSingle(value)
-            task.wait(0.2)
+            --  MakeFruitsFavSingle(value)
+            --task.wait(0.2)
         end
 
         if ls and #ls > 0 then
-            --MakeFruitsFav(ls)
+            MakeFruitsFav(ls)
             -- task.wait(0.3) -- Optional: slight delay to ensure server registers fav
             --MakeFruitsFav(ls)
         end
@@ -38427,8 +40264,9 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             --     -- MakeFruitsFavSingle(value)
             --     Varz.EquipTool(value)
             -- end
+            --Varz.FastCraftCancel()
             _Helper.EnhanceFavFaster()
-            -- MakeFruitsFav(Varz.GetPetEnhanceTargets())
+            --MakeFruitsFav(Varz.GetPetEnhanceTargets())
         end)
     end
 end)
@@ -38860,8 +40698,11 @@ end)
 
 
 
-
+-- #gift
 _Helper.ClickGiftAccept = function()
+    if _Helper.IsSellAllUnFav() and FSettings.is_running then
+        return
+    end
     local gui = _S.PlayerGui
     local notif = gui:FindFirstChild("Gift_Notification")
     if not notif or not notif.Enabled then return end
@@ -38904,6 +40745,61 @@ _Helper.ClickGiftAccept = function()
     end
 end
 
+
+-- #trade
+_Helper.ClickTradeAccept = function()
+    if _Helper.IsSellAllUnFav() and FSettings.is_running then
+        return
+    end
+
+    local gui = _S.PlayerGui
+    local notif = gui:FindFirstChild("Gift_Notification")
+    if not notif or not notif.Enabled then return end
+
+    local frame = notif:FindFirstChild("Frame")
+    if not frame then return end
+
+    -- Locate the specific TradeRequest frame
+    local tradeReq = frame:FindFirstChild("TradeRequest")
+    if tradeReq then
+        -- Navigate the deep path safely to find the SENSOR
+        -- Path: Wrapper -> Canvas -> Segment -> Buttons -> ACCEPT_BUTTON -> Main -> SENSOR
+        local wrapper = tradeReq:FindFirstChild("Wrapper")
+        local canvas = wrapper and wrapper:FindFirstChild("Canvas")
+        local segment = canvas and canvas:FindFirstChild("Segment")
+        local buttons = segment and segment:FindFirstChild("Buttons")
+        local acceptBtn = buttons and buttons:FindFirstChild("ACCEPT_BUTTON")
+        local main = acceptBtn and acceptBtn:FindFirstChild("Main")
+        local sensor = main and main:FindFirstChild("SENSOR")
+
+        if sensor then
+            local didClick = false
+
+            if getconnections then
+                -- Try MouseButton1Click
+                for _, connection in pairs(getconnections(sensor.MouseButton1Click)) do
+                    connection:Fire()
+                    didClick = true
+                    -- print("Fired Trade Accept (MouseButton1Click)")
+                end
+
+                -- Try Activated
+                for _, connection in pairs(getconnections(sensor.Activated)) do
+                    connection:Fire()
+                    didClick = true
+                    -- print("Fired Trade Accept (Activated)")
+                end
+            end
+
+            if didClick then
+                task.wait(4)
+            end
+        else
+            -- print("Could not find SENSOR path inside TradeRequest")
+        end
+    end
+end
+
 -- Check continuously (lightweight)
 if TaskManager.task_auto_accept then
     task.cancel(TaskManager.task_auto_accept)
@@ -38912,11 +40808,17 @@ end
 TaskManager.task_auto_accept = task.spawn(function()
     while true do
         task.wait(2)
-        if not FSettings.is_auto_accept_gift then
-            continue
-        end
+
         local x, s = pcall(function()
-            _Helper.ClickGiftAccept()
+            if FSettings.giftpets.trade_auto_accept then
+                if not TaskManager.TradeSystem.IsTradeActive() then
+                    _Helper.ClickTradeAccept()
+                end
+            end
+
+            if FSettings.is_auto_accept_gift then
+                _Helper.ClickGiftAccept()
+            end
         end)
         if not x then
             print("Error: ", s)
@@ -39053,5 +40955,371 @@ task.spawn(function()
             continue
         end
         _Helper.HighLightBackPack()
+    end
+end)
+
+
+
+-- #fruitesp #esp
+
+
+_Helper.CreateFruitESPx = function(object, showMutations)
+    if not object or not object:IsA("Instance") then
+        return
+    end
+
+    -- Prevent duplicate ESP
+    if object:GetAttribute("has_esp") then
+        return
+    end
+    object:SetAttribute("has_esp", true)
+
+    -- Resolve target model
+    local model = object:IsA("Model") and object or object:FindFirstAncestorOfClass("Model")
+    if not model then
+        return
+    end
+
+    local mainPart = model.PrimaryPart or model:FindFirstChild("Base")
+    if not mainPart then
+        return
+    end
+
+    -- Create the BillboardGui
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "exof"
+    billboard.Adornee = mainPart
+    billboard.Size = UDim2.fromOffset(400, 70) -- may adjust later if mutations added
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.LightInfluence = 0
+
+    -- Container for vertical layout
+    local container = Instance.new("Frame")
+    container.Size = UDim2.fromScale(1, 1)
+    container.BackgroundTransparency = 1
+    container.Parent = billboard
+
+    local layout = Instance.new("UIListLayout")
+    layout.FillDirection = Enum.FillDirection.Vertical
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    layout.VerticalAlignment = Enum.VerticalAlignment.Top
+    layout.Padding = UDim.new(0, 2)
+    layout.Parent = container
+
+    -- Main info label (name + variant + weight)
+    local mainLabel = Instance.new("TextLabel")
+    mainLabel.Size = UDim2.fromScale(1, 0.6)
+    mainLabel.BackgroundTransparency = 1
+    mainLabel.TextScaled = false
+    mainLabel.TextSize = 13
+    mainLabel.RichText = true
+    mainLabel.Font = Enum.Font.GothamBold
+    mainLabel.TextStrokeTransparency = 0.4
+    mainLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    mainLabel.TextColor3 = Color3.fromRGB(255, 215, 90)
+
+    -- Build main display text
+    local name = model.Name
+    local name_color = _Helper.StringToColor3Light(name)
+
+    local Variant = _FruitCollectorMachine.GetFruitVariant(object)
+    local Weight = ParseWeightNumber2d(_FruitCollectorMachine.GetFruitWeight(object))
+    local color_variant = _Helper.StringToColor3Light(Variant)
+
+    local namedisplay = string.format("<font color='%s'>%s</font> - <font color='%s'>%s</font>",
+        color_variant, Variant, name_color, name)
+    local w_display = string.format("%skg", Weight)
+
+    local CalculatePlantValue = require(game:GetService("ReplicatedStorage").Modules.CalculatePlantValue)
+
+    -- Get the value
+    local value = _S.CalculatePlantValue(object) or 0
+    local cashx = "$" .. _Helper.formatShecklesNumber(value)
+
+    mainLabel.Text = string.format(
+        "<stroke color='#000000' thickness='2'><font color='#000000'>%s</font> <font color='#FFFFFF'>%s</font></stroke> • <stroke color='#000000' thickness='2'><font color='#00F51E'>%s</font></stroke> ",
+        namedisplay, w_display, cashx
+    )
+    mainLabel.Parent = container
+
+    -- Optional mutations label
+    if showMutations then
+        local all_attr = object:GetAttributes()
+        local tbl_mut = {}
+
+
+        for key, value in pairs(all_attr) do
+            if Varz.AllFruitMutations[key] then
+                local txtm = string.format("<font color='%s'>%s</font>", _Helper.StringToColor3Light(key), key)
+                table.insert(tbl_mut, txtm)
+            end
+        end
+
+        if #tbl_mut > 0 then
+            local total_mut                 = #tbl_mut
+            local dot                       = " • "
+            local mt_ls                     = table.concat(tbl_mut, dot)
+            local mdisplay                  = string.format(
+                "[%s] <stroke color='#000000' thickness='1'><font color='#FFFFFF'>%s</font></stroke>", total_mut, mt_ls)
+            local mutLabel                  = Instance.new("TextLabel")
+            mutLabel.Size                   = UDim2.fromScale(1, 0.4)
+            mutLabel.BackgroundTransparency = 1
+            mutLabel.TextScaled             = false
+            mutLabel.TextSize               = 11
+            mutLabel.RichText               = true
+            mutLabel.TextWrapped            = true
+            mutLabel.Font                   = Enum.Font.GothamBold
+            mutLabel.TextStrokeTransparency = 0.6
+            mutLabel.TextStrokeColor3       = Color3.new(0, 0, 0)
+            mutLabel.TextColor3             = Color3.fromRGB(255, 230, 160)
+
+            mutLabel.Text                   = mdisplay
+            mutLabel.Parent                 = container
+
+            -- Increase BillboardGui height if mutations exist
+            billboard.Size                  = UDim2.fromOffset(300, 90)
+        end
+    end
+
+    billboard.Parent = model
+end
+
+
+_Helper.CreateFruitESP = function(object, showMutations, forceRefresh)
+    if not object or not object:IsA("Instance") then return end
+
+    -- Resolve target model
+    local model = object:IsA("Model") and object or object:FindFirstAncestorOfClass("Model")
+    if not model then return end
+
+    local mainPart = model.PrimaryPart or model:FindFirstChild("Base")
+    if not mainPart then return end
+
+    -- Check for existing UI
+    local billboard = model:FindFirstChild("exof")
+
+    -- OPTIMIZATION: Stop if UI exists and no refresh forced
+    if billboard and not forceRefresh then return end
+
+    -------------------------------------------------------------------------
+    -- 1. Setup UI Structure
+    -------------------------------------------------------------------------
+    local container, mainLabel, mutLabel, layout
+
+    if not billboard then
+        object:SetAttribute("has_esp", true)
+
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "exof"
+        billboard.Adornee = mainPart
+        -- Start with a default size, but we will update it later based on content
+        billboard.Size = UDim2.fromOffset(400, 50)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.LightInfluence = 0
+        billboard.Parent = model
+
+        container = Instance.new("Frame")
+        container.Name = "Container"
+        container.Size = UDim2.fromScale(1, 0)         -- Height is 0, lets AutoSize handle it
+        container.AutomaticSize = Enum.AutomaticSize.Y -- Container grows with children
+        container.BackgroundTransparency = 1
+        container.Parent = billboard
+
+        layout = Instance.new("UIListLayout")
+        layout.FillDirection = Enum.FillDirection.Vertical
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.VerticalAlignment = Enum.VerticalAlignment.Top
+        layout.Padding = UDim.new(0, 2) -- Space between Name and Mutations
+        layout.Parent = container
+
+        mainLabel = Instance.new("TextLabel")
+        mainLabel.Name = "MainLabel"
+        -- Height is 0, AutoSize determines real height
+        mainLabel.Size = UDim2.fromScale(1, 0)
+        mainLabel.AutomaticSize = Enum.AutomaticSize.Y
+        mainLabel.BackgroundTransparency = 1
+        mainLabel.TextScaled = false
+        mainLabel.TextSize = 13
+        mainLabel.RichText = true
+        mainLabel.TextWrapped = true -- Ensure it wraps if name is super long
+        mainLabel.Font = Enum.Font.GothamBold
+        mainLabel.TextStrokeTransparency = 0.4
+        mainLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+        mainLabel.TextColor3 = Color3.fromRGB(255, 215, 90)
+        mainLabel.Parent = container
+    else
+        -- Get existing parts
+        container = billboard:FindFirstChild("Container")
+        if container then
+            layout = container:FindFirstChildOfClass("UIListLayout")
+            mainLabel = container:FindFirstChild("MainLabel")
+            mutLabel = container:FindFirstChild("MutLabel")
+        end
+    end
+
+    if not mainLabel then return end
+
+    -------------------------------------------------------------------------
+    -- 2. Update Data
+    -------------------------------------------------------------------------
+
+    local name = model.Name
+    local name_color = _Helper.StringToColor3Light(name)
+
+    local Variant = _FruitCollectorMachine.GetFruitVariant(object)
+    local Weight = ParseWeightNumber2d(_FruitCollectorMachine.GetFruitWeight(object))
+    local color_variant = _Helper.StringToColor3Light(Variant)
+
+    local namedisplay = string.format("<font color='%s'>%s</font> - <font color='%s'>%s</font>",
+        color_variant, Variant, name_color, name)
+    local w_display = string.format("%skg", Weight)
+
+    local CalculatePlantValue = require(game:GetService("ReplicatedStorage").Modules.CalculatePlantValue)
+    local value = _S.CalculatePlantValue(object) or 0
+    local cashx = "$" .. _Helper.formatShecklesNumber(value)
+
+    mainLabel.Text = string.format(
+        "<stroke color='#000000' thickness='2'><font color='#000000'>%s</font> <font color='#FFFFFF'>%s</font></stroke> • <stroke color='#000000' thickness='2'><font color='#00F51E'>%s</font></stroke> ",
+        namedisplay, w_display, cashx
+    )
+
+    -------------------------------------------------------------------------
+    -- 3. Update Mutations & Resize
+    -------------------------------------------------------------------------
+    local hasMutations = false
+
+    if showMutations then
+        local all_attr = object:GetAttributes()
+        local tbl_mut = {}
+
+        for key, value in pairs(all_attr) do
+            if Varz.AllFruitMutations[key] then
+                local txtm = string.format("<font color='%s'>%s</font>", _Helper.StringToColor3Light(key), key)
+                table.insert(tbl_mut, txtm)
+            end
+        end
+
+        if #tbl_mut > 0 then
+            hasMutations = true
+            local total_mut = #tbl_mut
+            local mt_ls = table.concat(tbl_mut, " • ")
+            local mdisplay = string.format(
+                "[%s] <stroke color='#000000' thickness='1'><font color='#FFFFFF'>%s</font></stroke>", total_mut, mt_ls)
+
+            if not mutLabel then
+                mutLabel = Instance.new("TextLabel")
+                mutLabel.Name = "MutLabel"
+                -- Height is 0, AutoSize determines real height
+                mutLabel.Size = UDim2.fromScale(1, 0)
+                mutLabel.AutomaticSize = Enum.AutomaticSize.Y
+                mutLabel.BackgroundTransparency = 1
+                mutLabel.TextScaled = false
+                mutLabel.TextSize = 11
+                mutLabel.RichText = true
+                mutLabel.TextWrapped = true
+                mutLabel.Font = Enum.Font.GothamBold
+                mutLabel.TextStrokeTransparency = 0.6
+                mutLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+                mutLabel.TextColor3 = Color3.fromRGB(255, 230, 160)
+                mutLabel.Parent = container
+            end
+
+            mutLabel.Text = mdisplay
+            mutLabel.Visible = true
+        else
+            if mutLabel then mutLabel.Visible = false end
+        end
+    end
+
+    -- Force UI update so we can calculate the new size
+    if layout then
+        layout:ApplyLayout()
+    end
+
+    -- Dynamically resize the Billboard to fit the content exactly
+    -- We add a little buffer (e.g., 10 pixels) to prevent clipping
+    local contentSize = layout.AbsoluteContentSize.Y
+    if contentSize < 50 then contentSize = 50 end -- Minimum height
+
+    billboard.Size = UDim2.fromOffset(400, contentSize + 10)
+end
+
+
+
+Varz.FruitMakeSmall = function()
+    local plants_valid = FSessionDx.fruitesp.plants_list or {}
+
+    if next(plants_valid) == nil then
+        return
+    end
+
+    local datax = FarmManager.Get_Plants_Physical_Objects()
+    local scaleFactor = 1.5
+
+    for _, fruit in ipairs(datax) do
+        if not plants_valid[fruit.Name] then
+            continue
+        end
+
+        local Fruits_folder = fruit:FindFirstChild("Fruits")
+        if not Fruits_folder then
+            _Helper.CreateFruitESP(fruit, true, true)
+            continue
+        end
+
+        for _, item in ipairs(Fruits_folder:GetChildren()) do
+            if item:GetAttribute("IsSmallx") then
+                _Helper.CreateFruitESP(item, true, true)
+                continue
+            end
+
+
+
+            -- Use existing mainPart exactly as you had it
+            local mainPart = item.PrimaryPart or item:FindFirstChild("Base")
+            if not mainPart then
+                continue
+            end
+            local targetCFrame = mainPart.CFrame
+            item:SetAttribute("IsSmallx", true)
+
+            -- Lock current position
+            local pivotCF = item:GetPivot()
+
+            -- Scale while preserving structure
+            item:ScaleTo(scaleFactor)
+
+            -- Restore exact position
+            item:PivotTo(pivotCF)
+
+            for _, part in ipairs(item:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
+    end
+end
+
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not FSessionDx.fruitesp.enable_esp then
+            task.wait(0.2)
+            continue
+        end
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            task.wait(5)
+            continue
+        end
+
+
+        pcall(function()
+            Varz.FruitMakeSmall()
+        end)
     end
 end)
