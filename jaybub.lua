@@ -180,7 +180,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.34.9"
+_S.CurentV = "v1.35.5"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -626,6 +626,7 @@ local FSettings = {
         allow_player_targets = {},
         enabled_gift_pets = false,
         enabled_auto_trade = false,
+        auto_confirm_accept = false,
         trade_auto_accept = false,
         allow_fav = false,
         min_age = 1,
@@ -648,6 +649,7 @@ local FSettings = {
     rng_egg_lowers_up = false,
     char_farm_middle = false,
     fav_fruit_enhancer = false,
+    enhancer_auto_sellfruit = false,
     fav_fruit_enhance_sell = false,
     is_running_custom_teams = false,
     customteams_team1 = {},
@@ -9578,12 +9580,15 @@ Varz.SellFruitsToVendor = function()
     task.wait(0.4)
 end
 
-Varz.SellFruitsToVendorWithRangeCheck = function()
+Varz.SellFruitsToVendorWithRangeCheck = function(unfav)
+    local fcount = InventoryManager.GetFruitCount()
+    if fcount == 0 then return end
+
     local hrp = _S.Character:FindFirstChild("HumanoidRootPart")
-    print("Check1")
+    -- print("Check1")
     if not hrp then return end
 
-    print("check2")
+    -- print("check2")
 
     -- 1. Get Shop Location
     local shopPos = Varz.TeleportLocations.GetLocationSellShopV3()
@@ -9592,8 +9597,18 @@ Varz.SellFruitsToVendorWithRangeCheck = function()
     local distance = (hrp.Position - shopPos).Magnitude
     local maxRange = 9 -- Adjust this range if needed
 
+
+    if unfav then
+        if fcount > 2 then
+            return
+        end
+        task.wait(0.3)
+        InventoryManager.FavAllFruitsInBackpack(false, true)
+    end
+
+
     if distance <= maxRange then
-        print("already near")
+        -- print("already near")
         -- == ALREADY AT SHOP ==
         -- Just sell, no teleporting needed
         -- _Helper.SafeFruitsProccess()
@@ -9606,7 +9621,7 @@ Varz.SellFruitsToVendorWithRangeCheck = function()
     else
         -- == TOO FAR AWAY ==
         -- Teleport logic
-        print("too far")
+        -- print("too far")
         local originalCFrame = hrp.CFrame
         local targetCFrame = _Helper.Vector3ToCFrame(shopPos)
 
@@ -9622,7 +9637,7 @@ Varz.SellFruitsToVendorWithRangeCheck = function()
         task.wait(0.4)
     end
 
-    print("Sold")
+    --print("Sold")
 end
 
 
@@ -13709,11 +13724,75 @@ TaskManager.GiftSystem = {
 
 -- #trade
 TaskManager.TradeSystem = {
+
+    TradeAcceptButton = function()
+        local players = game:GetService("Players")
+        local lp = players.LocalPlayer
+        local gui = lp and lp:FindFirstChild("PlayerGui")
+        if not gui then return end
+
+        -- New Path: TradingUI -> LiveTrade -> Options -> Accept
+        local tradingUI = gui:FindFirstChild("TradingUI")
+        if not tradingUI or not tradingUI.Enabled then return end -- Check if UI exists and is enabled
+
+        local liveTrade = tradingUI:FindFirstChild("LiveTrade")
+        local options = liveTrade and liveTrade:FindFirstChild("Options")
+        local acceptBtn = options and options:FindFirstChild("Accept")
+
+        -- Note: We assume 'Accept' is the button itself.
+        -- If 'Accept' is a folder containing a button, you might need to add :FindFirstChild("ButtonName") here.
+
+        if acceptBtn then
+            local didClick = false
+
+            if getconnections then
+                -- Try MouseButton1Click
+                for _, connection in pairs(getconnections(acceptBtn.MouseButton1Click)) do
+                    connection:Fire()
+                    didClick = true
+                    -- print("Fired Trade Accept (MouseButton1Click)")
+                end
+
+                -- Try Activated
+                for _, connection in pairs(getconnections(acceptBtn.Activated)) do
+                    connection:Fire()
+                    didClick = true
+                    -- print("Fired Trade Accept (Activated)")
+                end
+            end
+
+            if didClick then
+                task.wait(4)
+            end
+        else
+            -- print("Could not find Accept button in TradingUI")
+        end
+    end,
+
     IsTradeActive = function()
         local ui = _S.PlayerGui:FindFirstChild("TradingUI")
         if ui and ui.Enabled == true then
             return true
         end
+        return false
+    end,
+
+    OtherPlayerReady = function()
+        local succes, re = pcall(function()
+            local ui = _S.PlayerGui:FindFirstChild("TradingUI")
+            if ui then
+                local is_ready = ui.LiveTrade.OtherPlr.Ready.BackgroundTransparency
+                if is_ready and is_ready < 1 then
+                    return true
+                end
+            end
+            return false
+        end)
+
+        if succes then
+            return re
+        end
+
         return false
     end,
     MyAddedItemsCount = function()
@@ -20232,6 +20311,8 @@ TaskManager.Quests = {
         fruit_list["Bamboo"] = true
         fruit_list["Mushroom"] = true
         fruit_list["Buttercup"] = true
+        fruit_list["Pumpkin"] = true
+        fruit_list["Daffodil"] = true
 
         local _c = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(fruit_list, configx)
     end
@@ -20419,11 +20500,11 @@ end
 -- #place #egg
 _Helper.PlaceEggsForHatching = function()
     if not FSettings.fast_egg_placement then
-        return true
+        -- return true
     end
 
     if not Varz.GetCheckIfPro() then
-        return true
+        --  return true
     end
 
     Varz.hatch_state = Varz.HATCH_STATES.EGG_PLACE_PHASE
@@ -20465,13 +20546,13 @@ _Helper.PlaceEggsForHatching = function()
 
     local egg_on_farmx = GameDataManager.GetTotalEggsOnFarm()
     if user_defined_max_eggs == egg_on_farmx then
-        print("Already have enough eggs x")
+        print("Already have enough eggs x", user_defined_max_eggs)
         return true
     end
 
     local usefastplace = false
     if user_defined_max_eggs == user_max_egg then
-        usefastplace = true
+        -- usefastplace = true
     end
 
     local max_time = os.clock()
@@ -20512,16 +20593,16 @@ _Helper.PlaceEggsForHatching = function()
             end
 
             local placePos = table.remove(availablePositions, 1)
-            if usefastplace then
-                task.spawn(function()
-                    _S.PetEggService:FireServer("CreateEgg", placePos)
-                end)
-                continue
-            else
-                _S.PetEggService:FireServer("CreateEgg", placePos)
-            end
+            -- if usefastplace then
+            --     task.spawn(function()
+            --         _S.PetEggService:FireServer("CreateEgg", placePos)
+            --     end)
+            --     continue
+            -- else
 
+            -- end
 
+            _S.PetEggService:FireServer("CreateEgg", placePos)
             local wait_amount = os.clock()
             while true do
                 task.wait(0.1)
@@ -20605,14 +20686,18 @@ local function placeMissingEggs(myFarm)
         end
     end
 
+    if user_defined_max_eggs == 0 then
+        user_defined_max_eggs = user_max_egg
+    end
+
     if user_defined_max_eggs == user_max_egg then
-        faster_place = true
+        --   faster_place = true
     end
 
     local egg_on_farmx = GetCountEggsOnFarm()
     if user_defined_max_eggs == egg_on_farmx then
-        print("Already have enough eggs")
-        return
+        print("Already have enough eggs .", user_defined_max_eggs)
+        return true
     end
 
     unequipTools()
@@ -20631,6 +20716,7 @@ local function placeMissingEggs(myFarm)
         if FSettings.hatch_slow_mode then
             task.wait(0.5)
         end
+        task.wait(0.1)
 
         if user_defined_max_eggs > 0 and egg_on_farm >= user_defined_max_eggs then
             UPDATE_LABELS_FUNC.UpdateSetLblStats("Max eggs placed - matching user settings.")
@@ -20656,16 +20742,9 @@ local function placeMissingEggs(myFarm)
 
         if IsToolHeld(eggToolToEquip) then
             if FSettings.is_test == false then
-                if faster_place then
-                    task.spawn(function()
-                        _S.PetEggService:FireServer("CreateEgg", placePos)
-                    end)
-                    continue
-                else
-                    _S.PetEggService:FireServer("CreateEgg", placePos)
-                    if FSettings.hatch_slow_mode then
-                        task.wait(0.5)
-                    end
+                _S.PetEggService:FireServer("CreateEgg", placePos)
+                if FSettings.hatch_slow_mode then
+                    task.wait(0.5)
                 end
             end
         else
@@ -23376,6 +23455,8 @@ local function SessionLoop()
             continue
         end
 
+
+
         Varz.SetDisablePickPlaceFor(6)
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("💡 Checking for any eggs to hatch")
@@ -23524,6 +23605,15 @@ local function SessionLoop()
         local was_restart_issued = false
         Varz.hatch_state = Varz.HATCH_STATES.EGG_PHASE
 
+
+
+        -- #sellfruit #sellhatch
+        if FSettings.fav_fruit_enhancer then
+            if FSettings.enhancer_auto_sellfruit then
+                Varz.SellFruitsToVendorWithRangeCheck(true)
+            end
+        end
+
         -- #egg #hatch
         while FSettings.is_running do
             task.wait(0.5)
@@ -23609,16 +23699,14 @@ local function SessionLoop()
             UPDATE_LABELS_FUNC.UpdateSetLblStats("🤖 No eggs on farm. Placing new eggs...")
 
             -- #place  #eggs #egg
-            task.spawn(function()
-                local sx, fx = pcall(function()
-                    placeMissingEggs(FarmManager.mFarm)
-                end)
-
-                if not sx then
-                    warn("Fail:", fx);
-                end
+            local sx, fx = pcall(function()
+                _Helper.PlaceEggsForHatching()
             end)
-            task.wait(0.2 + _Helper.GetSafePing())
+
+            if not sx then
+                warn("Fail:", fx);
+            end
+            task.wait(0.1 + _Helper.GetSafePing())
             continue
         end
 
@@ -23794,15 +23882,18 @@ local function SessionLoop()
 
         -- #hatchegg
         HatchAllEggsAvailable(false) -- HATCH EGGS, provide false, we can't hatch big pets here
-        task.spawn(function()
-            local sx, fx = pcall(function()
-                _Helper.PlaceEggsForHatching()
-            end)
 
-            if not sx then
-                warn("Fail:", fx);
-            end
-        end)
+        if FSettings.fast_egg_placement then
+            task.spawn(function()
+                local sx, fx = pcall(function()
+                    _Helper.PlaceEggsForHatching()
+                end)
+
+                if not sx then
+                    warn("Fail:", fx);
+                end
+            end)
+        end
 
         UPDATE_LABELS_FUNC.UpdateSetLblStats("🟢 Hatching Complete.")
 
@@ -24050,7 +24141,7 @@ local function SessionLoop()
         -- ===================
         if can_sell then
             if FSettings.disable_team1 == false then
-                if UnEquipAllPets() == false then
+                if UnEquipAllPets(true) == false then
                     UPDATE_LABELS_FUNC.UpdateSetLblStats("❌ Failed to unequip team. Restarting.")
 
                     task.wait(5 + _Helper.GetSafePing())
@@ -24191,7 +24282,14 @@ local function SessionLoop()
         -- lock enhance system
         _Helper.LockEnhance(true)
         -- #place  #eggs #egg
-        placeMissingEggs(FarmManager.mFarm) -- This function will set Varz.is_forced_stop if it runs out of eggs.
+        -- placeMissingEggs(FarmManager.mFarm) -- This function will set Varz.is_forced_stop if it runs out of eggs.
+        local successx, failx = pcall(function()
+            _Helper.PlaceEggsForHatching()
+        end)
+        if not successx then
+            warn("error eggs ", failx)
+        end
+
         --task.wait(0.5)
         if not _Helper.GetFastHatchMode() then
             task.wait(0.5 + _Helper.GetSafePing())
@@ -24275,6 +24373,16 @@ local function SessionLoop()
             task.wait(3 + _Helper.GetSafePing())
         else
             task.wait(1.5 + _Helper.GetSafePing())
+        end
+
+        -- #sellfruit #sellhatch
+        if FSettings.fav_fruit_enhancer then
+            if FSettings.enhancer_auto_sellfruit then
+                _Helper.LockEnhance(true)
+                task.spawn(function()
+                    Varz.SellFruitsToVendorWithRangeCheck(true)
+                end)
+            end
         end
 
 
@@ -26275,7 +26383,7 @@ TaskManager.tradex_loops = task.spawn(function()
     while true do
         Varz.IS_GIFT = false
 
-        task.wait(3)
+        task.wait(2)
         local ui_text = TaskManager.GiftSystem.UpdateUiGiftSystem
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
@@ -26284,6 +26392,17 @@ TaskManager.tradex_loops = task.spawn(function()
             continue
         end
 
+
+        -- Check for auto accept
+        if TaskManager.TradeSystem.OtherPlayerReady() then
+            --  print("Accept trade")
+            if TaskManager.TradeSystem.IsTradeActive() then
+                if FSettings.giftpets.auto_confirm_accept then
+                    TaskManager.TradeSystem.TradeAcceptButton()
+                    continue
+                end
+            end
+        end
 
         if not FSettings.giftpets.enabled_auto_trade then
             --ui_text("🔴 Not Enabled")
@@ -26294,7 +26413,7 @@ TaskManager.tradex_loops = task.spawn(function()
         local allowed_list = FSettings.giftpets.allow_pet_list or {}
         if next(allowed_list) == nil then
             ui_text("🔴 No pet types selected to send. Please select a pet type.")
-            task.wait(5)
+            task.wait(3)
             continue
         end
 
@@ -26302,7 +26421,7 @@ TaskManager.tradex_loops = task.spawn(function()
 
         if #pets == 0 then
             ui_text("❌ No pets to trade.")
-            task.wait(5)
+            task.wait(3)
             continue
         end
 
@@ -26311,6 +26430,8 @@ TaskManager.tradex_loops = task.spawn(function()
             task.wait(2)
             continue
         end
+
+
 
         if TaskManager.TradeSystem.MyAddedItemsCount() >= 12 then
             ui_text("🟡 Trade max items already added.")
@@ -26321,7 +26442,7 @@ TaskManager.tradex_loops = task.spawn(function()
 
         ui_text("🤖 Found pets: " .. #pets)
 
-        local delay = 0.3
+        local delay = 0.1
         local tries = 0
         local max_added = 0
         for index, datax in ipairs(pets) do
@@ -26375,10 +26496,14 @@ TaskManager.tradex_loops = task.spawn(function()
 
             tries = tries + 1
             task.wait(delay)
+
+
             Varz.IS_GIFT = false
         end
-
-        task.wait(0.5)
+        task.wait(1)
+        if TaskManager.TradeSystem.IsTradeActive() then
+            TaskManager.TradeSystem.TradeAcceptButton()
+        end
     end
 end)
 
@@ -27465,6 +27590,8 @@ Varz.ProUi = function()
             })
 
 
+
+
             -- // 3. Run the Rainbow Loop //
             task.spawn(function()
                 while task.wait(0.03) do -- Fast update for smoothness (30fps)
@@ -27486,6 +27613,24 @@ Varz.ProUi = function()
                     end
                 end
             end)
+
+
+
+
+            gEnhancepro:AddLabel({
+                Text = "<b>💡 <font color='#8EEA8E'>Auto Sell Fruit</font></b>\n" ..
+                    "Automatically sells the fruit after hatching to refresh it. This will remove all fruits from your inventory. It only works if you have a maximum of two fruits in your inventory; if you have more than two, it will not sell.",
+                DoesWrap = true
+            })
+            gEnhancepro:AddToggle("genhancertoggle", {
+                Text = "🥚 <font color='#6ECBFF'>Auto Sell Fruit</font>",
+                Default = FSettings.enhancer_auto_sellfruit,
+                Tooltip = "Sells fruit after hatching is complete. It will auto Unfav",
+                Callback = function(Value)
+                    FSettings.enhancer_auto_sellfruit = Value
+                    SaveData()
+                end
+            })
 
 
             local lbl_epro = gEnhancepro:AddLabel({
@@ -27886,16 +28031,7 @@ Varz.ProUi = function()
                 DoesWrap = true
             })
 
-            gExperiments:AddToggle("gExperimenteggstoggle", {
-                Text = "✨ <font color='#6ECBFF'>Fast Egg Placement</font>",
-                Default = FSettings.fast_egg_placement,
-                Tooltip =
-                "<font color='#DADADA'>When enabled, missing eggs are placed <font color='#7CFF6E'>immediately</font> after hatching.</font>",
-                Callback = function(Value)
-                    FSettings.fast_egg_placement = Value
-                    SaveData()
-                end
-            })
+
 
             gExperiments:AddLabel({
                 Text = "--------------------------",
@@ -28464,6 +28600,47 @@ Varz.ProUi = function()
 
         ----============================  END XP Team
 
+        local function AutoSelectMutationTargets()
+            local pets_ls            = {}
+            local ban_pets           = {
+                ["Rainbow Elephant"] = true,
+                ["Elephant"] = true,
+                ["Headless Horseman"] = true,
+                ["Ghostly Headless Horseman"] = true,
+            }
+
+            local pet_data_inventory = GameDataManager.Inventory.GetPetInventory()
+            for uuid, _petData in pairs(pet_data_inventory) do
+                local PetData = _petData.PetData
+                local PetType = _petData.PetType
+                local IsFavorite = PetData.IsFavorite
+
+                local Level = PetData.Level
+                local BaseWeight = PetData.BaseWeight
+                local realweight = GetRealPetWeight(BaseWeight, Level)
+
+                if not PetMutation.mut.IsAllowedPet(uuid) then
+                    continue
+                end
+
+                if ban_pets[PetType] then
+                    continue
+                end
+
+                if Level > 99 then
+                    continue
+                end
+
+                -- if IsFavorite then
+                --     continue
+                -- end
+
+                table.insert(pets_ls, uuid)
+            end
+
+            return pets_ls
+        end
+
 
         ----============================ Target Team
         UI_Dropdown.dropdown_pettargetteam = gMutOnFarm:AddDropdown("dropdown_pettargetteam", {
@@ -28516,16 +28693,18 @@ Varz.ProUi = function()
             end
         })
 
-        -- local sallmut = gMutOnFarm:AddButton({
-        --     Text = "Select All",
-        --     Tooltip = "Selects all pets, wont select any pets in any teams.",
-        --     Func = function()
-        --         FSettings.mut_system.targetteam = {}
-        --         UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
-        --             .targetteam))
-        --         SaveData()
-        --     end
-        -- })
+        local sallmut = gMutOnFarm:AddButton({
+            Text = "✨ Select All",
+            Tooltip = "Selects all pets, Will not select elephants or horseman or level 99+",
+            Func = function()
+                FSettings.mut_system.targetteam = {}
+                local new_pets = AutoSelectMutationTargets()
+                FSettings.mut_system.targetteam = new_pets
+                UI_Dropdown.dropdown_pettargetteam:SetValue(ConvertUUIDToPetNamesPairs(FSettings.mut_system
+                    .targetteam))
+                SaveData()
+            end
+        })
 
         gMutOnFarm:AddButton({
             Text = "<font color='#ED2A00'>Remove All</font>",
@@ -29611,6 +29790,19 @@ Varz.ProUi = function()
         })
 
         gGift:AddDivider()
+        local toggleEnableGiftting = gGift:AddToggle("toggleautotradeaccpet", {
+            Text =
+            "🎟️Auto Confirm/Accept",
+            Default = FSettings.giftpets.auto_confirm_accept,
+            Tooltip =
+            "When enabled it auto accepts and confirms when target accepts",
+            Callback = function(Value)
+                FSettings.giftpets.auto_confirm_accept = Value
+                SaveData()
+            end
+        })
+
+        gGift:AddDivider()
         local toggleEnableGiftting = gGift:AddToggle("toggleEnableGiftting", {
             Text =
             "⚡Enable GiftSystem",
@@ -29636,6 +29828,9 @@ Varz.ProUi = function()
                 SaveData()
             end
         })
+
+
+
 
         gGift:AddDivider()
         gGift:AddDivider()
@@ -29785,7 +29980,7 @@ Varz.PetTeamsUi = function()
             Text = "⚠️ Pets selected here will be ignored by the unequip system. This only applies during hatching.",
             DoesWrap = true
         })
-        local max_sticky = 2
+        local max_sticky = 4
         local max_cap = GetMaxPetCapacity()
         local GetText_ActivePets = function()
             local current_selected = #FSettings.team_bypass_alwaysactive
@@ -29855,13 +30050,13 @@ Varz.PetTeamsUi = function()
             DisabledTooltip = "Premium feature!",
             Callback = function(Value)
                 if Value then
-                    if #_Helper.GetSealTeam() >= max_cap then
-                        Library:Notify(
-                            "❌ Seal team has no room! Please remove amount (selected in your sticky pets, if you selected 2, remove 2) of pets from your Seal team!",
-                            5)
-                        togglegActivePets:SetValue(false)
-                        return
-                    end
+                    -- if #_Helper.GetSealTeam() >= max_cap then
+                    --     Library:Notify(
+                    --         "❌ Seal team has no room! Please remove amount (selected in your sticky pets, if you selected 2, remove 2) of pets from your Seal team!",
+                    --         5)
+                    --     togglegActivePets:SetValue(false)
+                    --     return
+                    -- end
 
                     if #_Helper.GetKoiTeam() >= max_cap then
                         Library:Notify(
@@ -30047,6 +30242,18 @@ Varz.PetTeamsUi = function()
         "Only sells if you are going to exceed inventory limit for next hatch. Has no effect if [Only Sell Hatched Pets 🛡️] is enabled.",
         Callback = function(Value)
             FSettings.hatch_sell_delayed = Value
+            SaveData()
+        end
+    })
+    OptionsGroup:AddDivider()
+
+    OptionsGroup:AddToggle("gExperimenteggstoggle", {
+        Text = "✨ <font color='#6ECBFF'>Fast Egg Placement</font>",
+        Default = FSettings.fast_egg_placement,
+        Tooltip =
+        "<font color='#DADADA'>When enabled, missing eggs are placed <font color='#7CFF6E'>immediately</font> after hatching.</font>",
+        Callback = function(Value)
+            FSettings.fast_egg_placement = Value
             SaveData()
         end
     })
@@ -36289,7 +36496,7 @@ end
 
 MShopUi();
 
-
+-- #dex
 _Helper.is_dex_loaded = false
 _Helper.LoadDexTool = function()
     if _Helper.is_dex_loaded then
@@ -37344,6 +37551,13 @@ task.spawn(function()
             continue
         end
 
+        if FOtherSettings.is_fall_questline_spin then
+            for i = 1, 2, 1 do
+                TaskManager.Quests.QuestAutoSpin()
+                task.wait(0.5)
+            end
+        end
+
         if not FOtherSettings.is_fall_questline_auto then
             EventQuestsManager.UpdateStatsText(
                 "<font color='#FF0000'>🔴 Quests not enabled or running…</font>")
@@ -37359,12 +37573,7 @@ task.spawn(function()
             continue
         end
 
-        if FOtherSettings.is_fall_questline_spin then
-            for i = 1, 2, 1 do
-                TaskManager.Quests.QuestAutoSpin()
-                task.wait(0.5)
-            end
-        end
+
 
         -- harvest any
         TaskManager.Quests.HarvestSingle()
@@ -37621,6 +37830,8 @@ if not _G.EventsQuestLineLoop then
                         task.wait(3)
                         continue
                     end
+
+
 
                     if _Type == "WATERCAN" then
                         local waterf = InventoryManager.GetWateringCan(_name)
@@ -40213,7 +40424,7 @@ end
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
         -- local delay = math.random(0.5, 0.5)
-        task.wait(0.3)
+        task.wait(0.25)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
@@ -41321,5 +41532,21 @@ task.spawn(function()
         pcall(function()
             Varz.FruitMakeSmall()
         end)
+    end
+end)
+
+
+-- #loading
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            task.wait(1)
+            continue
+        end
+        mouse1click()
+        task.wait(2)
+        mouse1click()
+        break
     end
 end)
