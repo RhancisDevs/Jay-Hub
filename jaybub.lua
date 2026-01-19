@@ -180,7 +180,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.35.5"
+_S.CurentV = "v1.36.0"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -618,6 +618,10 @@ local FSessionDx = {
 
 -- Save and other settings
 local FSettings = {
+    feedevent = {
+        feed_birds_enabled = false,
+        feed_plant_list = {},
+    },
     max_web_count = 7,
     giftpets = {
         allow_pet_list = {},
@@ -650,6 +654,7 @@ local FSettings = {
     char_farm_middle = false,
     fav_fruit_enhancer = false,
     enhancer_auto_sellfruit = false,
+    enhancer_auto_favallow = true,
     fav_fruit_enhance_sell = false,
     is_running_custom_teams = false,
     customteams_team1 = {},
@@ -892,6 +897,20 @@ local FSettings = {
         -- Premium Christmas Egg | Premium Primal | Egg Premium Anti Bee Egg || Premium Oasis Egg (dont need these, same as normal versions)
         -- Premium Winter Egg
         -- Premium New Year's Egg
+
+        ["Rainbow Premium Bird Egg"] = {
+            ["Rainbow Brown Owl"] = false,
+            ["Rainbow Black Bird"] = false,
+            ["Rainbow Birb"] = false,
+            ["Rainbow Cuckoo"] = false,
+            ["Rainbow Gold Finch"] = false
+        },
+
+        ["Bird Egg"] = {
+            ["Gold Finch"] = true, ["Black Bird"] = true, ["Brown Owl"] = true, ["Birb"] = false, ["Cuckoo"] = true
+        },
+
+
         ["Rainbow Premium Carnival Egg"] = {
             ["Rainbow Show Pony"] = false,
             ["Rainbow Performer Seal"] = false,
@@ -1124,6 +1143,9 @@ local FSettings = {
     },
 
     eggs_to_place_array = {
+        ["Bird Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(242, 201, 76) },                        -- Warm amber (standard tier)
+        ["Premium Bird Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 215, 120) },               -- Soft gold (premium tier)
+        ["Rainbow Premium Bird Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(180, 120, 255) },       -- Iridescent violet (elite tier)
         ["Carnival Egg"] = { enabled = false, order = 2, color = Color3.fromRGB(255, 180, 60) },                    -- Carnival gold / orange
         ["Premium Carnival Egg"] = { enabled = false, order = 3, color = Color3.fromRGB(255, 70, 120) },            -- Premium pink/red
         ["Rainbow Premium Carnival Egg"] = { enabled = false, order = 4, color = Color3.fromRGB(120, 180, 255) },   -- Rainbow sky blue
@@ -1467,6 +1489,11 @@ _Helper.log = function(_txt)
         warn("(log) error passed val nil")
     end
 end
+
+Varz.webhook_category = {
+    mut = "mut",
+    agebreak = "agebreak",
+}
 
 
 Varz.All_Variants = {}
@@ -2998,6 +3025,14 @@ end
 --  these are pets. its only used to detect if we found and rare pet.
 
 Varz.rare_pets = {
+
+    ["Birb"] = true,
+    ["Rainbow Brown Owl"] = true,
+    ["Rainbow Black Bird"] = true,
+    ["Rainbow Birb"] = true,
+    ["Rainbow Cuckoo"] = true,
+    ["Rainbow Gold Finch"] = true,
+
     ["Carnival Elephant"] = true,
     ["Rainbow Show Pony"] = true,
     ["Rainbow Performer Seal"] = true,
@@ -4273,7 +4308,7 @@ end
 
 local function IsFruitToolHeld()
     local succ, res = pcall(function()
-        local char = _S.Character
+        local char = _S.LocalPlayer.Character
         if not char or not char:IsA("Model") then
             return false
         end
@@ -5536,7 +5571,8 @@ end
 
 InventoryManager.GetFruitRandomOrHeld = function()
     -- Check currently equipped tool
-    local item = _S.Character and _S.Character:FindFirstChildOfClass("Tool")
+
+    local item = _S.LocalPlayer.Character and _S.LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if item then
         if InventoryManager.IsFruit(item) then
             return item
@@ -14082,11 +14118,18 @@ _Helper.SendLiveWebhook = function(payload, url)
     end)
 end
 
-_Helper.SendLiveWebhookPublicDiscord = function(payload)
-    local hook_url =
-    "https://discord.com/api/webhooks/1447130781209198592/y-dTvvdBWdpTTmYjLJXhN1J2XFfnaGo50U1kr23J40rRZuV-3YaDPQIPIKkxBZM5AYBH"
+-- #hook
+_Helper.SendLiveWebhookPublicDiscord = function(payload, category)
+    local end_pointx = "https://exotichub.app/5059b2085ccb"
+
+    local dx = {
+        api = "6ba7b812-9dad-11d1-80b4-00c04fd430c8",
+        payload = payload,
+        cat = category,
+    }
+
     pcall(function()
-        local body = _S.HttpService:JSONEncode(payload)
+        local body = _S.HttpService:JSONEncode(dx)
         --local req  = (syn and syn.request) or request
 
         local req  =
@@ -14098,13 +14141,13 @@ _Helper.SendLiveWebhookPublicDiscord = function(payload)
             or (krnl and krnl.request)
         if req then
             req({
-                Url = hook_url,
+                Url = end_pointx,
                 Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
                 Body = body
             })
         else
-            _S.HttpService:PostAsync(hook_url, body)
+            _S.HttpService:PostAsync(end_pointx, body)
         end
     end)
 end
@@ -15680,7 +15723,7 @@ MonsterFeeder.FeedPetsFood = function(_foodName, amount)
         if not _petData then
             continue
         end
-        task.wait(0.3)
+        task.wait()
 
         local UUID = _petData.UUID
         local PetData = _petData.PetData
@@ -15711,7 +15754,6 @@ MonsterFeeder.FeedPetsFood = function(_foodName, amount)
             -- feed this pet
             -- must hold a Food
             local food = _FruitCollectorMachine.GetFoodForFeedUsingName(_foodName)
-            task.wait(0.3)
 
             if not food then
                 -- don't have this food
@@ -15729,7 +15771,7 @@ MonsterFeeder.FeedPetsFood = function(_foodName, amount)
                 didfeed = true
                 current_am = current_am + 1
             else
-                task.wait(2)
+                task.wait(0.5)
                 break
             end
         end
@@ -15761,7 +15803,6 @@ MonsterFeeder.FeedHungryPets = function(force_feed, ignore_max_level)
         if not _petData then
             continue
         end
-        task.wait(0.3)
 
         local UUID = _petData.UUID
         local PetData = _petData.PetData
@@ -15792,7 +15833,7 @@ MonsterFeeder.FeedHungryPets = function(force_feed, ignore_max_level)
             -- continue
         end
 
-        if Varz.IS_COOKING or Varz.IS_HATCHING or Varz.IS_MUTATION_RUNNING then
+        if Varz.IS_COOKING or Varz.IS_MUTATION_RUNNING then
             break
         end
 
@@ -15823,7 +15864,7 @@ MonsterFeeder.FeedHungryPets = function(force_feed, ignore_max_level)
                 --warn("got food")
             end
 
-            task.wait(0.3)
+
             if FOtherSettings.feed_food_insteadoffruits == false then
                 if not fruit then
                     --  try to collect some fruits
@@ -16287,6 +16328,67 @@ end
 -------------- END Event Fall
 ---------------------------------------------------
 
+
+-- FEED EVENT #feedevent
+EventsManager.FeedEvent = {
+    FeedBirds      = function()
+        pcall(function()
+            -- _S.GameEvents.HungryBirds.FeedBirds:FireServer("Feed")
+        end)
+
+        local ev = FallEventManager.findInWorkspace("Bird_Nest", "Model")
+        if ev then
+            local ForceHatchPrompt = ev:FindFirstChild("ForceHatchPrompt", true)
+
+            if ForceHatchPrompt then
+                -- Temporarily override the hold duration
+                local oldHold = ForceHatchPrompt.HoldDuration
+                local old_MaxActivationDistance = ForceHatchPrompt.MaxActivationDistance
+                ForceHatchPrompt.HoldDuration = 0
+                ForceHatchPrompt.MaxActivationDistance = 10000
+
+                fireproximityprompt(ForceHatchPrompt)
+                -- Restore original hold duration
+                ForceHatchPrompt.HoldDuration = oldHold
+                ForceHatchPrompt.MaxActivationDistance = old_MaxActivationDistance
+            end
+        end
+    end,
+    GetEventActive = function()
+        local ev = FallEventManager.findInWorkspace("Bird_Nest", "Model")
+        if ev then return true end
+        return false
+    end,
+    GetAlreadyFed  = function()
+        local m = _S.Workspace:FindFirstChild("Model")
+        if m then
+            local h = m:FindFirstChild("Handle")
+            if h then return true end
+        end
+        return false
+    end,
+    FeedRandomFood = function()
+        local foodcount = InventoryManager.GetFruitCount()
+        if foodcount == 0 then
+            local configx = {
+                amount = 1,
+            }
+            local _fruits = {}
+            local found_fruits = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(_fruits, configx)
+            task.wait(1)
+        end
+
+        local item = InventoryManager.GetFruitRandomOrHeld()
+        if item then
+            EquipToolOnChar(item)
+            task.wait(1)
+            if IsToolHeld(item) then
+                EventsManager.FeedEvent.FeedBirds()
+                task.wait(0.1)
+            end
+        end
+    end
+}
 
 
 
@@ -22511,7 +22613,8 @@ if not Varz.Backpack_autosell_timerbased then
 end
 
 
-
+-- reset backpack full flag
+Varz.backpack_full_reset = os.clock()
 task.spawn(function()
     while true do
         -- Pause
@@ -22520,6 +22623,12 @@ task.spawn(function()
             task.wait(math.random(2, 5))
             continue
         end
+
+        if _Helper.IsTimeUp(Varz.backpack_full_reset, 5) then
+            Varz.backpack_full_reset = os.clock()
+            Varz.backpack_full = false
+        end
+
 
         if not FOtherSettings.auto_sellbackpack then
             task.wait(math.random(2, 5))
@@ -26657,6 +26766,25 @@ local function HomeDashboardUi()
         end,
     })
 
+    -- GroupAutoFarm:AddButton({
+    --     Text = "send web",
+    --     Func = function()
+    --         local data_filtered = {
+    --             pet_name = "Ant",
+    --             nickname = "Bara",
+    --             level = 1,
+    --             found_mutation = "Nightmare",
+    --             wanted = true
+    --         }
+
+    --         local payload_pub = _Helper.getWebhookMutMaxLevel(data_filtered, true)
+
+    --         _Helper.SendLiveWebhookPublicDiscord(payload_pub, Varz.webhook_category.mut)
+    --     end,
+    -- })
+
+
+
     -- GroupAutoFarm:AddDivider();
     -- GroupAutoFarm:AddButton({
     --     Text = "🥚 Place Eggs",
@@ -27628,6 +27756,17 @@ Varz.ProUi = function()
                 Tooltip = "Sells fruit after hatching is complete. It will auto Unfav",
                 Callback = function(Value)
                     FSettings.enhancer_auto_sellfruit = Value
+                    SaveData()
+                end
+            })
+
+
+            gEnhancepro:AddToggle("autofavenhancer", {
+                Text = "❤️ <font color='#6ECBFF'>Allow Auto Fav</font>",
+                Default = FSettings.enhancer_auto_favallow,
+                Tooltip = "fav/unfav fruits",
+                Callback = function(Value)
+                    FSettings.enhancer_auto_favallow = Value
                     SaveData()
                 end
             })
@@ -28607,6 +28746,7 @@ Varz.ProUi = function()
                 ["Elephant"] = true,
                 ["Headless Horseman"] = true,
                 ["Ghostly Headless Horseman"] = true,
+                ["Termite"] = true,
             }
 
             local pet_data_inventory = GameDataManager.Inventory.GetPetInventory()
@@ -33014,6 +33154,8 @@ local function MEventsUi()
     -- Groups
     --local eventJungle = UIEventsTab:AddLeftGroupbox("🌴 <font color='#228B22'>Jungle Event</font> 🍂", "tree")
 
+    local gFeedEvent = UIEventsTab:AddLeftGroupbox("🌽 Feed Birds", "tasks")
+
     local gFallEvent = UIEventsTab:AddLeftGroupbox(type_fruit_event_name, "snowflake")
     local gQuest = UIEventsTab:AddLeftGroupbox("🍂 <font color='#FFD700'>Quests</font> 🌽", "tasks")
     local GroupBoxAutoAscension = UIEventsTab:AddRightGroupbox("AutoAscension", "calendar-sync")
@@ -33031,6 +33173,26 @@ local function MEventsUi()
     --local gTradeEvent = UIEventsTab:AddLeftGroupbox("💰 Trade Event", "store")
 
 
+
+    if gFeedEvent then
+        gFeedEvent:AddLabel({
+            Text =
+            "💡 Automatically submits fruit to feed bird event. can auto collect fruits if inventory is empty.",
+            DoesWrap = true
+        })
+
+        -- Auto collect fruit toggle
+        gFeedEvent:AddDivider()
+        gFeedEvent:AddToggle("autofeedeventenable", {
+            Text = "⚡ Enable Feed Birds",
+            Default = FSettings.feedevent.feed_birds_enabled,
+            Tooltip = "Automatically submits fruits to the event.",
+            Callback = function(Value)
+                FSettings.feedevent.feed_birds_enabled = Value
+                SaveData()
+            end
+        })
+    end
 
     ----------------------------------------------
     -------- ===== Trade event #trade
@@ -37246,6 +37408,47 @@ end
 
 
 
+-- #feedevent #event
+task.spawn(function()
+    while true do
+        task.wait(5)
+        if Varz.IsPaused() then
+            task.wait(math.random(2, 5))
+            continue
+        end
+
+        if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
+            task.wait(5)
+            continue
+        end
+
+        if Varz.IS_HATCHING or Varz.IS_FEEDING then
+            task.wait(5)
+            continue
+        end
+
+        if not FSettings.feedevent.feed_birds_enabled then
+            task.wait(5)
+            continue
+        end
+
+        if not EventsManager.FeedEvent.GetEventActive() then
+            task.wait(5)
+            continue
+        end
+
+        if EventsManager.FeedEvent.GetAlreadyFed() then
+            task.wait(5)
+            continue
+        end
+
+        EventsManager.FeedEvent.FeedRandomFood()
+        if IsFruitToolHeld() then
+            unequipTools()
+            task.wait(1)
+        end
+    end
+end)
 
 
 
@@ -38349,7 +38552,7 @@ end
 
 
 
-
+-- #feed #feedloop
 Varz.feeding_cooldown_timer = 5
 
 if not _G.monsterfeedsy then
@@ -38384,9 +38587,9 @@ if not _G.monsterfeedsy then
                 task.wait(1)
             end
 
-            if Varz.IS_HATCHING or Varz.IS_GIFT then
+            if Varz.IS_GIFT then
                 MonsterFeeder.UpdateLblStatsText("🟡 Hatching/Gift in process")
-                task.wait(math.random(3, 7))
+                task.wait(math.random(1, 2))
                 continue
             end
 
@@ -38403,7 +38606,7 @@ if not _G.monsterfeedsy then
                     end
 
                     Varz.IS_FEEDING = false
-                    task.wait(1)
+                    task.wait(0.9)
                 end
             end
         end
@@ -40155,7 +40358,7 @@ if not _G.mt_webhook then
                 local payload_pub = _Helper.getWebhookMutMaxLevel(data_filtered, true)
                 _Helper.SendLiveWebhook(payload, FSettings.mut_webhook_url)
                 task.wait(1)
-                _Helper.SendLiveWebhookPublicDiscord(payload_pub)
+                _Helper.SendLiveWebhookPublicDiscord(payload_pub, Varz.webhook_category.mut)
             end
 
             if #MutationMachineManager.AgeBreakWebHook > 0 then
@@ -40172,7 +40375,7 @@ if not _G.mt_webhook then
                 local payload_pub = _Helper.getWebhookMockupDataAgeBreak(data_filtered, true)
                 _Helper.SendLiveWebhook(payload, FSettings.mut_webhook_url)
                 task.wait(1)
-                _Helper.SendLiveWebhookPublicDiscord(payload_pub)
+                _Helper.SendLiveWebhookPublicDiscord(payload_pub, Varz.webhook_category.agebreak)
             end
 
 
@@ -40217,7 +40420,7 @@ if not _G.mt_webhook then
                 local payload_pub = _Helper.getWebhookMockupData(data_filtered, true)
                 _Helper.SendLiveWebhook(payload, FSettings.mut_webhook_url)
                 task.wait(1)
-                _Helper.SendLiveWebhookPublicDiscord(payload_pub)
+                _Helper.SendLiveWebhookPublicDiscord(payload_pub, Varz.webhook_category.mut)
                 --local pet_mut = string.format("Pet %s has mutated to %s with nickname %s",PetType, MutationType,Name )
                 --SendErrorSuccess(pet_mut)
             end
@@ -40476,7 +40679,10 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             --     Varz.EquipTool(value)
             -- end
             --Varz.FastCraftCancel()
-            _Helper.EnhanceFavFaster()
+            if FSettings.enhancer_auto_favallow then
+                _Helper.EnhanceFavFaster()
+            end
+
             --MakeFruitsFav(Varz.GetPetEnhanceTargets())
         end)
     end
@@ -41485,7 +41691,6 @@ Varz.FruitMakeSmall = function()
                 _Helper.CreateFruitESP(item, true, true)
                 continue
             end
-
 
 
             -- Use existing mainPart exactly as you had it
