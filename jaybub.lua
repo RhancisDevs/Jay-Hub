@@ -2,6 +2,11 @@
 if not game:IsLoaded() then game.Loaded:Wait() end;
 task.wait(1)
 
+local Game_ID = game.GameId
+if tostring(Game_ID) ~= "7436755782" then
+    return
+end
+
 if _G.is_running_gag then
     warn("Already running x")
     return
@@ -36,9 +41,10 @@ _S.player_humanoid               = _S.Character:FindFirstChildOfClass("Humanoid"
 _S.GameEvents                    = _S.ReplicatedStorage:WaitForChild("GameEvents")
 _S.petsServiceRemote             = _S.GameEvents:WaitForChild("PetsService")
 _S.PetEggService                 = _S.GameEvents:WaitForChild("PetEggService")
-_S.BuyGearStock                  = _S.GameEvents.BuyGearStock
+_S.BuyGearStock                  = _S.GameEvents:FindFirstChild("BuyGearStock")
 _S.BuySeedStock                  = _S.GameEvents.BuySeedStock
-_S.BuyPetEgg                     = _S.GameEvents.BuyPetEgg
+_S.BuyDailySeedShopStock         = _S.GameEvents:FindFirstChild("BuyDailySeedShopStock")
+_S.BuyPetEgg                     = _S.GameEvents:FindFirstChild("BuyPetEgg")
 _S.BuyTravelingMerchantShopStock = _S.GameEvents:WaitForChild("BuyTravelingMerchantShopStock")
 _S.SellPetRemote                 = _S.GameEvents:WaitForChild("SellPet_RE")
 _S.SellAllPetsRemote             = _S.GameEvents:WaitForChild("SellAllPets_RE")
@@ -70,7 +76,9 @@ _S.TryUseGear                  = _S.GameEvents.TryUseGear -- RemoteEvent
 _S.TryMapleSyrup               = _S.GameEvents.TryMapleSyrup
 _S.Reclaimer                   = _S.GameEvents.ReclaimerService_RE
 
-_S.BuySeasonPassStock          = _S.GameEvents:WaitForChild("SeasonPass"):WaitForChild("BuySeasonPassStock")
+_S.BuySeasonPassStock          =
+    _S.GameEvents:FindFirstChild("SeasonPass")
+    and _S.GameEvents.SeasonPass:FindFirstChild("BuySeasonPassStock")
 
 -- Containers
 _S.petsContainer               = _S.Workspace:WaitForChild("PetsPhysical")
@@ -118,7 +126,7 @@ _S.PlantTraitsData                     = _S.safeRequire(_S.ReplicatedStorage.Mod
 _S.CraftingData_CraftingRecipeRegistry = _S.safeRequire(_S.ReplicatedStorage.Data.CraftingData.CraftingRecipeRegistry)
 _S.FoodRecipeData                      = _S.safeRequire(_S.ReplicatedStorage.Data.FoodRecipeData)
 _S.GearData                            = _S.safeRequire(_S.ReplicatedStorage.Data.GearData)
-_S.SeasonPassShop                      = _S.safeRequire(_S.ReplicatedStorage.Data.SeasonPass.SeasonPassShopData)
+_S.SeasonPassShop                      = nil --_S.safeRequire(_S.ReplicatedStorage.Data.SeasonPass.SeasonPassShopData)
 _S.EventShopData                       = _S.safeRequire(_S.ReplicatedStorage.Data.EventShopData)
 _S.PetList                             = _S.safeRequire(_S.ReplicatedStorage.Data.PetRegistry.PetList)
 _S.PetRegistry                         = _S.safeRequire(_S.ReplicatedStorage.Data.PetRegistry)
@@ -132,6 +140,9 @@ _S.SeedPackData        = _S.safeRequire(_S.ReplicatedStorage.Data.SeedPackData)
 _S.VariantsEnums       = _S.safeRequire(_S.ReplicatedStorage.Data.EnumRegistry.VariantsEnums)
 _S.PetGiftingModule    = _S.safeRequire(_S.ReplicatedStorage.Modules.PetServices.PetGiftingService)
 _S.CalculatePlantValue = _S.safeRequire(_S.ReplicatedStorage.Modules.CalculatePlantValue)
+_S.SeedShopData        = _S.safeRequire(_S.ReplicatedStorage.Data.SeedShopData)
+_S.GearShopData        = _S.safeRequire(_S.ReplicatedStorage.Data.GearShopData)
+_S.PetEggData          = _S.safeRequire(_S.ReplicatedStorage.Data.PetEggData)
 
 print("Loading m5")
 function Addcantsleep()
@@ -152,6 +163,9 @@ end)
 
 
 
+
+
+
 -- Alt backpack location
 _S.ReplicatedStorageSharedFolder = _S.ReplicatedStorage:WaitForChild("Shared")
 task.wait(0.2)
@@ -159,9 +173,9 @@ task.wait(0.2)
 print("Loading m6")
 -- Webhook / Proxy
 _S.WEBHOOK_URL = ""
-_S.PROXY_URL = "https://bit.ly/exotichubp"
-_S.invite_link_url = "https://discord.gg/exohub"
-_S.invite_link_short = "discord.gg/exohub"
+_S.PROXY_URL = "https://exotichub.app/p"
+_S.invite_link_url = "https://exotichub.app/join"
+_S.invite_link_short = "exotichub.app/join"
 
 
 -- [SETUP UI]
@@ -180,7 +194,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.36.0"
+_S.CurentV = "v1.37.0"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -425,6 +439,17 @@ end
 
 -- save for mutations and others
 local FOtherSettings = {
+    swap_enchancer                             = false,
+    egg_override                               = {},
+    egg_override_enabled                       = false,
+    shop_stocks                                = {
+        enabled_seedshop = true,
+        enabled_gearshop = true,
+        enabled_eggshop = true,
+        seed_shop_avoid = {},
+        gear_shop_avoid = {},
+        egg_shop_avoid = {},
+    },
     petpp_overrides                            = {},
     petpp_selected                             = "",
     rmplants                                   = {
@@ -614,6 +639,7 @@ local FSessionDx = {
         enable_esp = false,
         plants_list = {},
     },
+    is_highperformance_mode = true,
 }
 
 -- Save and other settings
@@ -823,9 +849,6 @@ local FSettings = {
     is_auto_hatch_enabled = false,
     is_egg_esp = true,
     is_fairy_scanner_active = false,
-    buy_gearshop = false,
-    buy_seedshop = false,
-    buy_eggshop = false,
     buy_merchant = false,
     gearshop_items = {},
     seedshop_items = {},
@@ -2264,6 +2287,18 @@ end
 local all_plants_list = {}
 Varz.all_seed_pack_names = {}
 
+-- seed shop stocks
+Varz.seed_stock_list_array = {}
+Varz.seed_stock_list_key = {}
+
+-- gear shop stocks
+Varz.gear_stock_list_array = {}
+Varz.gear_stock_list_key = {}
+
+-- egg shop stocks
+Varz.egg_stock_list_array = {}
+Varz.egg_stock_list_key = {}
+
 FarmManager.cache_objects = {}
 
 FarmManager.FindObjectInWorkSpace = function(name, objectType, dontCache)
@@ -2286,6 +2321,37 @@ FarmManager.FindObjectInWorkSpace = function(name, objectType, dontCache)
 end
 
 -- #pack
+
+GameDataManager.GetDataSeedShop = function()
+    if not _S.SeedShopData then return end
+    for seedName, value in pairs(_S.SeedShopData) do
+        table.insert(Varz.seed_stock_list_array, seedName)
+        Varz.seed_stock_list_key[seedName] = true
+    end
+end
+
+GameDataManager.GetDataGearShop = function()
+    if not _S.GearShopData then return end
+    if not _S.GearShopData.Gear then return end
+    for _name, value in pairs(_S.GearShopData.Gear) do
+        table.insert(Varz.gear_stock_list_array, _name)
+        Varz.gear_stock_list_key[_name] = true
+    end
+end
+
+GameDataManager.GetDataEggShop = function()
+    if not _S.PetEggData then return end
+
+    for _name, value in pairs(_S.PetEggData) do
+        table.insert(Varz.egg_stock_list_array, _name)
+        Varz.egg_stock_list_key[_name] = true
+    end
+end
+
+GameDataManager.GetDataSeedShop()
+GameDataManager.GetDataGearShop()
+GameDataManager.GetDataEggShop()
+
 GameDataManager.GetAllSeedPackNames = function()
     local packDisplayNames = {}
 
@@ -2538,126 +2604,6 @@ EventsManager.TravelingMerchantBuy = function()
         end
     end
 end
-
-
-local function ShopPurchaseLoop(shopUI, buySettingKey, itemsSettingKey, fireEvent, loopRunningKey)
-    local is_firsttime = true
-    local stockTable = {}
-    local m_item_list = {}
-    local ScrollingFrame = shopUI.Frame.ScrollingFrame
-
-    local _success, shop_name = pcall(function()
-        return shopUI.Frame.Frame.ShopTitle.ContentText
-    end)
-    local coins = tonumber(Varz.honey_coins) or 0
-    local shop_n = ""
-    if _success and shop_name == "Honey Shop" and coins < 10 then
-        shop_n = shop_name
-        FetchHoneyCoins()
-    else
-        --warn("Failed: ", tostring(shop_name))
-    end
-
-    local function UpdateStock()
-        for _, itemFrame in ipairs(ScrollingFrame:GetChildren()) do
-            local itemName = itemFrame.Name
-            local itemStock = itemFrame:FindFirstChild("Frame") and itemFrame.Frame:FindFirstChild("Value")
-
-            if not itemStock or not itemStock:IsA("NumberValue") then
-                continue
-            end
-
-            local stock = tonumber(itemStock.Value) or 0
-            stockTable[itemName] = { stock = stock }
-
-            if is_firsttime then
-                m_item_list[itemName] = true
-                FSettings[itemsSettingKey] = m_item_list
-            end
-        end
-        -- must run after the loop
-        if is_firsttime then
-            FSettings[itemsSettingKey] = m_item_list
-        end
-
-        is_firsttime = false
-    end
-
-    while _G[loopRunningKey] do
-        task.wait(1)
-        -- Pause
-        if Varz.IsPaused() then
-            task.wait(math.random(2, 5))
-            continue
-        end
-
-        if FSettings[buySettingKey] == false then
-            task.wait(1)
-            continue
-        end
-
-
-
-
-        --print("Running " .. buySettingKey .. " buy")
-
-
-        if Varz.shops_can_function == false then
-            continue
-        end
-
-        local success, fail = pcall(function()
-            UpdateStock() -- can update to fill in the settings
-        end)
-        if not success then
-            warn("Error ", fail)
-        end
-
-
-        for itemName, val in pairs(stockTable) do
-            local stock = val.stock
-            if stock <= 0 or FSettings[itemsSettingKey][itemName] == false then
-                continue
-            end
-
-            if shop_n == "Honey Shop" then
-                if Varz.honey_coins < 9 then
-                    --warn("not not coins")
-                    continue
-                end
-            end
-
-
-
-            for i = 1, stock do
-                if buySettingKey == "buy_seedshop" then
-                    --warn("Stock: " .. stock)
-                    fireEvent:FireServer("Shop", itemName)
-                else
-                    fireEvent:FireServer(itemName)
-                end
-            end
-        end
-
-        task.wait(10)
-    end
-end
-
--- Seed Shop
-task.spawn(function()
-    ShopPurchaseLoop(_S.SeedShopUI, "buy_seedshop", "seedshop_items", _S.BuySeedStock, "SeedShopLoopRunning")
-end)
-
--- GearShop
-task.spawn(function()
-    ShopPurchaseLoop(_S.GearShopUI, "buy_gearshop", "gearshop_items", _S.BuyGearStock, "GearShopLoopRunning")
-end)
-
--- EggShop
-task.spawn(function()
-    ShopPurchaseLoop(_S.PetShopUI, "buy_eggshop", "eggshop_items", _S.BuyPetEgg, "EggShopLoopRunning")
-end)
-
 
 
 if not EventsManager.task_buy_merc then
@@ -4340,7 +4286,7 @@ end
 
 InventoryManager.GetHeldTool = function()
     -- Find any equipped tool
-    local char = _S.Character
+    local char = _S.LocalPlayer.Character
     if not char or not char:IsA("Model") then
         return nil
     end
@@ -4841,7 +4787,7 @@ InventoryManager.GetFruitCount = function()
     end
 
 
-    local item = _S.Character:FindFirstChildOfClass("Tool")
+    local item = _S.LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if item then
         if InventoryManager.IsFruit(fruit) then
             fcount = fcount + 1
@@ -5569,6 +5515,54 @@ InventoryManager.GetSeedCountUsingName = function(_name)
 end
 
 
+InventoryManager.GetRandomFruitUsingFilters = function(_config)
+    local ignore_plant = _config.ignore_plants or {}
+    local valid_mutation = _config.mut or {}
+    -- local amount = _config.amount or 1
+
+    local has_plant = false
+    local has_mut = false
+    if next(ignore_plant) ~= nil then
+        has_plant = true
+    end
+
+    if next(valid_mutation) ~= nil then
+        has_mut = true
+    end
+
+    local allfruits = InventoryManager.GetAllFruitsInBackpack()
+    local ls = {}
+
+    for _, item in ipairs(allfruits) do
+        local name = item:GetAttribute("f") or "-"
+        local fav = item:GetAttribute("d")
+        if fav then
+            continue
+        end
+        if has_plant then
+            if ignore_plant[name] then
+                continue
+            end
+        end
+
+        if has_mut then
+            if not InventoryManager.HasMutationFruit(valid_mutation, item) then
+                continue
+            end
+        end
+
+        table.insert(ls, item)
+    end
+
+    if #ls == 0 then
+        return nil
+    end
+
+    -- return random fruit
+    return ls[math.random(1, #ls)]
+end
+
+
 InventoryManager.GetFruitRandomOrHeld = function()
     -- Check currently equipped tool
 
@@ -5630,6 +5624,18 @@ InventoryManager.GetFruitRandom = function()
         end
     end
     return nil
+end
+
+InventoryManager.HasMutationFruit = function(mut_list, _tool)
+    local allmut = _tool:GetAttributes() or {}
+
+    for key, value in pairs(mut_list) do
+        if allmut[key] then
+            return true
+        end
+    end
+
+    return false
 end
 
 InventoryManager.GetFruitUsingMutation = function(_mut)
@@ -5801,7 +5807,7 @@ end
 
 InventoryManager.GetEggUsingNameNew = function(_name)
     if typeof(_name) ~= "string" or _name == "" then
-        print("fail not a string")
+        -- print("fail not a string")
         return nil
     end
 
@@ -6820,6 +6826,10 @@ _EventShops.Season = {
     GetAllSeasonShopItems = function()
         local productNames = {}
 
+        if not _S.SeasonPassShop then
+            return productNames
+        end
+
         local success, err = pcall(function()
             for name in pairs(_S.SeasonPassShop.ShopItems) do
                 table.insert(productNames, name)
@@ -6835,6 +6845,9 @@ _EventShops.Season = {
 
     -- Buys all selected items in the season shop
     BuySeasonShopItem = function()
+        if not _S.BuySeasonPassStock then
+            return
+        end
         local items = FOtherSettings.season_pass_shop_items
         for name, selected in pairs(items) do
             if selected then
@@ -9620,7 +9633,7 @@ Varz.SellFruitsToVendorWithRangeCheck = function(unfav)
     local fcount = InventoryManager.GetFruitCount()
     if fcount == 0 then return end
 
-    local hrp = _S.Character:FindFirstChild("HumanoidRootPart")
+    local hrp = _S.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     -- print("Check1")
     if not hrp then return end
 
@@ -14523,12 +14536,72 @@ _Helper.SendWebhookMutationMachineStop = function(errorMessage)
     _Helper.SendLiveWebhook(data, FSettings.mut_webhook_url)
 end
 
+-- #webhook
+Varz.SendWebhookUsingApi               = function(title, description, db_data, log_response)
+    if not FSettings.webhook_url or FSettings.webhook_url == "" then
+        warn("Webhook not configured.")
+        --return
+    end
+
+    local colour = 0x00AFFF -- Hardcoded Blue
+    local webhookx = FSettings.webhook_url
+    local db_datax = db_data or {}
+    local f_text = _Helper.GetFooterInfo(true)
+
+    local payload = {
+        webhook_url = webhookx,
+        content = "",
+        embed = {
+            title = title,
+            description = description,
+            color = colour,
+            footer = { text = f_text },
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ")
+        },
+        db = db_datax,
+    }
+
+    local success, err = pcall(function()
+        local body = _S.HttpService:JSONEncode(payload)
+
+        local req =
+            (syn and syn.request)
+            or (http and http.request)
+            or http_request
+            or request
+            or (fluxus and fluxus.request)
+            or (krnl and krnl.request)
+
+        local result
+        if req then
+            result = req({
+                Url = _S.PROXY_URL,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = body
+            })
+        else
+            -- Fallback for standard Roblox execution
+            result = _S.HttpService:PostAsync(_S.PROXY_URL, body)
+        end
+
+        -- Log only if toggle is true
+        if log_response then
+            _Helper.JsonPrint(result)
+        end
+    end)
+
+    if not success then
+        warn("Wh1 error: ", err)
+    end
+end
+
 
 
 -- Utility: send embed -  dont touch this code
-local function sendWebhook(title, description, colour, db_data, type)
+local function sendWebhook(title, description, colour, db_data, typex)
     if not FSettings.webhook_url or FSettings.webhook_url == "" then
-        --warn("Webhook not configured.")
+        warn("Webhook not configured.")
         --return
     end
 
@@ -14538,7 +14611,7 @@ local function sendWebhook(title, description, colour, db_data, type)
     end
 
     -- big report
-    if type and type == 1 then
+    if typex and typex == 1 then
         if not FSettings.send_everyhatch_alert then
             webhookx = "-"
         end
@@ -14565,7 +14638,7 @@ local function sendWebhook(title, description, colour, db_data, type)
     }
 
 
-    pcall(function()
+    local success, fail = pcall(function()
         local body = _S.HttpService:JSONEncode(payload)
 
         local req  =
@@ -14586,6 +14659,10 @@ local function sendWebhook(title, description, colour, db_data, type)
             _S.HttpService:PostAsync(_S.PROXY_URL, body)
         end
     end)
+
+    if not success then
+        warn("Wh error: ", fail)
+    end
 end
 
 
@@ -15397,11 +15474,25 @@ local function SendErrorMessage(errorMsg)
         "────────────────────────────"
     }
 
-    if sendWebhook then
-        sendWebhook("❌ " .. errorMsg, table.concat(bigMsg, "\n"), 15105570) -- Red colour
-    else
-        warn("webhook not found..")
-    end
+
+    sendWebhook("❌ " .. errorMsg, table.concat(bigMsg, "\n"), 15105570) -- Red colour
+end
+
+-- #test
+Varz.SendTestMessage = function()
+    local errorMsgx = "✅ Test webhook, it works!"
+
+    local bigMsg = {
+        "✅ Test ✅",
+        "",
+        string.format("│ Username: ||`%s`||", _S.LocalPlayer.Name),
+        "",
+        "✅ " .. errorMsgx,
+        "",
+        "────────────────────────────"
+    }
+
+    Varz.SendWebhookUsingApi(errorMsgx, table.concat(bigMsg, "\n"), {}, true)
 end
 
 
@@ -15528,6 +15619,31 @@ local function FindEggLostGainDiff()
     return total_diff
 end
 
+InventoryManager.ValidEggOverrideCheck = function(eggname, tool)
+    if not tool then
+        return false
+    end
+    local amount = InventoryManager.GetEggToolCount(tool)
+
+
+    if FOtherSettings.egg_override_enabled then
+        local useramount = FOtherSettings.egg_override[eggname]
+        if useramount then
+            local um = tonumber(useramount) or 0
+            --print("Egg count limt ", um)
+            if amount > um then
+                -- print("current eggs are more than limit")
+                return true
+            else
+                --   warn("Egg below limit, ", eggname .. " current " .. amount)
+                return false
+            end
+        else
+            -- print("Override not found")
+        end
+    end
+    return true
+end
 
 InventoryManager.GetEggToolForHatching = function()
     local success, result = pcall(function()
@@ -15550,6 +15666,10 @@ InventoryManager.GetEggToolForHatching = function()
             local foundTool = InventoryManager.GetEggUsingNameNew(egg.name)
 
             if foundTool then
+                if not InventoryManager.ValidEggOverrideCheck(egg.name, foundTool) then
+                    continue
+                end
+
                 return foundTool
             else
                 warn(egg.name .. " egg not found.")
@@ -16372,13 +16492,20 @@ EventsManager.FeedEvent = {
         if foodcount == 0 then
             local configx = {
                 amount = 1,
+                ignore_fruit_list = FSettings.feedevent.feed_plant_list or {},
+                random = true
             }
             local _fruits = {}
             local found_fruits = _FruitCollectorMachine.CollectFruitByNamesSortedRarityConfig(_fruits, configx)
             task.wait(1)
         end
 
-        local item = InventoryManager.GetFruitRandomOrHeld()
+        local cf = {
+            ignore_plants = FSettings.feedevent.feed_plant_list or {}
+        }
+
+        local item = InventoryManager.GetRandomFruitUsingFilters(cf)
+
         if item then
             EquipToolOnChar(item)
             task.wait(1)
@@ -17742,7 +17869,7 @@ VulnManager.Marmot = {
 
 
 
--- #test
+-- #dig
 
 _Helper.FireDigEvent = function(gridX, gridY, cframe)
     _S.DigRemote:FireServer(
@@ -18226,6 +18353,250 @@ if not _Helper.task_collect_objects then
         end
     end)
 end
+
+
+
+
+-- #shop #shops
+GameDataManager.Shops = {
+    RemoteBuyDailySeeds = function(name, amount)
+        if not _S.BuyDailySeedShopStock then
+            return false
+        end
+
+        local am = amount or 1
+        for i = 1, am, 1 do
+            pcall(function()
+                _S.BuyDailySeedShopStock:FireServer(name)
+            end)
+        end
+    end,
+    RemoteBuySeed = function(_name, amount)
+        local am = amount or 1
+        for i = 1, am, 1 do
+            pcall(function()
+                _S.BuySeedStock:FireServer("Shop", _name)
+            end)
+        end
+    end,
+    RemoteBuyGearStock = function(name, amount)
+        local am = amount or 1
+        for i = 1, am, 1 do
+            pcall(function()
+                _S.BuyGearStock:FireServer(name)
+            end)
+        end
+    end,
+    RemoteBuyEggs = function(_name, amount)
+        local am = amount or 1
+        for i = 1, am, 1 do
+            pcall(function()
+                _S.BuyPetEgg:FireServer(_name)
+            end)
+        end
+    end,
+    GetTextStockEggs = function()
+        local data = VulnManager.GetBigDataUsingKey("PetEggStock") or {}
+        local outputString = ""
+
+        -- Header (Pink for Eggs)
+        outputString = outputString .. '<font color="#FF69B4"><b>Pet Egg Stock</b></font>\n'
+
+        if data["Stocks"] then
+            -- Note: 'Stocks' here is a List (Array), so we iterate with ipairs
+            for _, info in ipairs(data["Stocks"]) do
+                local name = info["EggName"] or "Unknown"
+                local stock = info["Stock"] or 0
+
+                -- Colors: Green if available, Red if empty
+                local stockColor = stock > 0 and "#00FF00" or "#FF0000"
+
+                -- Format: EggName: Stock (MaxStock is not provided in this data)
+                outputString = outputString .. string.format(
+                    '<font color="#FFFFFF">%s</font>: <font color="%s">%d</font>\n',
+                    name, stockColor, stock
+                )
+            end
+        else
+            outputString = outputString .. "No egg stock data found."
+        end
+
+        return outputString
+    end,
+    GetTextStockGear = function()
+        -- Get the table directly
+        local data = VulnManager.GetBigDataUsingKey("GearStock") or {}
+        local outputString = ""
+
+        -- Header (Orange for Gear)
+        outputString = outputString .. '<font  color="#FFA500"><b>Gear Stock</b></font>\n'
+
+        if data["Stocks"] then
+            for itemName, info in pairs(data["Stocks"]) do
+                local stock = info["Stock"] or 0
+                local max = info["MaxStock"] or 0
+
+                -- Colors: Green if available, Red if empty
+                local stockColor = stock > 0 and "#00FF00" or "#FF0000"
+
+                -- Format line: ItemName: Stock/Max
+                outputString = outputString .. string.format(
+                    '<font color="#FFFFFF">%s</font>: <font color="%s">%d/%d</font>\n',
+                    itemName, stockColor, stock, max
+                )
+            end
+        else
+            outputString = outputString .. "No gear data found."
+        end
+
+        return outputString
+    end,
+    GetTextStockSeeds = function()
+        -- Directly get the table
+        local data = VulnManager.GetBigDataUsingKey("SeedStocks") or {}
+        local outputString = ""
+
+        -- Helper function to format each category
+        local function formatCategory(key, title, color)
+            local categoryData = data[key]
+            if categoryData and categoryData["Stocks"] then
+                -- Add Category Title
+                outputString = outputString ..
+                    string.format('<font color="%s"><b>%s</b></font>\n', color, title)
+
+                for seedName, info in pairs(categoryData["Stocks"]) do
+                    local stock = info["Stock"] or 0
+                    local max = info["MaxStock"] or 0
+                    local isGood = info["IsGoodSeed"] or false
+
+                    -- Colors: Purple for Good Seeds, White for normal
+                    local nameColor = isGood and "#D02090" or "#FFFFFF"
+                    -- Colors: Green if available, Red if empty
+                    local stockColor = stock > 0 and "#00FF00" or "#FF0000"
+
+                    -- Format: SeedName: Stock/Max (e.g., Carrot: 21/21)
+                    outputString = outputString .. string.format(
+                        '<font color="%s">%s</font>: <font color="%s">%d/%d</font>\n',
+                        nameColor, seedName, stockColor, stock, max
+                    )
+                end
+                outputString = outputString .. "\n" -- Spacer line
+            end
+        end
+
+        -- 1. Format Standard Shop (Blue Header)
+        formatCategory("Shop", "Shop", "#00BFFF")
+
+        -- 2. Format Daily Deals (Gold Header)
+        formatCategory("Daily Deals", "Daily Deals", "#FFD700")
+
+        return outputString
+    end,
+    BuySeedStock = function()
+        if not FOtherSettings.shop_stocks.enabled_seedshop then
+            return false
+        end
+
+        local data = VulnManager.GetBigDataUsingKey("SeedStocks")
+        if not data then
+            -- warn("No data found to buy from.")
+            return false
+        end
+
+        local didbuy = false
+
+        -- Helper function to process a specific shop category
+        local function processCategory(categoryName)
+            local category = data[categoryName]
+            if category and category["Stocks"] then
+                for seedName, info in pairs(category["Stocks"]) do
+                    local currentStock = info["Stock"]
+
+                    if FOtherSettings.shop_stocks.seed_shop_avoid[seedName] then
+                        continue
+                    end
+
+                    -- Only buy if there is stock available
+                    if currentStock and currentStock > 0 then
+                        didbuy = true
+
+                        if categoryName == "Daily Deals" then
+                            GameDataManager.Shops.RemoteBuyDailySeeds(seedName, currentStock)
+                        else
+                            GameDataManager.Shops.RemoteBuySeed(seedName, currentStock)
+                        end
+
+                        task.wait()
+                    end
+                end
+            end
+        end
+
+        -- 1. Process the Regular Shop
+        processCategory("Shop")
+
+        -- 2. Process Daily Deals
+        processCategory("Daily Deals")
+
+        if didbuy then
+            -- print("✅ Finished buying all available stock.")
+        end
+    end,
+
+    BuyGearStock = function()
+        if not FOtherSettings.shop_stocks.enabled_gearshop then
+            return false
+        end
+        local data = VulnManager.GetBigDataUsingKey("GearStock") or {}
+
+        if data["Stocks"] then
+            for itemName, info in pairs(data["Stocks"]) do
+                local currentStock = info["Stock"]
+
+                if currentStock and currentStock > 0 then
+                    --print("Buying " .. currentStock .. "x " .. itemName)
+                    GameDataManager.Shops.RemoteBuyGearStock(itemName, currentStock)
+                    task.wait(0.1)
+                end
+            end
+        else
+            -- warn("No Gear stocks found to buy.")
+        end
+    end,
+
+    BuyEggStock = function()
+        if not FOtherSettings.shop_stocks.enabled_eggshop then
+            return false
+        end
+        local data = VulnManager.GetBigDataUsingKey("PetEggStock") or {}
+
+        if data["Stocks"] then
+            for _, info in ipairs(data["Stocks"]) do
+                local name = info["EggName"]
+                local stock = info["Stock"]
+
+                if stock and stock > 0 then
+                    --print("Buying " .. stock .. "x " .. name)
+                    GameDataManager.Shops.RemoteBuyEggs(name, stock)
+                    task.wait(0.1) -- Safety delay
+                end
+            end
+        end
+    end
+
+}
+
+-- #shop
+task.spawn(function()
+    while true do
+        task.wait(10)
+        GameDataManager.Shops.BuySeedStock()
+        task.wait(1)
+        GameDataManager.Shops.BuyGearStock()
+        task.wait(1)
+        GameDataManager.Shops.BuyEggStock()
+    end
+end)
 
 
 
@@ -20234,7 +20605,7 @@ TaskManager.Quests = {
 
     GetQuestContainerGardenGames = function()
         -- 1. Get the Main Game Data
-        local mainData = VulnManager.GetBigDataUsingKey("GardenGames")
+        local mainData = VulnManager.GetBigDataUsingKey("ButtercupEvent")
 
         -- Check if mainData exists AND if the Quests table exists inside it
         if not mainData or not mainData.Quests then
@@ -25835,7 +26206,7 @@ MutationMachineManager.MachineLoop = function()
             local pet_to_level_array = MutationMachineManager.MakeLevelingTeam(findpetforlevel)
             if #pet_to_level_array == 0 then
                 MutationMachineManager.UI.UpdateStats("Could not make a team for leveling... retrying...")
-                warn("After making team, user still has no pets for leveling, idle for a while...")
+                -- warn("After making team, user still has no pets for leveling, idle for a while...")
                 task.wait(3)
                 continue
             end
@@ -26273,14 +26644,19 @@ Varz.StartHatchingSystem = function()
 end
 
 Varz.StopHatchingSystem = function()
-    FSettings.is_running = false
-    FSettings.is_auto_rejoin = false
-    Varz.is_forced_stop = true
-    SaveData()
-    task.cancel(main_thread);
-    main_thread = nil
-    Library:Notify("Hatching stopped.", 3)
-    UPDATE_LABELS_FUNC.UpdateSetLblStats("Stopped By User")
+    pcall(function()
+        FSettings.is_running = false
+        FSettings.is_auto_rejoin = false
+        Varz.is_forced_stop = true
+        SaveData()
+
+        if main_thread then
+            task.cancel(main_thread);
+            main_thread = nil
+        end
+        Library:Notify("Hatching stopped.", 3)
+        UPDATE_LABELS_FUNC.UpdateSetLblStats("Stopped By User")
+    end)
 end
 
 
@@ -26617,7 +26993,76 @@ TaskManager.tradex_loops = task.spawn(function()
 end)
 
 
+_Helper.ActivateFlatMode = function()
+    --  print("📉 ACTIVATING FLAT MODE...")
+    local Terrain = _S.Workspace:FindFirstChildOfClass("Terrain")
+    local Lighting = game:GetService("Lighting")
 
+    -- 1. ENGINE LEVEL DOWNGRADE
+    -- Forces the internal renderer to the lowest possible setting
+    local R = settings().Rendering
+    R.QualityLevel = 1
+    R.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+
+    -- 2. "FLAT" LIGHTING (Removes 3D Shading)
+    -- Making Ambient white removes shadows on the sides of blocks, making them look flat.
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 0
+    Lighting.Ambient = Color3.fromRGB(255, 255, 255) -- Fullbright (No shading)
+    Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+    Lighting.ClockTime = 14
+
+    -- Kill all lighting effects
+    for _, v in pairs(Lighting:GetChildren()) do
+        if v:IsA("PostEffect") or v:IsA("Sky") or v:IsA("Atmosphere") or v:IsA("Clouds") then
+            v:Destroy()
+        end
+    end
+
+    -- 3. TERRAIN FLATTENER
+    if Terrain then
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 0
+        Terrain.Decoration = false
+        Terrain.Material = Enum.Material.SmoothPlastic
+        -- Optional: Make terrain color flat gray
+        -- Terrain:SetMaterialColor(Enum.Material.SmoothPlastic, Color3.fromRGB(100,100,100))
+    end
+
+    -- 4. OBJECT STRIPPER (The "Flat" Maker)
+    for _, v in pairs(_S.Workspace:GetDescendants()) do
+        -- A. TEXTURES & DECALS (Delete them)
+        if v:IsA("Decal") or v:IsA("Texture") or v:IsA("SurfaceAppearance") then
+            v:Destroy()
+
+            -- B. MESH PARTS (Strip Texture + Low Poly)
+        elseif v:IsA("MeshPart") then
+            v.TextureID = ""                                   -- Removes the image
+            v.Material = Enum.Material.SmoothPlastic
+            v.RenderFidelity = Enum.RenderFidelity.Performance -- Forces lowest polygon count
+            v.Reflectance = 0
+            v.CastShadow = false
+
+            -- C. SPECIAL MESHES (Strip Texture)
+        elseif v:IsA("SpecialMesh") then
+            v.TextureId = ""
+
+            -- D. STANDARD PARTS (Make Flat)
+        elseif v:IsA("BasePart") then
+            v.Material = Enum.Material.SmoothPlastic
+            v.Reflectance = 0
+            v.CastShadow = false
+
+            -- E. PARTICLES (Delete)
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Beam") or v:IsA("Fire") or v:IsA("Smoke") then
+            v:Destroy()
+        end
+    end
+end
 
 
 
@@ -27768,6 +28213,16 @@ Varz.ProUi = function()
                 Callback = function(Value)
                     FSettings.enhancer_auto_favallow = Value
                     SaveData()
+                end
+            })
+
+            gEnhancepro:AddToggle("autofavenhancerUnequip", {
+                Text = "🍉 <font color='#FFFFFF'>Equip/Unequip Fruit</font>",
+                Default = FOtherSettings.swap_enchancer,
+                Tooltip = "Will equip and unequip fruit.",
+                Callback = function(Value)
+                    FOtherSettings.swap_enchancer = Value
+                    SaveDataOther()
                 end
             })
 
@@ -30030,10 +30485,171 @@ Varz.PetTeamsUi = function()
 
     local gMutationOverRides = TeamsTab:AddLeftGroupbox("🧬 Pet <font color='#FF0084'>Mutations</font>", "boxes")
 
+    -- #egg #eggcount
+    local gEggOverride = TeamsTab:AddRightGroupbox("<font color='#59FF00'>Egg</font> Overrides", "egg")
 
     -- #hatchui
 
 
+    -- Pet #eggui Overrides
+    if gEggOverride then
+        gEggOverride:AddLabel({
+            Text =
+            "⚠️ Override eggs, Once eggs fall below set amount it will auto stop hatching that egg and move to next egg in the list.",
+            DoesWrap = true
+        })
+
+        local selected_egg_limiter = ""
+        local amount_limiter = 0
+
+        local dd_egglimiter
+        dd_egglimiter = gEggOverride:AddDropdown("dd_egglimiter", {
+            Values = {},
+            Default = {},
+            Multi = false,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🥚 Eggs",
+            Callback = function(Values)
+                if Values == nil then
+                    selected_egg_limiter = ""
+                    return
+                end
+
+                selected_egg_limiter = Values
+            end
+        })
+
+        dd_egglimiter:SetValues(_Helper.AllEggNamesList)
+
+
+        local function GetTextEggAmountLimit()
+            return string.format(
+                "🔴 <font color='#FFFFFF'><b>Limit Amount</b></font><stroke color='#6B5E0A' th='2' tr='0.5' joins='round' sizing='fixed'></stroke>"
+            )
+        end
+        local default_egg_limit = 500
+        amount_limiter = default_egg_limit
+        local input_egglimitamount
+        input_egglimitamount = gEggOverride:AddInput("input_egglimitamount", {
+            Text = GetTextEggAmountLimit(),
+            Default = default_egg_limit,
+            Numeric = true,
+            AllowEmpty = true,
+            Finished = false,
+            ClearTextOnFocus = false,
+            Placeholder = "e.g. 1",
+            Tooltip =
+            "Enter value to limit eggs",
+            Callback = function(Value)
+                local num = ParseWholeNumber(Value)
+                if num and num > 0 then
+                    amount_limiter = num
+                    input_egglimitamount:SetText(GetTextEggAmountLimit())
+                else
+                    Library:Notify("Invalid " .. Value, 3)
+                    input_egglimitamount:SetValue(default_egg_limit)
+                    amount_limiter = default_egg_limit
+                end
+            end
+        })
+
+
+        local function AddOverrideforegg()
+            if not selected_egg_limiter then
+                Library:Notify("Select a egg ")
+                return
+            end
+
+            if selected_egg_limiter == "" then
+                Library:Notify("Select a egg ")
+                return
+            end
+
+            if amount_limiter <= 0 then
+                Library:Notify("Enter valid amount")
+                return
+            end
+            FOtherSettings.egg_override[selected_egg_limiter] = amount_limiter
+            SaveDataOther()
+        end
+        local function RemoveOverrideforegg()
+            FOtherSettings.egg_override[selected_egg_limiter] = nil
+            SaveDataOther()
+        end
+
+        local btn_container_limiter = gEggOverride:AddButton({
+            Text = "✅ Add",
+            Func = function()
+                AddOverrideforegg()
+            end,
+        })
+
+        btn_container_limiter = gEggOverride:AddButton({
+            Text = "❌ Remove",
+            Func = function()
+                RemoveOverrideforegg()
+            end,
+        })
+
+
+        gEggOverride:AddToggle("toggleEnabledEggLimiter", {
+            Text = "⚡ Enable",
+            Default = FOtherSettings.egg_override_enabled,
+            Tooltip = "When enabled, when eggs lower than set amount they will be skipped.",
+            Callback = function(Value)
+                FOtherSettings.egg_override_enabled = Value
+                SaveOtherData()
+            end
+        })
+
+        gEggOverride:AddDivider()
+
+        gEggOverride:AddLabel({
+            Text = "--- ACTIVE OVERRIDES --- ",
+            DoesWrap = false
+        })
+
+        local current_eggs_limiter_text
+        current_eggs_limiter_text = gEggOverride:AddLabel({
+            Text = "-",
+            DoesWrap = true
+        })
+
+
+        local function UpdateActivateOverridesEggLimiter()
+            local lines = {}
+
+            for eggName, amount in pairs(FOtherSettings.egg_override) do
+                local colo_ = _Helper.StringToColor3Light(eggName)
+                local nd = string.format("<font color='%s'>%s</font>", colo_, eggName)
+
+                local display_txt = string.format(
+                    '%s <font color="#9E9E9E">(</font>' ..
+                    '<font color="#FFE100">%s</font>' ..
+                    '<font color="#9E9E9E">)</font>',
+                    nd,
+                    amount
+                )
+
+                table.insert(lines, display_txt)
+            end
+
+            if current_eggs_limiter_text then
+                current_eggs_limiter_text:SetText(table.concat(lines, "\n"))
+            end
+        end
+
+        task.spawn(function()
+            while true do
+                task.wait(0.5)
+                UpdateActivateOverridesEggLimiter()
+            end
+        end)
+
+
+        gEggOverride:AddSpacer(200)
+    end
 
 
     -- Pet Mutations Override #mutation
@@ -33173,13 +33789,31 @@ local function MEventsUi()
     --local gTradeEvent = UIEventsTab:AddLeftGroupbox("💰 Trade Event", "store")
 
 
-
+    -- #feedevent #feedeventui
     if gFeedEvent then
         gFeedEvent:AddLabel({
             Text =
             "💡 Automatically submits fruit to feed bird event. can auto collect fruits if inventory is empty.",
             DoesWrap = true
         })
+
+        -- Dropdown: Exclude Plants
+        local exlcudeplants_feed = gFeedEvent:AddDropdown("gFeedEvent", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Text = "🌱 Exclude Plants",
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Changed = function(newSelection)
+                FSettings.feedevent.feed_plant_list = newSelection
+                SaveData()
+            end
+        })
+
+        -- Populate dropdown with all pet names
+        exlcudeplants_feed:SetValues(GetKeyValuesFromList(all_plants_list))
+        exlcudeplants_feed:SetValue(FSettings.feedevent.feed_plant_list)
 
         -- Auto collect fruit toggle
         gFeedEvent:AddDivider()
@@ -36395,19 +37029,149 @@ MSellUI()
 
 --=========== Shops
 
--- Shops
+-- Shops #shop
 function MShopUi()
     local UIShopTab             = Window:AddTab({
         Name = "Shops",
         Description = "Shops",
         Icon = "store"
     })
-
-    local GroupBoxWebhook       = UIShopTab:AddLeftGroupbox("Shops", "store")
+    local gSeedShop             = UIShopTab:AddLeftGroupbox("🍃 All Shops", "store")
     local GroupBoxOtherSettings = UIShopTab:AddRightGroupbox("Shop Settings", "settings-2")
     local GroupBoxMarket        = UIShopTab:AddRightGroupbox("Market", "banknote")
     local SeasonPassGroup       = UIShopTab:AddLeftGroupbox("🌟 Season Shop", "tickets")
     local MerchantGroup         = UIShopTab:AddLeftGroupbox("📍 Traveling Merchants", "store")
+
+    local gShopStockDetails     = UIShopTab:AddRightGroupbox("🔷 Stock Details", "store")
+
+    if gShopStockDetails then
+        local txt_details = gShopStockDetails:AddLabel({
+            Text = "-",
+            DoesWrap = true
+        })
+        task.spawn(function()
+            while true do
+                task.wait(2)
+                local txt_seed = GameDataManager.Shops.GetTextStockSeeds()
+                local txt_egg = GameDataManager.Shops.GetTextStockEggs()
+                local txt_gear = GameDataManager.Shops.GetTextStockGear()
+
+                local txtf = string.format("%s\n%s\n%s", txt_seed, txt_gear, txt_egg)
+                txt_details:SetText(txtf)
+            end
+        end)
+    end
+
+
+    -- #seedshop Seed Shop #shop
+    if gSeedShop then
+        local seedStock_dd
+        seedStock_dd = gSeedShop:AddDropdown("seedStock_dd", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🌾 Avoid Seeds",
+            Tooltip = "Any seeds selected will not be purchased.",
+            Changed = function(newSelection)
+                if type(newSelection) ~= "table" then
+                    return
+                end
+                FOtherSettings.shop_stocks.seed_shop_avoid = newSelection
+                SaveDataOther()
+            end
+        })
+
+        -- #seed
+        seedStock_dd:SetValues(Varz.seed_stock_list_array)
+        seedStock_dd:SetValue(FOtherSettings.shop_stocks.seed_shop_avoid)
+
+        gSeedShop:AddToggle("EnableSeedShop", {
+            Text = "⚡ Enable SeedShop",
+            Default = FOtherSettings.shop_stocks.enabled_seedshop,
+            Tooltip = "If enabled will purchase seeds.",
+            Callback = function(Value)
+                FOtherSettings.shop_stocks.enabled_seedshop = Value
+                SaveDataOther()
+            end
+        })
+
+        gSeedShop:AddDivider()
+
+
+        -- #gear
+        local gearStock_dd
+        gearStock_dd = gSeedShop:AddDropdown("gearStock_dd", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "⚔️ Avoid Gear",
+            Tooltip = "Any gear selected will not be purchased.",
+            Changed = function(newSelection)
+                if type(newSelection) ~= "table" then
+                    return
+                end
+                FOtherSettings.shop_stocks.gear_shop_avoid = newSelection
+                SaveDataOther()
+            end
+        })
+
+        gearStock_dd:SetValues(Varz.gear_stock_list_array)
+        gearStock_dd:SetValue(FOtherSettings.shop_stocks.gear_shop_avoid)
+
+        gSeedShop:AddToggle("EnableGearShop", {
+            Text = "⚡ Enable GearShop",
+            Default = FOtherSettings.shop_stocks.enabled_gearshop,
+            Tooltip = "If enabled will purchase gear.",
+            Callback = function(Value)
+                FOtherSettings.shop_stocks.enabled_gearshop = Value
+                SaveDataOther()
+            end
+        })
+
+        gSeedShop:AddDivider()
+
+        -- #egg
+        local eggStock_dd
+        eggStock_dd = gSeedShop:AddDropdown("eggStock_dd", {
+            Values = {},
+            Default = {},
+            Multi = true,
+            Searchable = true,
+            MaxVisibleDropdownItems = 10,
+            Text = "🥚 Avoid Eggs",
+            Tooltip = "Any selected eggs will not be purchased.",
+            Changed = function(newSelection)
+                if type(newSelection) ~= "table" then
+                    return
+                end
+                FOtherSettings.shop_stocks.egg_shop_avoid = newSelection
+                SaveDataOther()
+            end
+        })
+
+        eggStock_dd:SetValues(Varz.egg_stock_list_array)
+        eggStock_dd:SetValue(FOtherSettings.shop_stocks.egg_shop_avoid)
+
+        gSeedShop:AddToggle("EnableEggShop", {
+            Text = "⚡ Enable EggShop",
+            Default = FOtherSettings.shop_stocks.enabled_eggshop,
+            Tooltip = "If enabled will purchase eggs.",
+            Callback = function(Value)
+                FOtherSettings.shop_stocks.enabled_eggshop = Value
+                SaveDataOther()
+            end
+        })
+
+        gSeedShop:AddDivider()
+
+
+        gSeedShop:AddSpacer(200)
+    end
+
 
     ----=========================================
     -------- Traveling Merchant
@@ -36606,54 +37370,6 @@ function MShopUi()
     end
     --=========================== END MARKET
     --========================================================
-
-
-
-
-
-
-
-
-    -- info
-    local lblinfo = GroupBoxWebhook:AddLabel({
-        Text = "Buy shops? by default all shops will be purchased when active",
-        DoesWrap = true
-    })
-
-
-    --======== Shops buttons
-    local btnShopGear = GroupBoxWebhook:AddToggle("btnShopGear", {
-        Text = "Buy Gear Shop",
-        Default = FSettings.buy_gearshop,
-        Tooltip = "Enable Gear Shop",
-        Callback = function(Value)
-            FSettings.buy_gearshop = Value
-            SaveData()
-            Library:Notify("Updated", 1)
-        end
-    })
-
-    local btnShopSeed = GroupBoxWebhook:AddToggle("btnShopSeed", {
-        Text = "Buy Seed Shop",
-        Default = FSettings.buy_seedshop,
-        Tooltip = "Enable Seed Shop",
-        Callback = function(Value)
-            FSettings.buy_seedshop = Value
-            SaveData()
-            Library:Notify("Updated", 1)
-        end
-    })
-
-    local btnShopEgg = GroupBoxWebhook:AddToggle("btnShopEgg", {
-        Text = "Buy Egg Shop",
-        Default = FSettings.buy_eggshop,
-        Tooltip = "Enable Egg Shop",
-        Callback = function(Value)
-            FSettings.buy_eggshop = Value
-            SaveData()
-            Library:Notify("Updated", 1)
-        end
-    })
 end
 
 MShopUi();
@@ -36670,14 +37386,15 @@ _Helper.LoadDexTool = function()
     end)
 end
 
+-- #spy
 _Helper.is_spy_loaded = false
 _Helper.LoadSpyTool = function()
     if _Helper.is_spy_loaded then
         return
     end
+
     local s, r = pcall(function()
-        loadstring(game:HttpGet(
-            "https://haxhell.com/raw/universal-script-sigma-spy-or-remote-spy-script-builder-decompiler"))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Klinac/scripts/main/utopia_spy.lua", true))()
         _Helper.is_spy_loaded = true
     end)
 end
@@ -36932,6 +37649,20 @@ function SettingsUi()
 
 
     GroupBoxOtherSettings:AddToggle("disable_event_notify_button", {
+        Text = "🔫 Potato Mode",
+        Default = FSessionDx.is_highperformance_mode,
+        Tooltip = "Disables logs and other effcts",
+        Callback = function(Value)
+            FSessionDx.is_highperformance_moden = Value
+            if Value then
+                _Helper.ActivateFlatMode()
+            end
+            _Helper.NotifyButton()
+            SaveData()
+        end
+    })
+
+    GroupBoxOtherSettings:AddToggle("disable_event_notify_button", {
         Text = "🔔 Disable Event Notify Btn",
         Default = FSettings.disable_event_notify_button,
         Tooltip = "Show or hide the event notify button",
@@ -37007,11 +37738,11 @@ function SettingsUi()
     })
 
 
-    -- Test webhook
+    -- Test webhook #test
     local ButtonTestWebHook = GroupBoxWebhook:AddButton({
         Text = "Send Test WebHook",
         Func = function()
-            SendErrorMessage("Test WebHook!")
+            Varz.SendTestMessage()
             Library:Notify("Sent Test Webhook", 3)
         end
     })
@@ -37747,7 +38478,7 @@ end)
 -- #quests #quest #questloop
 task.spawn(function()
     while true do
-        task.wait(3)
+        task.wait(2)
 
         if not FarmManager.IsDataFullyLoaded() or not FarmManager.IsFarmFullyLoaded() then
             task.wait(5)
@@ -37817,6 +38548,20 @@ task.spawn(function()
                 task.wait(2)
                 continue
             end
+
+            if action == "HarvestButtercup" then
+                target_item = "Buttercup"
+                local success, fail = pcall(function()
+                    return TaskManager.Quests.ActionHarvest(target_item, needed)
+                end)
+
+                if not success then
+                    warn("Error" .. action .. ": ", fail)
+                end
+                task.wait(2)
+                continue
+            end
+
 
             if action == "Harvest" then
                 local success, fail = pcall(function()
@@ -40326,7 +41071,7 @@ end
 
 
 
--- #hook
+-- #hook #webhook
 
 if not _G.mt_webhook then
     _G.mt_webhook = task.spawn(function()
@@ -40592,6 +41337,17 @@ Varz.GetPetEnhanceTargets = function()
     return ls
 end
 
+
+-- #enhance #fruit
+_Helper.FruitEquipEnhancer = function()
+    local fruitx = InventoryManager.GetFruitRandom()
+    if InventoryManager.IsToolHeldAny() then
+        unequipTools()
+    end
+    EquipToolOnChar(fruitx)
+end
+
+
 -- #enhance
 _Helper.EnhanceFavFaster = function()
     -- -- Main Logic
@@ -40666,6 +41422,13 @@ TaskManager.loop_egg_enhancer = task.spawn(function()
             task.wait(0.2)
             continue
         end
+
+        if FOtherSettings.swap_enchancer then
+            pcall(function()
+                _Helper.FruitEquipEnhancer()
+            end)
+        end
+
 
         pcall(function()
             -- local targets = Varz.GetPetEnhanceTargets()
@@ -41755,3 +42518,80 @@ task.spawn(function()
         break
     end
 end)
+
+
+
+
+
+
+_Helper.DisabledLog = function()
+    local LogService = game:GetService("LogService")
+    local ScriptContext = game:GetService("ScriptContext")
+
+    --print("🚫 KILLING CONSOLE OUTPUT...")
+    -- task.wait(3)
+
+    -- 1. STOP VISUAL LOGS (The F9 Console)
+    -- This finds the internal connection that Roblox uses to update the console window
+    -- and disables it. The console will simply stop updating entirely.
+    local logCount = 0
+    for _, conn in pairs(getconnections(LogService.MessageOut)) do
+        conn:Disable()
+        logCount = logCount + 1
+    end
+
+    -- 2. STOP ERROR REPORTING (The Server Crasher)
+    -- This stops the game from grabbing errors to send to Roblox/Server.
+    local errorCount = 0
+    for _, conn in pairs(getconnections(ScriptContext.Error)) do
+        conn:Disable()
+        errorCount = errorCount + 1
+    end
+
+    -- 3. CLEAR CURRENT LOGS
+    -- Wipes whatever is currently on the screen to free up memory immediately.
+    pcall(function()
+        LogService:ClearOutput()
+    end)
+
+    -- print("✅ Console has been disconnected. No new errors will appear.")
+    -- (You likely won't even see the print above because we just killed the console!)
+end
+
+
+task.spawn(function()
+    while true do
+        task.wait()
+
+        if FSessionDx.is_highperformance_mode then
+            task.wait(2)
+            continue
+        end
+
+
+        local s, f = pcall(function()
+            _Helper.DisabledLog()
+        end)
+
+        if not s then
+            print("Error , ", f)
+        end
+
+        task.wait(10)
+    end
+end)
+
+
+
+
+
+
+if FSessionDx.is_highperformance_mode then
+    pcall(function()
+        _Helper.ActivateFlatMode()
+    end)
+end
+
+
+
+_S.ReplicatedStorage.GameEvents.Finish_Loading:FireServer()
