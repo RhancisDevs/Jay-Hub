@@ -79,7 +79,7 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
     })
 end
 
-local function checkForNewTool()
+locallocal function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
             table.insert(oldItems, tool.Name)
@@ -87,9 +87,15 @@ local function checkForNewTool()
             local brainrotName = tool:GetAttribute("BrainrotName") or tool.Name
             local level = tool:GetAttribute("Level") or "Unknown"
             local mutation = tool:GetAttribute("Mutation") or "None"
-            local scale = tool:GetAttribute("Scale") or 1
 
-            local sizeName = BrainrotsConfig.GetSizeNameFromScale(scale)
+            local scale = tool:GetAttribute("Scale")
+            local sizeName
+
+            if scale then
+                sizeName = BrainrotsConfig.GetSizeNameFromScale(scale)
+            else
+                sizeName = "No Size"
+            end
 
             sendWebhook(brainrotName, level, mutation, sizeName)
         end
@@ -130,12 +136,21 @@ notificationsFolder.ChildAdded:Connect(function(child)
     if not label then return end
 
     local text = label.Text:lower()
+    print(text)
 
     if text:find("duped") then
         checkForNewTool()
     elseif text:find("no brainrots") then
         equipTool()
     end
+end)
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+
+    backpack = player:WaitForChild("Backpack")
+
+    equipTool()
 end)
 
 local remote = ReplicatedStorage
@@ -145,7 +160,7 @@ local remote = ReplicatedStorage
 
 local shop = workspace:WaitForChild("SpawnMachines")
 
-local machines = { "ATM", "Blackhole", "Valentines", "Arcade" }
+local machines = { "ATM", "Blackhole", "Valentines", "Arcade"}
 
 local lastTick = 0
 
@@ -199,4 +214,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GO")
+print("READY TO GOOO")
