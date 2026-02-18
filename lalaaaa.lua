@@ -133,6 +133,7 @@ notificationsFolder.ChildAdded:Connect(function(child)
     end
     if label and string.find(label.Text, "No brainrots") then
       equipTool()
+    end
 end)
 
 local remote = ReplicatedStorage
@@ -193,3 +194,5 @@ RunService.RenderStepped:Connect(function()
 
     remote:InvokeServer("Combine", machine)
 end)
+
+print("READY TO GO!")
