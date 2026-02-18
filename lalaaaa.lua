@@ -79,7 +79,7 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
     })
 end
 
-locallocal function checkForNewTool()
+local function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
             table.insert(oldItems, tool.Name)
