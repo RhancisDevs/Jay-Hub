@@ -138,7 +138,7 @@ notificationsFolder.ChildAdded:Connect(function(child)
     local text = label.Text:lower()
     print(text)
 
-    if text:find("duped") then
+    if text:find("dupe") then
         checkForNewTool()
     elseif text:find("no brainrots") then
         equipTool()
@@ -214,4 +214,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOO")
+print("READY TO GOOOOO")
