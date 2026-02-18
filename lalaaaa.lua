@@ -124,15 +124,17 @@ local notificationsFolder =
     :WaitForChild("Items")
 
 notificationsFolder.ChildAdded:Connect(function(child)
-    task.wait(0.2)
+    task.wait(0.1)
 
     local label = child:FindFirstChildWhichIsA("TextLabel", true)
+    if not label then return end
 
-    if label and string.find(label.Text, "DUPED!") then
+    local text = label.Text:lower()
+
+    if text:find("duped") then
         checkForNewTool()
-    end
-    if label and string.find(label.Text, "No brainrots") then
-      equipTool()
+    elseif text:find("no brainrots") then
+        equipTool()
     end
 end)
 
@@ -156,8 +158,10 @@ local function machineHasBrainrot(machine)
     local brainrots = machine:FindFirstChild("Brainrots", true)
     if not brainrots then return false end
 
-    local line1 = brainrots:FindFirstChild("Line_1")
-    return line1 ~= nil and line1.Text ~= ""
+    local empty = brainrots:FindFirstChild("Empty", true)
+    if not empty then return false end
+
+    return empty.Visible == false
 end
 
 local function getActiveMachine()
@@ -178,7 +182,7 @@ RunService.RenderStepped:Connect(function()
     if not machine then return end
 
     local hrp = getHRP()
-    hrp.CFrame = machine:GetPivot() + Vector3.new(0, 3, 0)
+    hrp.CFrame = machine:GetPivot() * CFrame.new(0, 3, 0)
 
     task.wait(0.25)
 
@@ -195,4 +199,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GO!")
+print("READY TO GO")
