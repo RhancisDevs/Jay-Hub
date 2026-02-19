@@ -43,7 +43,7 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
             title = "🍀 Lucky Dupe",
             fields = {
                 {
-                    name = "👨 PLayer",
+                    name = "👨 Player",
                     value = player.Name,
                     inline = false
                 },
@@ -223,4 +223,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GO😏")
+print("READY TO GOOOO😏")
