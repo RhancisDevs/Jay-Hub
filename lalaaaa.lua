@@ -40,7 +40,7 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
 
     local data = {
         embeds = {{
-            title = "🍀 Lucky Dupe Event",
+            title = "🍀 Lucky Dupe",
             fields = {
                 {
                     name = "🧠 Brainrot Name",
@@ -103,10 +103,9 @@ local function checkForNewTool()
 end
 
 local function equipTool()
-    local char = player.Character
-    if not char then return false end
+    local char = player.Character or player.CharacterAdded:Wait()
 
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local humanoid = char:WaitForChild("Humanoid", 2)
     if not humanoid then return false end
 
     local equipped = char:FindFirstChildOfClass("Tool")
@@ -136,21 +135,13 @@ notificationsFolder.ChildAdded:Connect(function(child)
     if not label then return end
 
     local text = label.Text:lower()
-    print(text)
-
+    
     if text:find("dupe") then
+        print("LUCKY DUPE!")
         checkForNewTool()
     elseif text:find("no brainrots") then
         equipTool()
     end
-end)
-
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-
-    backpack = player:WaitForChild("Backpack")
-
-    equipTool()
 end)
 
 local remote = ReplicatedStorage
@@ -189,6 +180,19 @@ local function getActiveMachine()
     end
 end
 
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+
+    backpack = player:WaitForChild("Backpack")
+
+    local machine = getActiveMachine()
+    if not machine then return end
+
+    if not machineHasBrainrot(machine) then
+        equipTool()
+    end
+end)
+
 RunService.RenderStepped:Connect(function()
     if tick() - lastTick < 1 then return end
     lastTick = tick()
@@ -214,4 +218,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOOOO")
+print("READY TO GO😏")
