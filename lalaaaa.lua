@@ -43,6 +43,11 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
             title = "🍀 Lucky Dupe",
             fields = {
                 {
+                    name = "👨 PLayer",
+                    value = player.Name,
+                    inline = false
+                },
+                {
                     name = "🧠 Brainrot Name",
                     value = tostring(brainrotName),
                     inline = false
