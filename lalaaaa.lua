@@ -11,7 +11,7 @@ local BrainrotsConfig = require(
 )
 
 local webhookUrl = "https://discord.com/api/webhooks/1066298551539343390/E9cgDoZlKj6rdvbRBhVYlaNNC0ZcGHRkPc1u8GRNaNyg8ErykAZ2BCBrRFPQ0SI_yvNh"
-local brainrotNameTarget = "Martino Gravitino"
+local brainrotNameTarget = "Galactio Fantasma"
 
 local function timeNow()
     return os.date("%Y-%m-%d %H:%M:%S")
