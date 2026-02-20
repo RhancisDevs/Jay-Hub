@@ -87,9 +87,12 @@ end
 local function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
+            local brainrotName = tool:GetAttribute("BrainrotName")
+            if not brainrotName then continue end
+            if brainrotName ~= brainrotNameTarget then continue end
+
             table.insert(oldItems, tool.Name)
 
-            local brainrotName = tool:GetAttribute("BrainrotName") or tool.Name
             local level = tool:GetAttribute("Level") or "Unknown"
             local mutation = tool:GetAttribute("Mutation") or "None"
 
@@ -223,4 +226,4 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOOO😏")
+print("READY TO GOOOOOOOO")
