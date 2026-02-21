@@ -154,7 +154,7 @@ end)
 
 local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):WaitForChild("Networking"):WaitForChild("RF/SpawnMachineAction")
 
-local shop = workspace:WaitForChild("SpawnMachines")
+local shop = workspace.GameObjects.PlaceSpecific.root.SpawnMachines
 
 local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom"}
 
