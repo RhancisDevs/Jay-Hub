@@ -87,9 +87,12 @@ end
 local function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
+            local brainrotName = tool:GetAttribute("BrainrotName")
+            if not brainrotName then continue end
+            if brainrotName ~= brainrotNameTarget then continue end
+
             table.insert(oldItems, tool.Name)
 
-            local brainrotName = tool:GetAttribute("BrainrotName") or tool.Name
             local level = tool:GetAttribute("Level") or "Unknown"
             local mutation = tool:GetAttribute("Mutation") or "None"
 
@@ -149,14 +152,11 @@ notificationsFolder.ChildAdded:Connect(function(child)
     end
 end)
 
-local remote = ReplicatedStorage
-    :WaitForChild("Packages")
-    :WaitForChild("Net")
-    :WaitForChild("RF/SpawnMachine.Action")
+local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):WaitForChild("Networking"):WaitForChild("RF/SpawnMachineAction")
 
-local shop = workspace:WaitForChild("SpawnMachines")
+local shop = workspace.GameObjects.PlaceSpecific.root.SpawnMachines
 
-local machines = { "ATM", "Blackhole", "Valentines", "Arcade"}
+local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom"}
 
 local lastTick = 0
 
@@ -223,4 +223,20 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOOO😏")
+print("READY TO GOOOOOOOO - Freeze")
+
+local function Addcantsleep()
+    if (getconnections or get_signal_cons) then
+        for i, v in pairs((getconnections or get_signal_cons)(player.Idled)) do
+            if v["Disable"] then
+                v["Disable"](v)
+            elseif v["Disconnect"] then
+                v["Disconnect"](v)
+            end
+        end
+    end
+end
+
+pcall(function()
+    Addcantsleep()
+end)
