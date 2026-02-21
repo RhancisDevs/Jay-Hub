@@ -152,14 +152,11 @@ notificationsFolder.ChildAdded:Connect(function(child)
     end
 end)
 
-local remote = ReplicatedStorage
-    :WaitForChild("Packages")
-    :WaitForChild("Net")
-    :WaitForChild("RF/SpawnMachine.Action")
+local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):WaitForChild("Networking"):WaitForChild("RF/SpawnMachineAction")
 
 local shop = workspace:WaitForChild("SpawnMachines")
 
-local machines = { "ATM", "Blackhole", "Valentines", "Arcade"}
+local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom"}
 
 local lastTick = 0
 
