@@ -11,7 +11,7 @@ local BrainrotsConfig = require(
 )
 
 local webhookUrl = "https://discord.com/api/webhooks/1066298551539343390/E9cgDoZlKj6rdvbRBhVYlaNNC0ZcGHRkPc1u8GRNaNyg8ErykAZ2BCBrRFPQ0SI_yvNh"
-local brainrotNameTarget = "Galactio Fantasma"
+local brainrotNameTarget = "Draculini Meowlini"
 
 local function timeNow()
     return os.date("%Y-%m-%d %H:%M:%S")
@@ -223,7 +223,7 @@ RunService.RenderStepped:Connect(function()
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOOOOOOO")
+print("READY TO GOOOOO")
 
 local function Addcantsleep()
     if (getconnections or get_signal_cons) then
