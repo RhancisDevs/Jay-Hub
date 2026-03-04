@@ -288,3 +288,19 @@ Fluent:Notify({
     Content = "Autofarm started successfully",
     Duration = 6
 })
+
+local function Addcantsleep()
+    if (getconnections or get_signal_cons) then
+        for i, v in pairs((getconnections or get_signal_cons)(player.Idled)) do
+            if v["Disable"] then
+                v["Disable"](v)
+            elseif v["Disconnect"] then
+                v["Disconnect"](v)
+            end
+        end
+    end
+end
+
+pcall(function()
+    Addcantsleep()
+end)
