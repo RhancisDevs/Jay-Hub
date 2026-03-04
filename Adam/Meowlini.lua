@@ -183,23 +183,19 @@ local function slideToPosition(targetPos, duration)
     tween.Completed:Wait()
 end
 
-local platformPart = nil
+local platformPart
 
 local function createPlatform()
-    if platformPart and platformPart.Parent then
+    if platformPart then
         platformPart:Destroy()
     end
-
     platformPart = Instance.new("Part")
-    platformPart.Name = "AntiFallPlatform"
-    platformPart.Size = Vector3.new(10,1,10)
+    platformPart.Size = Vector3.new(12,1,12)
     platformPart.Anchored = true
     platformPart.CanCollide = true
     platformPart.Transparency = 1
-    platformPart.Material = Enum.Material.ForceField
+    platformPart.Name = "AntiFallPlatform"
     platformPart.Parent = workspace
-
-    return platformPart
 end
 
 local function updatePlatformPosition()
@@ -209,7 +205,12 @@ local function updatePlatformPosition()
     end
 end
 
-RunService.Heartbeat:Connect(updatePlatformPosition)
+RunService.PreSimulation:Connect(function()
+    if not platformPart then return end
+    if not humanoidRootPart then return end
+    platformPart.CFrame =
+        humanoidRootPart.CFrame * CFrame.new(0,-3.5,0)
+end)
 
 local function machineHasBrainrot(machine)
     local brainrots = machine:FindFirstChild("Brainrots", true)
