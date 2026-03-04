@@ -1,7 +1,9 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
@@ -13,10 +15,6 @@ local BrainrotsConfig = require(
 local webhookUrl = "https://discord.com/api/webhooks/1381214845776564265/EutjzKA0Ud0v495QPHwnOs4aFaPA_mB62J7bBxLVuP90ZXxSJfpqMt_sjDwyeialqV11"
 local brainrotNameTarget = "Draculini Meowlini"
 
-local function timeNow()
-    return os.date("%Y-%m-%d %H:%M:%S")
-end
-
 local requestFunc =
     syn and syn.request or
     http_request or
@@ -25,124 +23,93 @@ local requestFunc =
 
 local oldItems = {}
 
-for _, tool in pairs(backpack:GetChildren()) do
+for _,tool in ipairs(backpack:GetChildren()) do
     if tool:IsA("Tool") then
-        table.insert(oldItems, tool.Name)
+        oldItems[tool.Name] = true
     end
 end
 
-local function isOldItem(name)
-    return table.find(oldItems, name) ~= nil
+local function timeNow()
+    return os.date("%Y-%m-%d %H:%M:%S")
 end
 
 local function sendWebhook(brainrotName, level, mutation, sizeName)
-    if not requestFunc then return end
+    if not requestFunc then
+        return
+    end
 
     local data = {
         embeds = {{
             title = "🍀 Lucky Dupe",
             fields = {
-                {
-                    name = "👨 Player",
-                    value = player.Name,
-                    inline = false
-                },
-                {
-                    name = "🧠 Brainrot Name",
-                    value = tostring(brainrotName),
-                    inline = false
-                },
-                {
-                    name = "⭐ Level",
-                    value = tostring(level),
-                    inline = true
-                },
-                {
-                    name = "🧬 Mutation",
-                    value = tostring(mutation),
-                    inline = true
-                },
-                {
-                    name = "📏 Size",
-                    value = tostring(sizeName),
-                    inline = false
-                }
+                {name="👨 Player",value=player.Name,inline=false},
+                {name="🧠 Brainrot Name",value=tostring(brainrotName),inline=false},
+                {name="⭐ Level",value=tostring(level),inline=true},
+                {name="🧬 Mutation",value=tostring(mutation),inline=true},
+                {name="📏 Size",value=tostring(sizeName),inline=false}
             },
             footer = {
-                text = "Made with ❤️ by Jay Devs • " .. timeNow()
+                text = "Made with ❤️ by Jay Devs • "..timeNow()
             }
         }}
     }
 
-    requestFunc({
-        Url = webhookUrl,
-        Method = "POST",
-        Headers = {
-            ["Content-Type"] = "application/json"
-        },
-        Body = HttpService:JSONEncode(data)
-    })
+    pcall(function()
+        requestFunc({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
 end
 
 local function checkForNewTool()
-    for _, tool in pairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and not isOldItem(tool.Name) then
-            local brainrotName = tool:GetAttribute("BrainrotName")
-            if not brainrotName then continue end
-            if brainrotName ~= brainrotNameTarget then continue end
-
-            table.insert(oldItems, tool.Name)
-
-            local level = tool:GetAttribute("Level") or "Unknown"
-            local mutation = tool:GetAttribute("Mutation") or "None"
-
-            local scale = tool:GetAttribute("Scale")
-            local sizeName
-
-            if scale then
-                sizeName = BrainrotsConfig.GetSizeNameFromScale(scale)
-            else
-                sizeName = "No Size"
-            end
-
-            sendWebhook(brainrotName, level, mutation, sizeName)
+    for _,tool in ipairs(backpack:GetChildren()) do
+        if not tool:IsA("Tool") then
+            continue
         end
+
+        if oldItems[tool.Name] then
+            continue
+        end
+
+        local brainrotName = tool:GetAttribute("BrainrotName")
+
+        if brainrotName ~= brainrotNameTarget then
+            continue
+        end
+
+        oldItems[tool.Name] = true
+
+        local level = tool:GetAttribute("Level") or "Unknown"
+        local mutation = tool:GetAttribute("Mutation") or "None"
+
+        local scale = tool:GetAttribute("Scale")
+        local sizeName = scale and BrainrotsConfig.GetSizeNameFromScale(scale) or "No Size"
+
+        sendWebhook(brainrotName, level, mutation, sizeName)
     end
 end
 
 local function equipTool()
     local char = player.Character or player.CharacterAdded:Wait()
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
 
-    local humanoid = char:WaitForChild("Humanoid", 2)
-    if not humanoid then
-        return false
+    local equipped = char:FindFirstChildOfClass("Tool")
+    if equipped and equipped:GetAttribute("BrainrotName") == brainrotNameTarget then
+        return true
     end
 
-    local bestTool = nil
-    local highestScale = -math.huge
-
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool:GetAttribute("BrainrotName") == brainrotNameTarget then
-                local scale = tool:GetAttribute("Scale")
-
-                if scale ~= nil then
-                    if scale > highestScale then
-                        highestScale = scale
-                        bestTool = tool
-                    end
-                end
-            end
+    for _,tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:GetAttribute("BrainrotName") == brainrotNameTarget then
+            humanoid:EquipTool(tool)
+            return true
         end
     end
 
-    if not bestTool then
-        warn("No tool found with BrainrotName =", brainrotNameTarget, "and valid Scale")
-        return false
-    end
-
-    humanoid:EquipTool(bestTool)
-    return true
+    return false
 end
 
 local notificationsFolder =
@@ -157,9 +124,13 @@ notificationsFolder.ChildAdded:Connect(function(child)
     if not label then return end
 
     local text = label.Text:lower()
-    
+
     if text:find("dupe") then
-        print("LUCKY DUPE!")
+        Fluent:Notify({
+          Title = "Lucky Dupe",
+          Content = "Brainrot Dupe Successfully!",
+          Duration = 6
+        })
         checkForNewTool()
     elseif text:find("no brainrots") then
         equipTool()
@@ -170,14 +141,75 @@ local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):
 
 local shop = workspace.GameObjects.PlaceSpecific.root.SpawnMachines
 
-local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom"}
+local machines = {
+    ATM = true,
+    Blackhole = true,
+    Valentines = true,
+    Arcade = true,
+    Doom = true,
+    FireAndIce = true
+}
 
-local lastTick = 0
+local humanoidRootPart
 
 local function getHRP()
     local char = player.Character or player.CharacterAdded:Wait()
-    return char:WaitForChild("HumanoidRootPart")
+    humanoidRootPart = char:WaitForChild("HumanoidRootPart")
+    return humanoidRootPart
 end
+
+local function slideToPosition(targetPos, duration)
+    duration = duration or 1.5
+
+    local undergroundPos = Vector3.new(
+        targetPos.X,
+        targetPos.Y - 18,
+        targetPos.Z
+    )
+
+    local tweenInfo = TweenInfo.new(
+        duration,
+        Enum.EasingStyle.Linear,
+        Enum.EasingDirection.Out
+    )
+
+    local tween = TweenService:Create(
+        humanoidRootPart,
+        tweenInfo,
+        {CFrame = CFrame.new(undergroundPos)}
+    )
+
+    tween:Play()
+    tween.Completed:Wait()
+end
+
+local platformPart = nil
+
+local function createPlatform()
+    if platformPart and platformPart.Parent then
+        platformPart:Destroy()
+    end
+
+    platformPart = Instance.new("Part")
+    platformPart.Name = "AntiFallPlatform"
+    platformPart.Size = Vector3.new(10,1,10)
+    platformPart.Anchored = true
+    platformPart.CanCollide = true
+    platformPart.Transparency = 1
+    platformPart.Material = Enum.Material.ForceField
+    platformPart.Parent = workspace
+
+    return platformPart
+end
+
+local function updatePlatformPosition()
+    if platformPart and humanoidRootPart then
+        local pos = humanoidRootPart.Position
+        platformPart.CFrame = CFrame.new(pos.X, pos.Y - 4, pos.Z)
+    end
+end
+
+RunService.Heartbeat:Connect(updatePlatformPosition)
 
 local function machineHasBrainrot(machine)
     local brainrots = machine:FindFirstChild("Brainrots", true)
@@ -190,11 +222,9 @@ local function machineHasBrainrot(machine)
 end
 
 local function getActiveMachine()
-    for _, obj in ipairs(shop:GetChildren()) do
-        for _, name in ipairs(machines) do
-            if obj.Name == name then
-                return obj
-            end
+    for _,obj in ipairs(shop:GetChildren()) do
+        if machines[obj.Name] then
+            return obj
         end
     end
 end
@@ -203,6 +233,8 @@ player.CharacterAdded:Connect(function()
     task.wait(1)
 
     backpack = player:WaitForChild("Backpack")
+    getHRP()
+    createPlatform()
 
     local machine = getActiveMachine()
     if not machine then return end
@@ -212,45 +244,46 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
-RunService.RenderStepped:Connect(function()
-    if tick() - lastTick < 1 then return end
-    lastTick = tick()
+task.spawn(function()
 
-    local machine = getActiveMachine()
-    if not machine then return end
+    getHRP()
+    createPlatform()
 
-    local hrp = getHRP()
-    hrp.CFrame = machine:GetPivot() * CFrame.new(0, 3, 0)
+    while true do
 
-    task.wait(0.25)
+        local machine = getActiveMachine()
 
-    if not machineHasBrainrot(machine) then
-        local success = equipTool()
+        if machine and humanoidRootPart then
 
-        if success then
-            task.wait(0.15)
-            remote:InvokeServer("Deposit", machine)
-            task.wait(0.25)
-        end
-    end
+            local targetPos = (machine:GetPivot() * CFrame.new(0,3,0)).Position
 
-    remote:InvokeServer("Combine", machine)
-end)
+            local distance = (humanoidRootPart.Position - targetPos).Magnitude
 
-print("READY TO GOOOOOOOO")
-
-local function Addcantsleep()
-    if (getconnections or get_signal_cons) then
-        for i, v in pairs((getconnections or get_signal_cons)(player.Idled)) do
-            if v["Disable"] then
-                v["Disable"](v)
-            elseif v["Disconnect"] then
-                v["Disconnect"](v)
+            if distance > 6 then
+                slideToPosition(targetPos, 1.5)
             end
-        end
-    end
-end
 
-pcall(function()
-    Addcantsleep()
+            task.wait(0.25)
+
+            if not machineHasBrainrot(machine) then
+                local success = equipTool()
+
+                if success then
+                    task.wait(0.15)
+                    remote:InvokeServer("Deposit", machine)
+                    task.wait(0.25)
+                end
+            end
+
+            remote:InvokeServer("Combine", machine)
+        end
+
+        task.wait(1)
+    end
 end)
+
+Fluent:Notify({
+    Title = "Jay Auto Farm",
+    Content = "Autofarm started successfully",
+    Duration = 6
+})
