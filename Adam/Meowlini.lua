@@ -2,6 +2,7 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
@@ -199,35 +200,29 @@ player.CharacterAdded:Connect(function()
     end
 end)
 
-task.spawn(function()
-    while true do
-        local machine = getActiveMachine()
+RunService.RenderStepped:Connect(function()
+    if tick() - lastTick < 1 then return end
+    lastTick = tick()
 
-        if machine then
-            local hrp = getHRP()
-            local targetCFrame = machine:GetPivot() * CFrame.new(0,3,0)
+    local machine = getActiveMachine()
+    if not machine then return end
 
-            if (hrp.Position - targetCFrame.Position).Magnitude > 5 then
-                hrp.CFrame = targetCFrame
-            end
+    local hrp = getHRP()
+    hrp.CFrame = machine:GetPivot() * CFrame.new(0, 3, 0)
 
+    task.wait(0.25)
+
+    if not machineHasBrainrot(machine) then
+        local success = equipTool()
+
+        if success then
+            task.wait(0.15)
+            remote:InvokeServer("Deposit", machine)
             task.wait(0.25)
-
-            if not machineHasBrainrot(machine) then
-                local success = equipTool()
-
-                if success then
-                    task.wait(0.15)
-                    remote:InvokeServer("Deposit", machine)
-                    task.wait(0.25)
-                end
-            end
-
-            remote:InvokeServer("Combine", machine)
         end
-
-        task.wait(1)
     end
+
+    remote:InvokeServer("Combine", machine)
 end)
 
 Fluent:Notify({
