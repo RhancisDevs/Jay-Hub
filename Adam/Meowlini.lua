@@ -1,8 +1,8 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
@@ -11,8 +11,12 @@ local BrainrotsConfig = require(
     ReplicatedStorage.Shared.Config.Brainrots
 )
 
-local webhookUrl = "https://discord.com/api/webhooks/1381214845776564265/EutjzKA0Ud0v495QPHwnOs4aFaPA_mB62J7bBxLVuP90ZXxSJfpqMt_sjDwyeialqV11"
+local webhookUrl = "https://discord.com/api/webhooks/1066298551539343390/E9cgDoZlKj6rdvbRBhVYlaNNC0ZcGHRkPc1u8GRNaNyg8ErykAZ2BCBrRFPQ0SI_yvNh"
 local brainrotNameTarget = "Draculini Meowlini"
+
+local function timeNow()
+    return os.date("%Y-%m-%d %H:%M:%S")
+end
 
 local requestFunc =
     syn and syn.request or
@@ -22,72 +26,88 @@ local requestFunc =
 
 local oldItems = {}
 
-for _,tool in ipairs(backpack:GetChildren()) do
+for _, tool in pairs(backpack:GetChildren()) do
     if tool:IsA("Tool") then
-        oldItems[tool.Name] = true
+        table.insert(oldItems, tool.Name)
     end
 end
 
-local function timeNow()
-    return os.date("%Y-%m-%d %H:%M:%S")
+local function isOldItem(name)
+    return table.find(oldItems, name) ~= nil
 end
 
 local function sendWebhook(brainrotName, level, mutation, sizeName)
-    if not requestFunc then
-        return
-    end
+    if not requestFunc then return end
 
     local data = {
         embeds = {{
             title = "🍀 Lucky Dupe",
             fields = {
-                {name="👨 Player",value=player.Name,inline=false},
-                {name="🧠 Brainrot Name",value=tostring(brainrotName),inline=false},
-                {name="⭐ Level",value=tostring(level),inline=true},
-                {name="🧬 Mutation",value=tostring(mutation),inline=true},
-                {name="📏 Size",value=tostring(sizeName),inline=false}
+                {
+                    name = "👨 Player",
+                    value = player.Name,
+                    inline = false
+                },
+                {
+                    name = "🧠 Brainrot Name",
+                    value = tostring(brainrotName),
+                    inline = false
+                },
+                {
+                    name = "⭐ Level",
+                    value = tostring(level),
+                    inline = true
+                },
+                {
+                    name = "🧬 Mutation",
+                    value = tostring(mutation),
+                    inline = true
+                },
+                {
+                    name = "📏 Size",
+                    value = tostring(sizeName),
+                    inline = false
+                }
             },
             footer = {
-                text = "Made with ❤️ by Jay Devs • "..timeNow()
+                text = "Made with ❤️ by Jay Devs • " .. timeNow()
             }
         }}
     }
 
-    pcall(function()
-        requestFunc({
-            Url = webhookUrl,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(data)
-        })
-    end)
+    requestFunc({
+        Url = webhookUrl,
+        Method = "POST",
+        Headers = {
+            ["Content-Type"] = "application/json"
+        },
+        Body = HttpService:JSONEncode(data)
+    })
 end
 
 local function checkForNewTool()
-    for _,tool in ipairs(backpack:GetChildren()) do
-        if not tool:IsA("Tool") then
-            continue
+    for _, tool in pairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and not isOldItem(tool.Name) then
+            local brainrotName = tool:GetAttribute("BrainrotName")
+            if not brainrotName then continue end
+            if brainrotName ~= brainrotNameTarget then continue end
+
+            table.insert(oldItems, tool.Name)
+
+            local level = tool:GetAttribute("Level") or "Unknown"
+            local mutation = tool:GetAttribute("Mutation") or "None"
+
+            local scale = tool:GetAttribute("Scale")
+            local sizeName
+
+            if scale then
+                sizeName = BrainrotsConfig.GetSizeNameFromScale(scale)
+            else
+                sizeName = "No Size"
+            end
+
+            sendWebhook(brainrotName, level, mutation, sizeName)
         end
-
-        if oldItems[tool.Name] then
-            continue
-        end
-
-        local brainrotName = tool:GetAttribute("BrainrotName")
-
-        if brainrotName ~= brainrotNameTarget then
-            continue
-        end
-
-        oldItems[tool.Name] = true
-
-        local level = tool:GetAttribute("Level") or "Unknown"
-        local mutation = tool:GetAttribute("Mutation") or "None"
-
-        local scale = tool:GetAttribute("Scale")
-        local sizeName = scale and BrainrotsConfig.GetSizeNameFromScale(scale) or "No Size"
-
-        sendWebhook(brainrotName, level, mutation, sizeName)
     end
 end
 
@@ -138,7 +158,7 @@ notificationsFolder.ChildAdded:Connect(function(child)
     if not label then return end
 
     local text = label.Text:lower()
-
+    
     if text:find("dupe") then
         Fluent:Notify({
           Title = "Lucky Dupe",
@@ -155,18 +175,23 @@ local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):
 
 local shop = workspace.GameObjects.PlaceSpecific.root.SpawnMachines
 
-local machines = {
-    ATM = true,
-    Blackhole = true,
-    Valentines = true,
-    Arcade = true,
-    Doom = true,
-    FireAndIce = true
-}
+local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom", "FireAndIce"}
+
+local lastTick = 0
 
 local function getHRP()
     local char = player.Character or player.CharacterAdded:Wait()
     return char:WaitForChild("HumanoidRootPart")
+end
+
+local function getMachineCooldown(machine)
+    local brainrots = machine:FindFirstChild("CooldownContainer", true)
+    if not brainrots then return false end
+
+    local empty = brainrots:FindFirstChild("TimeLabel", true)
+    if not empty then return false end
+
+    return empty.Text
 end
 
 local function machineHasBrainrot(machine)
@@ -180,9 +205,11 @@ local function machineHasBrainrot(machine)
 end
 
 local function getActiveMachine()
-    for _,obj in ipairs(shop:GetChildren()) do
-        if machines[obj.Name] then
-            return obj
+    for _, obj in ipairs(shop:GetChildren()) do
+        for _, name in ipairs(machines) do
+            if obj.Name == name then
+                return obj
+            end
         end
     end
 end
@@ -221,8 +248,15 @@ RunService.RenderStepped:Connect(function()
             task.wait(0.25)
         end
     end
-
-    remote:InvokeServer("Combine", machine)
+    
+    local cooldown = getMachineCooldown(machine)
+        if cooldown == "0s" or cooldown == "GO!" then
+            repeat
+                remote:InvokeServer("Combine", machine)
+                task.wait(4)
+                cooldown = getMachineCooldown(machine)
+            until cooldown ~= "0s" or cooldown == "GO!"
+        end
 end)
 
 Fluent:Notify({
