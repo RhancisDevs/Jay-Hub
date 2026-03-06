@@ -194,7 +194,7 @@ end
 
 -- #start
 _S.AppName = "Exotic Hub"
-_S.CurentV = "v1.37.0"
+_S.CurentV = "v1.37.5"
 
 local Varz = {}
 Varz.dev_tools = true
@@ -439,6 +439,12 @@ end
 
 -- save for mutations and others
 local FOtherSettings = {
+    alienevent                                 = {
+        enabled = false,
+        autosubmit = false,
+        avoid_pets = {},
+    },
+    enhance_cooldown                           = 0.35,
     swap_enchancer                             = false,
     egg_override                               = {},
     egg_override_enabled                       = false,
@@ -644,6 +650,11 @@ local FSessionDx = {
 
 -- Save and other settings
 local FSettings = {
+    valentines = {
+        enabled_event = false,
+        claim_rewards = true,
+        plant_exclude = {},
+    },
     feedevent = {
         feed_birds_enabled = false,
         feed_plant_list = {},
@@ -6077,7 +6088,10 @@ InventoryManager.GetSprinklerUsingName = function(_name)
     return nil
 end
 
-
+_Helper.IsTimeUp = function(startTime, secs)
+    if not startTime or not secs then return true end
+    return (os.clock() - startTime) >= secs
+end
 
 InventoryManager.GetMutSprayChilled = function()
     for _, item in ipairs(_S.Backpack:GetChildren()) do
@@ -16744,6 +16758,159 @@ EventsManager.Furnace = {
 
 
 
+-- #alien
+EventsManager.AlienEvent = {
+
+    UpdateUi = function(_txt)
+        if Varz.lbl_alien_stats then
+            Varz.lbl_alien_stats:SetText(_txt)
+        end
+    end,
+
+    SubmitPets = function()
+        local total_pets = EventsManager.AlienEvent.GetTotalPetsWithMutation()
+
+        if total_pets < 10 then
+            -- print("Pets not 10: ", total_pets)
+            return
+        end
+
+        if not FOtherSettings.alienevent.autosubmit then
+            return
+        end
+
+        pcall(function()
+            game:GetService("ReplicatedStorage").GameEvents.AlienEvent.GiveAlienatedPets:InvokeServer()
+        end)
+
+
+        -- Submit
+    end,
+    GetTotalPetsWithMutation = function()
+        local pets_snapshot = GameDataManager.Inventory.GetPetInventory()
+
+        local valid_mutations = {
+            ["Alienated"] = true
+        }
+
+
+        local count = 0
+
+        for uuid, pet_data in pairs(pets_snapshot) do
+            if pet_data then
+                local _lvl = pet_data.PetData.Level
+                local basekg = pet_data.PetData.BaseWeight
+                local pname = pet_data.PetType
+
+                local MutationType = pet_data.PetData.MutationType or ""
+                local IsFavorite = pet_data.PetData.IsFavorite
+                -- like k = IronSkin, c = Rainbow etc
+                local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+                if CurrentMutationOnPet then
+                    if valid_mutations[CurrentMutationOnPet] then
+                        count = count + 1
+                    end
+                end
+            end
+        end
+
+        return count
+    end,
+    GetPetsWithoutMutation = function()
+        -- find pets without mutations
+        local pets_snapshot = GameDataManager.Inventory.GetPetInventory()
+
+        local avoid_list = FOtherSettings.alienevent.avoid_pets or {}
+
+        local ls = {}
+
+        for uuid, pet_data in pairs(pets_snapshot) do
+            if pet_data then
+                local _lvl = pet_data.PetData.Level
+                local basekg = pet_data.PetData.BaseWeight
+
+                if basekg > 3 then
+                    continue
+                end
+
+
+                if _lvl > 99 then
+                    continue
+                end
+
+                local pname = pet_data.PetType
+
+                if avoid_list[pname] then
+                    continue
+                end
+
+                local MutationType = pet_data.PetData.MutationType or ""
+                local IsFavorite = pet_data.PetData.IsFavorite
+                -- like k = IronSkin, c = Rainbow etc
+                local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+                if CurrentMutationOnPet then
+                    continue
+                end
+
+                table.insert(ls, uuid)
+            end
+        end
+
+        return ls
+    end,
+    CheckFarmValidMutationReached = function()
+        local activepets      = FarmManager.GetActivePetsUUIDS()
+        local valid_mutations = {
+            ["Alienated"] = true
+        }
+        for index, uuid in ipairs(activepets) do
+            local pet_data = GetPetDataByUUID(uuid)
+            if pet_data then
+                local _lvl = pet_data.PetData.Level
+                local basekg = pet_data.PetData.BaseWeight
+
+                local pname = pet_data.PetType
+                local MutationType = pet_data.PetData.MutationType or ""
+                local IsFavorite = pet_data.PetData.IsFavorite
+                -- like k = IronSkin, c = Rainbow etc
+                local CurrentMutationOnPet = MutationMachineManager.AllMutationListEnum[MutationType]
+                if CurrentMutationOnPet then
+                    -- remove any pets with mutations
+                    if valid_mutations[CurrentMutationOnPet] then
+                        pcall(function()
+                            _Helper.UnEquipPet(uuid)
+                        end)
+                    end
+                end
+            end
+        end
+    end,
+    PlacePetsOnFarm = function()
+        EventsManager.AlienEvent.CheckFarmValidMutationReached()
+        task.wait(1)
+        local max_pets = GetMaxPetCapacity()
+        local activepets = FarmManager.GetActivePetsUUIDS()
+
+        if #activepets >= max_pets then
+            --print("Max pets already on the farm")
+            return
+        end
+
+        local validpets = EventsManager.AlienEvent.GetPetsWithoutMutation()
+
+        for index, uuid in ipairs(validpets) do
+            pcall(function()
+                _Helper.EquipPet(uuid)
+            end)
+            task.wait(0.2)
+            local activepetsx = FarmManager.GetActivePetsUUIDS()
+            if #activepetsx >= max_pets then
+                break
+            end
+        end
+    end
+}
+
 
 
 ---- Jungle Event
@@ -20915,10 +21082,7 @@ _Helper.SortPositionsByShape = function(positions, center, shape)
 end
 
 
-_Helper.IsTimeUp = function(startTime, secs)
-    if not startTime or not secs then return true end
-    return (os.clock() - startTime) >= secs
-end
+
 
 _Helper.GetTimeLeft = function(startTime, duration)
     -- 1. Safety Check: Ensure inputs exist and are numbers.
@@ -24363,6 +24527,8 @@ local function SessionLoop()
         -- #hatchegg
         HatchAllEggsAvailable(false) -- HATCH EGGS, provide false, we can't hatch big pets here
 
+        _Helper.LockEnhance(true)
+
         if FSettings.fast_egg_placement then
             task.spawn(function()
                 local sx, fx = pcall(function()
@@ -24648,7 +24814,7 @@ local function SessionLoop()
                 --== End Buffer
 
 
-
+                _Helper.LockEnhance(false)
 
                 UPDATE_LABELS_FUNC.UpdateSetLblStats("Placing selling team...")
                 if not EquipPets(FSettings.team1) then
@@ -27249,11 +27415,6 @@ HomeDashboardUi();
 
 
 
-
-
-
-
-
 -- #proui
 Varz.ProUi = function()
     local UIProTab = Window:AddTab({
@@ -28225,6 +28386,46 @@ Varz.ProUi = function()
                     SaveDataOther()
                 end
             })
+
+
+            local function GetTextEnhancerCd()
+                local level = FOtherSettings.enhance_cooldown
+                local str = string.format(
+                    "<b><font color='#FFFFFF'>⏳ Delay </font></b><font color='#00FFFF'>%s</font>", level)
+                return str
+            end
+
+            local inputTimerEnhancer
+            inputTimerEnhancer = gEnhancepro:AddInput("inputTimerEnhancer", {
+                Text = GetTextEnhancerCd(),
+                Default = FOtherSettings.enhance_cooldown,
+                Numeric = true,
+                AllowEmpty = true,
+                Finished = true,
+                ClearTextOnFocus = false,
+                Placeholder = "e.g. 0.2",
+                Tooltip = "Delay for enhancer.",
+                Callback = function(Value)
+                    local num = ParseWeightNumber(Value)
+
+                    if not num or num <= 0 then
+                        Library:Notify("Invalid number: " .. Value, 3)
+                        inputTimerEnhancer:SetValue(tostring(FOtherSettings.enhance_cooldown))
+                        return
+                    end
+
+                    if num > 0 then
+                        FOtherSettings.enhance_cooldown = num
+                        SaveDataOther()
+                        inputTimerEnhancer:SetText(GetTextEnhancerCd())
+                    end
+                end
+            })
+
+
+
+
+
 
 
             local lbl_epro = gEnhancepro:AddLabel({
@@ -30446,12 +30647,6 @@ Varz.UpdateDropDownPlayersGiftPets()
 
 
 
-
-
-
-
-
-
 -- ===========================================================================================
 -- Pet Teams Tab #hatchui
 Varz.PetTeamsUi = function()
@@ -30599,7 +30794,7 @@ Varz.PetTeamsUi = function()
             Tooltip = "When enabled, when eggs lower than set amount they will be skipped.",
             Callback = function(Value)
                 FOtherSettings.egg_override_enabled = Value
-                SaveOtherData()
+                SaveDataOther()
             end
         })
 
@@ -33770,7 +33965,7 @@ local function MEventsUi()
     -- Groups
     --local eventJungle = UIEventsTab:AddLeftGroupbox("🌴 <font color='#228B22'>Jungle Event</font> 🍂", "tree")
 
-    local gFeedEvent = UIEventsTab:AddLeftGroupbox("🌽 Feed Birds", "tasks")
+    local gFeedEvent = UIEventsTab:AddLeftGroupbox("👽 Alienated", "tasks")
 
     local gFallEvent = UIEventsTab:AddLeftGroupbox(type_fruit_event_name, "snowflake")
     local gQuest = UIEventsTab:AddLeftGroupbox("🍂 <font color='#FFD700'>Quests</font> 🌽", "tasks")
@@ -33789,41 +33984,58 @@ local function MEventsUi()
     --local gTradeEvent = UIEventsTab:AddLeftGroupbox("💰 Trade Event", "store")
 
 
-    -- #feedevent #feedeventui
+    -- #alienated
     if gFeedEvent then
         gFeedEvent:AddLabel({
             Text =
-            "💡 Automatically submits fruit to feed bird event. can auto collect fruits if inventory is empty.",
+            "💡 Automatically places and removes pets that have got alienated mutation. Avoids big and pets level 99+",
             DoesWrap = true
         })
 
-        -- Dropdown: Exclude Plants
-        local exlcudeplants_feed = gFeedEvent:AddDropdown("gFeedEvent", {
+        Varz.lbl_alien_stats = gFeedEvent:AddLabel({
+            Text =
+            "-",
+            DoesWrap = true
+        })
+
+
+        local exludealienated = gFeedEvent:AddDropdown("gAlinatedAvoid", {
             Values = {},
             Default = {},
             Multi = true,
-            Text = "🌱 Exclude Plants",
+            Text = "🤖 Exclude Pets",
             Searchable = true,
             MaxVisibleDropdownItems = 10,
+            Tooltip = "Select pets to avoid placing on the farm.",
             Changed = function(newSelection)
-                FSettings.feedevent.feed_plant_list = newSelection
-                SaveData()
+                FOtherSettings.alienevent.avoid_pets = newSelection
+                SaveDataOther()
             end
         })
 
-        -- Populate dropdown with all pet names
-        exlcudeplants_feed:SetValues(GetKeyValuesFromList(all_plants_list))
-        exlcudeplants_feed:SetValue(FSettings.feedevent.feed_plant_list)
+        exludealienated:SetValues(Varz.all_pets_names_list)
+        exludealienated:SetValue(FOtherSettings.alienevent.avoid_pets)
+
+        gFeedEvent:AddDivider()
+        gFeedEvent:AddToggle("autosubmitaliened", {
+            Text = "⭐ Auto Submit",
+            Default = FOtherSettings.alienevent.autosubmit,
+            Tooltip = "Auto submits when you have 10 pets with alienated mutation.",
+            Callback = function(Value)
+                FOtherSettings.alienevent.autosubmit = Value
+                SaveDataOther()
+            end
+        })
 
         -- Auto collect fruit toggle
         gFeedEvent:AddDivider()
-        gFeedEvent:AddToggle("autofeedeventenable", {
-            Text = "⚡ Enable Feed Birds",
-            Default = FSettings.feedevent.feed_birds_enabled,
-            Tooltip = "Automatically submits fruits to the event.",
+        gFeedEvent:AddToggle("autofeedeventenableval", {
+            Text = "⚡ Enable Event",
+            Default = FOtherSettings.alienevent.enabled,
+            Tooltip = "Enables the event",
             Callback = function(Value)
-                FSettings.feedevent.feed_birds_enabled = Value
-                SaveData()
+                FOtherSettings.alienevent.enabled = Value
+                SaveDataOther()
             end
         })
     end
@@ -37871,6 +38083,7 @@ end
 
 
 
+
 FallEventManager.chipmunk_cd_max = 10
 FallEventManager.chipmun_cd_current = 0
 FallEventManager.event_delayed_start = 15
@@ -38143,6 +38356,9 @@ end
 task.spawn(function()
     while true do
         task.wait(5)
+        if true then
+            break
+        end
         if Varz.IsPaused() then
             task.wait(math.random(2, 5))
             continue
@@ -38575,6 +38791,30 @@ task.spawn(function()
                 continue
             end
         end
+    end
+end)
+
+
+-- #alien
+task.spawn(function()
+    while true do
+        task.wait(3)
+
+        if not FOtherSettings.alienevent.enabled then
+            EventsManager.AlienEvent.UpdateUi("🔴 Not enabled")
+            continue
+        end
+
+        if FSettings.is_running or MutationMachineManager.is_running or PetMutation.is_running then
+            EventsManager.AlienEvent.UpdateUi("⚠️ Unable to run if hatching or mutation systems are enabled.")
+            continue
+        end
+
+        EventsManager.AlienEvent.UpdateUi("🟢 Running")
+        task.wait(4)
+        EventsManager.AlienEvent.PlacePetsOnFarm()
+        task.wait(1)
+        EventsManager.AlienEvent.SubmitPets()
     end
 end)
 
@@ -41379,11 +41619,12 @@ if TaskManager.loop_egg_enhancer then
     TaskManager.loop_egg_enhancer = nil
 end
 
--- #enhance #fav
+-- #enhance #fav #enhancer
 TaskManager.loop_egg_enhancer = task.spawn(function()
     while true do
         -- local delay = math.random(0.5, 0.5)
-        task.wait(0.25)
+        local tm = tonumber(FOtherSettings.enhance_cooldown) or 0.35
+        task.wait(tm)
 
         -- if Varz.enhancer_locked > 0 then
         --     task.wait(0.5)
