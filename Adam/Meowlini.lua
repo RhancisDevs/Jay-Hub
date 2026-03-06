@@ -92,22 +92,37 @@ end
 
 local function equipTool()
     local char = player.Character or player.CharacterAdded:Wait()
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return false end
 
-    local equipped = char:FindFirstChildOfClass("Tool")
-    if equipped and equipped:GetAttribute("BrainrotName") == brainrotNameTarget then
-        return true
+    local humanoid = char:WaitForChild("Humanoid", 2)
+    if not humanoid then
+        return false
     end
 
-    for _,tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool:GetAttribute("BrainrotName") == brainrotNameTarget then
-            humanoid:EquipTool(tool)
-            return true
+    local bestTool = nil
+    local highestScale = -math.huge
+
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            if tool:GetAttribute("BrainrotName") == brainrotNameTarget then
+                local scale = tool:GetAttribute("Scale")
+
+                if scale ~= nil then
+                    if scale > highestScale then
+                        highestScale = scale
+                        bestTool = tool
+                    end
+                end
+            end
         end
     end
 
-    return false
+    if not bestTool then
+        warn("No tool found with BrainrotName =", brainrotNameTarget, "and valid Scale")
+        return false
+    end
+
+    humanoid:EquipTool(bestTool)
+    return true
 end
 
 local notificationsFolder =
