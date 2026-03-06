@@ -2,8 +2,6 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
@@ -150,67 +148,10 @@ local machines = {
     FireAndIce = true
 }
 
-local humanoidRootPart
-
 local function getHRP()
     local char = player.Character or player.CharacterAdded:Wait()
-    humanoidRootPart = char:WaitForChild("HumanoidRootPart")
-    return humanoidRootPart
+    return char:WaitForChild("HumanoidRootPart")
 end
-
-local function slideToPosition(targetPos, duration)
-    duration = duration or 1.5
-
-    local undergroundPos = Vector3.new(
-        targetPos.X,
-        targetPos.Y - 18,
-        targetPos.Z
-    )
-
-    local tweenInfo = TweenInfo.new(
-        duration,
-        Enum.EasingStyle.Linear,
-        Enum.EasingDirection.Out
-    )
-
-    local tween = TweenService:Create(
-        humanoidRootPart,
-        tweenInfo,
-        {CFrame = CFrame.new(undergroundPos)}
-    )
-
-    tween:Play()
-    tween.Completed:Wait()
-end
-
-local platformPart
-
-local function createPlatform()
-    if platformPart then
-        platformPart:Destroy()
-    end
-    platformPart = Instance.new("Part")
-    platformPart.Size = Vector3.new(12,1,12)
-    platformPart.Anchored = true
-    platformPart.CanCollide = true
-    platformPart.Transparency = 1
-    platformPart.Name = "AntiFallPlatform"
-    platformPart.Parent = workspace
-end
-
-local function updatePlatformPosition()
-    if platformPart and humanoidRootPart then
-        local pos = humanoidRootPart.Position
-        platformPart.CFrame = CFrame.new(pos.X, pos.Y - 4, pos.Z)
-    end
-end
-
-RunService.PreSimulation:Connect(function()
-    if not platformPart then return end
-    if not humanoidRootPart then return end
-    platformPart.CFrame =
-        humanoidRootPart.CFrame * CFrame.new(0,-3.5,0)
-end)
 
 local function machineHasBrainrot(machine)
     local brainrots = machine:FindFirstChild("Brainrots", true)
@@ -234,8 +175,6 @@ player.CharacterAdded:Connect(function()
     task.wait(1)
 
     backpack = player:WaitForChild("Backpack")
-    getHRP()
-    createPlatform()
 
     local machine = getActiveMachine()
     if not machine then return end
@@ -246,22 +185,15 @@ player.CharacterAdded:Connect(function()
 end)
 
 task.spawn(function()
-
-    getHRP()
-    createPlatform()
-
     while true do
-
         local machine = getActiveMachine()
 
-        if machine and humanoidRootPart then
+        if machine then
+            local hrp = getHRP()
+            local targetCFrame = machine:GetPivot() * CFrame.new(0,3,0)
 
-            local targetPos = (machine:GetPivot() * CFrame.new(0,3,0)).Position
-
-            local distance = (humanoidRootPart.Position - targetPos).Magnitude
-
-            if distance > 6 then
-                slideToPosition(targetPos, 1.5)
+            if (hrp.Position - targetCFrame.Position).Magnitude > 5 then
+                hrp.CFrame = targetCFrame
             end
 
             task.wait(0.25)
@@ -286,7 +218,7 @@ end)
 Fluent:Notify({
     Title = "Jay Auto Farm",
     Content = "Autofarm started successfully",
-    Duration = 6
+    Duration = 15
 })
 
 local function Addcantsleep()
