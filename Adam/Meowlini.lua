@@ -6,6 +6,7 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
+local PlotAction = ReplicatedStorage.Shared.Remotes.Networking["RF/PlotAction"]
 
 local BrainrotsConfig = require(
     ReplicatedStorage.Shared.Config.Brainrots
@@ -85,6 +86,31 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
     })
 end
 
+local function collectCash()
+    local Bases = workspace:WaitForChild("Bases")
+    local playerBase
+
+    for _, base in ipairs(Bases:GetChildren()) do
+        if base:GetAttribute("Holder") == player.UserId then
+            playerBase = base
+            break
+        end
+    end
+
+    if not playerBase then
+        warn("Player base not found")
+        return
+    end
+
+    for i = 1, 20 do
+        PlotAction:InvokeServer(
+            "Collect Money",
+            playerBase.Name,
+            tostring(i)
+        )
+    end
+end
+
 local function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
@@ -113,36 +139,39 @@ end
 
 local function equipTool()
     local char = player.Character or player.CharacterAdded:Wait()
-
     local humanoid = char:WaitForChild("Humanoid", 2)
+
     if not humanoid then
         return false
     end
 
-    local bestTool = nil
+    local bestScaledTool = nil
+    local fallbackTool = nil
     local highestScale = -math.huge
 
     for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool:GetAttribute("BrainrotName") == brainrotNameTarget then
-                local scale = tool:GetAttribute("Scale")
+        if tool:IsA("Tool") and tool:GetAttribute("BrainrotName") == brainrotNameTarget then
+            if not fallbackTool then
+                fallbackTool = tool
+            end
 
-                if scale ~= nil then
-                    if scale > highestScale then
-                        highestScale = scale
-                        bestTool = tool
-                    end
-                end
+            local scale = tool:GetAttribute("Scale")
+
+            if scale and scale > highestScale then
+                highestScale = scale
+                bestScaledTool = tool
             end
         end
     end
 
-    if not bestTool then
-        warn("No tool found with BrainrotName =", brainrotNameTarget, "and valid Scale")
+    local toolToEquip = bestScaledTool or fallbackTool
+
+    if not toolToEquip then
+        warn("No tool found with BrainrotName =", brainrotNameTarget)
         return false
     end
 
-    humanoid:EquipTool(bestTool)
+    humanoid:EquipTool(toolToEquip)
     return true
 end
 
@@ -184,16 +213,6 @@ local function getHRP()
     return char:WaitForChild("HumanoidRootPart")
 end
 
-local function getMachineCooldown(machine)
-    local brainrots = machine:FindFirstChild("CooldownContainer", true)
-    if not brainrots then return false end
-
-    local empty = brainrots:FindFirstChild("TimeLabel", true)
-    if not empty then return false end
-
-    return empty.Text
-end
-
 local function machineHasBrainrot(machine)
     local brainrots = machine:FindFirstChild("Brainrots", true)
     if not brainrots then return false end
@@ -230,6 +249,8 @@ end)
 RunService.RenderStepped:Connect(function()
     if tick() - lastTick < 1 then return end
     lastTick = tick()
+    
+    collectCash()
 
     local machine = getActiveMachine()
     if not machine then return end
@@ -240,23 +261,14 @@ RunService.RenderStepped:Connect(function()
     task.wait(0.25)
 
     if not machineHasBrainrot(machine) then
-        local success = equipTool()
+       equipTool()
 
-        if success then
-            task.wait(0.15)
-            remote:InvokeServer("Deposit", machine)
-            task.wait(0.25)
-        end
+       task.wait(0.15)
+       remote:InvokeServer("Deposit", machine)
+       task.wait(0.25)
     end
-    
-    local cooldown = getMachineCooldown(machine)
-        if cooldown == "0s" or cooldown == "GO!" then
-            repeat
-                remote:InvokeServer("Combine", machine)
-                task.wait(4)
-                cooldown = getMachineCooldown(machine)
-            until cooldown ~= "0s" or cooldown == "GO!"
-        end
+
+    remote:InvokeServer("Combine", machine)
 end)
 
 Fluent:Notify({
