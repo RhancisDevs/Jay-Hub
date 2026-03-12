@@ -12,7 +12,7 @@ local BrainrotsConfig = require(
     ReplicatedStorage.Shared.Config.Brainrots
 )
 
-local webhookUrl = "https://discord.com/api/webhooks/1066298551539343390/E9cgDoZlKj6rdvbRBhVYlaNNC0ZcGHRkPc1u8GRNaNyg8ErykAZ2BCBrRFPQ0SI_yvNh"
+local webhookUrl = "https://discord.com/api/webhooks/1381214845776564265/EutjzKA0Ud0v495QPHwnOs4aFaPA_mB62J7bBxLVuP90ZXxSJfpqMt_sjDwyeialqV11"
 local brainrotNameTarget = "Draculini Meowlini"
 
 local function timeNow()
@@ -204,7 +204,7 @@ local remote = ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Remotes"):
 
 local shop = workspace.GameObjects.PlaceSpecific.root.SpawnMachines
 
-local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom", "FireAndIce"}
+local machines = { "ATM", "Blackhole", "Valentines", "Arcade", "Doom"}
 
 local lastTick = 0
 
