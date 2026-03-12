@@ -1,3 +1,4 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -5,6 +6,7 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local backpack = player:WaitForChild("Backpack")
+local PlotAction = ReplicatedStorage.Shared.Remotes.Networking["RF/PlotAction"]
 
 local BrainrotsConfig = require(
     ReplicatedStorage.Shared.Config.Brainrots
@@ -84,6 +86,31 @@ local function sendWebhook(brainrotName, level, mutation, sizeName)
     })
 end
 
+local function collectCash()
+    local Bases = workspace:WaitForChild("Bases")
+    local playerBase
+
+    for _, base in ipairs(Bases:GetChildren()) do
+        if base:GetAttribute("Holder") == player.UserId then
+            playerBase = base
+            break
+        end
+    end
+
+    if not playerBase then
+        warn("Player base not found")
+        return
+    end
+
+    for i = 1, 20 do
+        PlotAction:InvokeServer(
+            "Collect Money",
+            playerBase.Name,
+            tostring(i)
+        )
+    end
+end
+
 local function checkForNewTool()
     for _, tool in pairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and not isOldItem(tool.Name) then
@@ -112,36 +139,39 @@ end
 
 local function equipTool()
     local char = player.Character or player.CharacterAdded:Wait()
-
     local humanoid = char:WaitForChild("Humanoid", 2)
+
     if not humanoid then
         return false
     end
 
-    local bestTool = nil
+    local bestScaledTool = nil
+    local fallbackTool = nil
     local highestScale = -math.huge
 
     for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") then
-            if tool:GetAttribute("BrainrotName") == brainrotNameTarget then
-                local scale = tool:GetAttribute("Scale")
+        if tool:IsA("Tool") and tool:GetAttribute("BrainrotName") == brainrotNameTarget then
+            if not fallbackTool then
+                fallbackTool = tool
+            end
 
-                if scale ~= nil then
-                    if scale > highestScale then
-                        highestScale = scale
-                        bestTool = tool
-                    end
-                end
+            local scale = tool:GetAttribute("Scale")
+
+            if scale and scale > highestScale then
+                highestScale = scale
+                bestScaledTool = tool
             end
         end
     end
 
-    if not bestTool then
-        warn("No tool found with BrainrotName =", brainrotNameTarget, "and valid Scale")
+    local toolToEquip = bestScaledTool or fallbackTool
+
+    if not toolToEquip then
+        warn("No tool found with BrainrotName =", brainrotNameTarget)
         return false
     end
 
-    humanoid:EquipTool(bestTool)
+    humanoid:EquipTool(toolToEquip)
     return true
 end
 
@@ -159,7 +189,11 @@ notificationsFolder.ChildAdded:Connect(function(child)
     local text = label.Text:lower()
     
     if text:find("dupe") then
-        print("LUCKY DUPE!")
+        Fluent:Notify({
+          Title = "Lucky Dupe",
+          Content = "Brainrot Dupe Successfully!",
+          Duration = 6
+        })
         checkForNewTool()
     elseif text:find("no brainrots") then
         equipTool()
@@ -215,6 +249,8 @@ end)
 RunService.RenderStepped:Connect(function()
     if tick() - lastTick < 1 then return end
     lastTick = tick()
+    
+    collectCash()
 
     local machine = getActiveMachine()
     if not machine then return end
@@ -225,19 +261,21 @@ RunService.RenderStepped:Connect(function()
     task.wait(0.25)
 
     if not machineHasBrainrot(machine) then
-        local success = equipTool()
+       equipTool()
 
-        if success then
-            task.wait(0.15)
-            remote:InvokeServer("Deposit", machine)
-            task.wait(0.25)
-        end
+       task.wait(0.15)
+       remote:InvokeServer("Deposit", machine)
+       task.wait(0.25)
     end
 
     remote:InvokeServer("Combine", machine)
 end)
 
-print("READY TO GOOOOO")
+Fluent:Notify({
+    Title = "Jay Auto Farm",
+    Content = "Autofarm started successfully",
+    Duration = 15
+})
 
 local function Addcantsleep()
     if (getconnections or get_signal_cons) then
