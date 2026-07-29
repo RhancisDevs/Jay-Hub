@@ -1,4 +1,3 @@
-if not game:IsLoaded() then game.Loaded:Wait() end
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Networking = require(ReplicatedStorage.SharedModules.Networking)
@@ -9,7 +8,6 @@ local Replica = PlayerState:GetLocalReplica()
 local SETTINGS = getgenv().settings
 
 local Selling = false
-local SellRetryTask
 
 local function GetMoney()
     return (Replica and Replica.Data and Replica.Data.Sheckles) or 0
@@ -68,26 +66,8 @@ local function SellEverything()
                 result.SoldCount,
                 result.SellPrice
             ))
-
-            SellRetryTask = nil
-
         elseif result.Reason == "NotAvailable" then
-            print("[Sell] Daily deal not available. Retrying in 60 seconds...")
-
-            if not SellRetryTask then
-                SellRetryTask = task.spawn(function()
-                    while SETTINGS.AutoSell and GetMoney() <= SETTINGS.SellAt do
-                        task.wait(60)
-
-                        SellRetryTask = nil
-                        SellEverything()
-
-                        if SellRetryTask then
-                            return
-                        end
-                    end
-                end)
-            end
+            print("[Sell] Daily deal expired.")
         else
             print("[Sell] Sell failed.")
         end
@@ -122,13 +102,13 @@ if Replica then
 
         print("[Money]", money)
 
-        if money <= SETTINGS.SellAt then
+        if money >= SETTINGS.SellAt then
             SellEverything()
         end
     end)
 
     task.defer(function()
-        if SETTINGS.AutoSell and GetMoney() <= SETTINGS.SellAt then
+        if SETTINGS.AutoSell and GetMoney() >= SETTINGS.SellAt then
             SellEverything()
         end
     end)
