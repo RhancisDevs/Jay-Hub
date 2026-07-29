@@ -103,13 +103,13 @@ if Replica then
 
         print("[Money]", money)
 
-        if money >= SETTINGS.SellAt then
+        if money <= SETTINGS.SellAt then
             SellEverything()
         end
     end)
 
     task.defer(function()
-        if SETTINGS.AutoSell and GetMoney() >= SETTINGS.SellAt then
+        if SETTINGS.AutoSell and GetMoney() <= SETTINGS.SellAt then
             SellEverything()
         end
     end)
